@@ -100,12 +100,30 @@ class ConcurrencyGate:
 
 @dataclass
 class RateLimitedTransport:
-    """给任意传输加上全局令牌桶与并发闸。"""
+    """给任意传输加上全局令牌桶与并发闸。
+
+    ``priority_bucket`` 若给定，则匹配 ``priority_marker`` 的请求（即动作提交）从**预留桶**
+    取令牌，其余请求走主桶。两个桶的速率之和即为总速率，因此总量不变。
+
+    为什么要预留：动作提交有硬窗口（实测自动房出牌 3 秒、碰/吃 1 秒），而轮询没有。
+    共用一个桶时，提交会排在大量在途轮询后面；一旦因此触发平台的 429，传输层的退避重试
+    （0.5 秒起、最多 4 次）会直接吃掉整个窗口，最后拿到 409 ``INVALID_ACTION`` ——
+    实测拒绝时刻距决策记录中位 2217ms，而代码里两者是相邻两行，这就是根因。
+    """
 
     inner: Transport
     bucket: TokenBucket
     gate: ConcurrencyGate | None = None
     acquire_timeout: float | None = 30.0
+    priority_bucket: TokenBucket | None = None
+    priority_marker: str = "/action"
+
+    def _is_priority(self, method: str, path: str) -> bool:
+        return (
+            self.priority_bucket is not None
+            and method == "POST"
+            and path.endswith(self.priority_marker)
+        )
 
     def request(
         self,
@@ -116,7 +134,12 @@ class RateLimitedTransport:
         body: Mapping[str, Any] | None = None,
         timeout: float | None = None,
     ) -> JSON:
-        if not self.bucket.acquire(timeout=self.acquire_timeout):
+        if self._is_priority(method, path):
+            # 只从预留桶取，绝不回落到主桶——否则又会被轮询挤住，等于白留
+            assert self.priority_bucket is not None
+            if not self.priority_bucket.acquire(timeout=self.acquire_timeout):
+                raise RateLimitTimeout(f"取得动作预留额度超时: {method} {path}")
+        elif not self.bucket.acquire(timeout=self.acquire_timeout):
             raise RateLimitTimeout(f"取得限速令牌超时: {method} {path}")
         held = False
         if self.gate is not None:

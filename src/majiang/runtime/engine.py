@@ -50,6 +50,9 @@ from .logging import Logger, NullLogger, open_logger
 from .ratelimit import ConcurrencyGate, RateLimitedTransport, TokenBucket
 
 DEFAULT_RATE_PER_SEC = 16.0
+# 从总速率里划给「动作提交」的预留额度。动作有硬窗口（出牌 3 秒、碰/吃 1 秒），
+# 轮询没有；预留在预留桶里，提交就不会排在大量在途轮询后面。
+DEFAULT_ACTION_RATE_PER_SEC = 3.0
 DEFAULT_MAX_IN_FLIGHT = 32
 DEFAULT_MAX_WORKERS = 16
 DEFAULT_POLL_INTERVAL_SEC = 10.0
@@ -357,11 +360,16 @@ def _could_respond(snapshot: Snapshot, tile: int) -> bool:
 
 
 def _budget_ms(config: TournamentConfig, snapshot: Snapshot) -> int:
-    """决策预算：响应阶段优先用快照给的绝对截止毫秒，其余按配置超时的 60% 留余量。"""
-    if snapshot.window_deadline_ms:
-        remaining = snapshot.window_deadline_ms - int(time.time() * 1000)
-        if remaining > 0:
-            return max(50, min(remaining, 5_000) - 150)
+    """决策预算：按指南的权威口径取 ``config`` 里的 ``TimeoutSec`` 的 60%。
+
+    出牌 3 秒、碰/吃 1 秒，且碰/吃窗口「固定走满」（服务端一定等满整段再结算，
+    因此不会因为响应得快就提前关窗）。
+
+    **刻意不使用 ``window_deadline_ms``**：该字段在指南里出现 0 次（是我们按抓包反推的）。
+    实测把它与本机墙上时钟相减得到的「剩余时间」中位仅 287ms、21% 为负，而窗口实为 1 秒
+    —— 两台机器之间有几百毫秒钟差，跨时钟相减不可靠，会算出无意义的 50ms 预算。
+    决策实际耗时 1.78–12.17ms，远小于 60% 预算，因此不需要靠剩余时间精打细算。
+    """
     base = {
         PHASE_DRAW: config.discard_timeout_sec,
         PHASE_RESPONSE_PENG: config.peng_timeout_sec,
@@ -388,6 +396,7 @@ KNOWN_EVENT_TYPES = frozenset(
 @dataclass
 class RuntimeOptions:
     rate_per_sec: float = DEFAULT_RATE_PER_SEC
+    action_rate_per_sec: float = DEFAULT_ACTION_RATE_PER_SEC
     max_in_flight: int = DEFAULT_MAX_IN_FLIGHT
     max_workers: int = DEFAULT_MAX_WORKERS
     poll_interval_sec: float = DEFAULT_POLL_INTERVAL_SEC
@@ -424,10 +433,16 @@ class Runtime:
         # 显式指定时跳过「从 /api/me 推断」：自动房不会出现在 /api/me 的 active_games 里
         # （实测 active_games 为空），只能由 POST /api/match 的返回值带入。
         self._tournament_id = tournament_id
-        bucket = TokenBucket(self._options.rate_per_sec)
+        # 总速率切成「轮询主桶 + 动作预留桶」，两桶之和 = rate_per_sec，总量不变。
+        # 预留下限保证轮询至少还剩一半，避免把并发度掐死。
+        action_rate = min(self._options.action_rate_per_sec, self._options.rate_per_sec / 2)
+        bucket = TokenBucket(self._options.rate_per_sec - action_rate)
+        priority_bucket = TokenBucket(action_rate)
         gate = ConcurrencyGate(self._options.max_in_flight)
         base = transport or HttpTransport(server)
-        self._api = PlatformApi(RateLimitedTransport(base, bucket, gate), token)
+        self._api = PlatformApi(
+            RateLimitedTransport(base, bucket, gate, priority_bucket=priority_bucket), token
+        )
         self._guarded = GuardedDecider(decider, on_fallback=self._on_fallback)
         self._stop = threading.Event()
         self._logger = logger or NullLogger()
@@ -514,6 +529,13 @@ class Runtime:
                     qualified=state.qualified,
                     ready_users=state.ready_users,
                     registered_users=state.registered_users,
+                    # 战力榜必须**在会话进行中**记录：自动房结束后玩家 API 对该房一律 404，
+                    # 事后就取不到了。形状：[[user_id, 总得分, 名次分, 白板数, 已打局数], ...]
+                    ranking=[
+                        [entry.user_id, entry.total_score, entry.place_points,
+                         entry.god_count, entry.games_played]
+                        for entry in state.ranking
+                    ],
                 )
                 if state.is_terminal:
                     if (

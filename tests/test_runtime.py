@@ -114,6 +114,56 @@ def test_rate_limited_transport_passes_through_and_times_out() -> None:
         tight.request("GET", "/b")
 
 
+def test_action_submissions_use_the_reserved_bucket() -> None:
+    """动作提交有硬窗口，必须排在轮询之前：主桶耗尽时提交仍应立刻发出。
+
+    回归防线。实测拒绝时刻距决策记录中位 2217ms，而代码里两者相邻——根因就是提交
+    排在大量在途轮询后面，触发 429 后退避重试吃掉整个窗口。
+    """
+    inner = RouterTransport(lambda m, p, b: {"ok": True})
+    transport = RateLimitedTransport(
+        inner,
+        TokenBucket(rate_per_sec=0.2, capacity=1),
+        None,
+        acquire_timeout=0.02,
+        priority_bucket=TokenBucket(rate_per_sec=50.0, capacity=2),
+    )
+    transport.request("GET", "/api/games/g1/state")  # 用掉主桶唯一令牌
+    with pytest.raises(RateLimitTimeout):
+        transport.request("GET", "/api/games/g1/state")  # 轮询被卡住
+    inner.calls.clear()
+    assert transport.request("POST", "/api/games/g1/action", body={"action": "hu"}) == {"ok": True}
+    assert inner.calls == [("POST", "/api/games/g1/action", {"action": "hu"})]
+
+
+def test_only_action_posts_use_the_reserved_bucket() -> None:
+    """报名/到位这类 POST 没有硬窗口，仍应走主桶，不能蹭动作的预留额度。"""
+    inner = RouterTransport(lambda m, p, b: {"ok": True})
+    transport = RateLimitedTransport(
+        inner,
+        TokenBucket(rate_per_sec=0.2, capacity=1),
+        None,
+        acquire_timeout=0.02,
+        priority_bucket=TokenBucket(rate_per_sec=50.0, capacity=2),
+    )
+    transport.request("GET", "/x")
+    inner.calls.clear()  # 上面那次 GET 已经用掉主桶令牌，从这里开始验证
+    for path in ("/api/tournaments/t1/ready", "/api/tournaments/t1/register"):
+        with pytest.raises(RateLimitTimeout):
+            transport.request("POST", path)
+    assert inner.calls == []
+
+
+def test_reserved_bucket_rate_is_carved_out_of_the_total() -> None:
+    """两个桶速率之和必须等于总速率：预留不能把总量推过平台上限。"""
+    for rate in (2.0, 8.0, 14.0, 16.0):
+        options = RuntimeOptions(rate_per_sec=rate, action_rate_per_sec=3.0)
+        action = min(options.action_rate_per_sec, options.rate_per_sec / 2)
+        poll = options.rate_per_sec - action
+        assert abs(action + poll - options.rate_per_sec) < 1e-9
+        assert poll >= options.rate_per_sec / 2, "轮询额度不应被预留压到一半以下"
+
+
 def test_first_legal_decider_prefers_high_value_actions() -> None:
     situation = None
     actions = [Action(PASS), Action(DISCARD, tile=tiles.parse("1w")), Action(PENG, tile=tiles.parse("2w")), Action(HU)]
@@ -253,15 +303,27 @@ def test_could_respond_ignores_god_discard() -> None:
     assert engine_module._could_respond(snapshot, tiles.GOD) is False
 
 
-def test_budget_prefers_snapshot_window_deadline() -> None:
+def test_budget_comes_from_documented_timeouts_not_window_deadline() -> None:
+    """回归防线：预算只按 config 的 ``TimeoutSec`` 取 60%，不再碰 ``window_deadline_ms``。
+
+    该字段在指南里出现 0 次（我们按抓包反推），且实测与本机时钟有几百毫秒钟差：
+    ``deadline − now`` 的中位仅 287ms、21% 为负，而窗口实为 1 秒。旧实现据此算出过
+    无意义的 50ms 预算。这里刻意喂一个「只剩 100ms」的窗口值，预算仍应是 1s × 60%。
+    """
     from majiang.client.models import TournamentConfig
     from majiang.client.snapshot import Snapshot
 
-    config = TournamentConfig(max_concurrent_games=10, rounds_per_game=1, base_score=1)
-    future = int(time.time() * 1000) + 900
-    snapshot = Snapshot.parse({**REAL_PENG_SNAPSHOT, "window_deadline_ms": future})
-    budget = engine_module._budget_ms(config, snapshot)
-    assert 700 <= budget <= 900
+    config = TournamentConfig(
+        max_concurrent_games=10,
+        rounds_per_game=1,
+        base_score=1,
+        peng_timeout_sec=1,
+        chi_timeout_sec=1,
+        discard_timeout_sec=3,
+    )
+    imminent = int(time.time() * 1000) + 100
+    snapshot = Snapshot.parse({**REAL_PENG_SNAPSHOT, "window_deadline_ms": imminent})
+    assert engine_module._budget_ms(config, snapshot) == 600
 
 
 def test_budget_falls_back_to_config_ratio() -> None:
