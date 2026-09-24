@@ -1,0 +1,42 @@
+# systemd 单元（tasks.md 7.5）。安装步骤见 docs/ops.md。
+#
+# 重启策略用 on-failure：只在非零退出或被杀时重启。赛事进入终态时 Runtime.run 正常返回
+# （退出码 0），此时不该重启——赛事已关闭，重启只会拿到 TOURNAMENT_CLOSED 空转刷请求。
+#
+# 安装（用户级，无需 root）：
+#   mkdir -p ~/.config/systemd/user
+#   cp scripts/majiang-ai.service ~/.config/systemd/user/
+#   # 按实际路径修改 WorkingDirectory 与 EnvironmentFile
+#   chmod 600 ~/.majiang/env          # 令牌文件必须仅本人可读
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now majiang-ai
+#   loginctl enable-linger "$USER"    # 注销后仍继续运行（关键）
+#
+# 注意：若用系统级单元（/etc/systemd/system/），需自行创建专用用户，
+# 且要确认该用户能读令牌文件、能写日志目录。
+
+[Unit]
+Description=杭州麻将 AI 参赛程序
+Documentation=file://%h/majiang_ai/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/majiang_ai
+# 令牌与服务器地址放在仓库之外，权限 600，绝不入仓
+EnvironmentFile=%h/.majiang/env
+ExecStart=%h/.local/bin/uv run python -m majiang --env-prefix MAJIANG_TOKEN_ --decider heuristic --mode qualifier --log-dir logs
+Restart=on-failure
+RestartSec=3
+# 限速自保：60 秒内异常重启超过 5 次就停下，避免把故障放大成请求风暴
+StartLimitIntervalSec=60
+StartLimitBurst=5
+# 优雅收尾需要一点时间：把提交中的动作落盘
+TimeoutStopSec=20
+KillSignal=SIGTERM
+StandardOutput=append:%h/majiang_ai/logs/supervisor.log
+StandardError=append:%h/majiang_ai/logs/supervisor.log
+
+[Install]
+WantedBy=default.target

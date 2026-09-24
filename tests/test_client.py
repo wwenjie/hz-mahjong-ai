@@ -305,3 +305,52 @@ def test_error_carries_body_for_diagnosis() -> None:
     assert isinstance(error, ApiError)
     assert error.code == "INVALID_INPUT" and error.status == 400
     assert "13 张" in error.message and error.body == "raw"
+
+
+# --- 指南版本自检（tasks.md 1.4） ---------------------------------------------------
+
+
+def test_guide_warning_is_silent_when_platform_matches_or_is_older() -> None:
+    from majiang.cli import KNOWN_GUIDE_VERSION, guide_version_warning
+
+    assert guide_version_warning(GuideVersion(version=KNOWN_GUIDE_VERSION)) is None
+    assert guide_version_warning(GuideVersion(version=KNOWN_GUIDE_VERSION - 1)) is None
+
+
+def test_guide_warning_lists_breaking_changes_newer_than_known() -> None:
+    from majiang.cli import KNOWN_GUIDE_VERSION, guide_version_warning
+
+    info = GuideVersion(
+        version=KNOWN_GUIDE_VERSION + 2,
+        updated_at="2026-10-01",
+        changes=(
+            {"version": KNOWN_GUIDE_VERSION + 1, "type": "feature", "summary": "新增回放接口"},
+            {"version": KNOWN_GUIDE_VERSION + 2, "type": "breaking", "summary": "快照改名 my_hand"},
+            # 与已知版本相同或更旧的破坏性变更不应出现
+            {"version": KNOWN_GUIDE_VERSION, "type": "breaking", "summary": "历史变更"},
+        ),
+    )
+    warning = guide_version_warning(info)
+    assert warning is not None
+    assert "快照改名 my_hand" in warning
+    assert "新增回放接口" not in warning
+    assert "历史变更" not in warning
+    assert f"v{KNOWN_GUIDE_VERSION + 2}" in warning
+
+
+def test_guide_warning_notes_updates_without_breaking_flag() -> None:
+    from majiang.cli import KNOWN_GUIDE_VERSION, guide_version_warning
+
+    info = GuideVersion(version=KNOWN_GUIDE_VERSION + 1, changes=())
+    warning = guide_version_warning(info)
+    assert warning is not None
+    assert "未标记破坏性变更" in warning
+
+
+def test_guide_warning_flags_unrecognisable_payload() -> None:
+    """version 缺失或非正数说明响应形状变了——这本身就是破坏性变更的信号。"""
+    from majiang.cli import guide_version_warning
+
+    warning = guide_version_warning(GuideVersion(version=0))
+    assert warning is not None
+    assert "无法识别" in warning

@@ -23,6 +23,10 @@ RULES_PATH = "/api/tournaments/me/rules"
 READY_ME_PATH = "/api/tournaments/me/ready"
 GUIDE_VERSION_PATH = "/portal/api/guide/version"
 
+# 代码所依据的接入指南版本。平台发布新版本时，若含破坏性变更（端点或快照字段改动），
+# 启动自检会告警。跟进指南改动后同步更新此常量。
+KNOWN_GUIDE_VERSION = 34
+
 
 @dataclass(frozen=True, slots=True)
 class GameEnvelope:
@@ -168,7 +172,14 @@ class PlatformApi:
         )
 
 
-__all__ = ["ApiError", "GameEnvelope", "GuideVersion", "PlatformApi"]
+__all__ = [
+    "GUIDE_VERSION_PATH",
+    "KNOWN_GUIDE_VERSION",
+    "ApiError",
+    "GameEnvelope",
+    "GuideVersion",
+    "PlatformApi",
+]
 
 
 def merge_active_games(active: Sequence[str], tournament: Sequence[str]) -> tuple[str, ...]:

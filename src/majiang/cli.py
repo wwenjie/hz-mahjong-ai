@@ -22,6 +22,8 @@ import threading
 from collections.abc import Callable
 from pathlib import Path
 
+from .client.api import KNOWN_GUIDE_VERSION, GuideVersion, PlatformApi
+from .client.transport import HttpTransport
 from .runtime.decider import Decider, FirstLegalDecider
 from .runtime.engine import Runtime, RuntimeOptions
 from .runtime.logging import DEFAULT_LOG_DIR
@@ -44,10 +46,52 @@ def _value_decider(mode: Mode, path: str) -> Decider:
     except ValueModelError as exc:
         print(f"[警告] 价值模型不可用（{exc}），退回启发式", file=sys.stderr)
         return heuristic
+
+
+def guide_version_warning(info: GuideVersion, known: int = KNOWN_GUIDE_VERSION) -> str | None:
+    """给定指南版本信息，返回告警文本；不需要告警时返回 ``None``（纯函数，便于测试）。
+
+    三种需要人工注意的情况：版本号无法识别、平台版本比代码依据的新且含破坏性变更、
+    平台版本更新但未标记破坏性变更（仍值得核对端点与快照字段）。
+    """
+    if info.version <= 0:
+        return "指南版本响应无法识别（version 缺失或非正数），可能是破坏性变更，请人工核对端点与快照字段"
+    if info.version <= known:
+        return None
+    head = (
+        f"平台接入指南已更新到 v{info.version}（代码依据 v{known}，"
+        f"更新于 {info.updated_at or '未知时间'}）"
+    )
+    breaking = info.breaking_since(known)
+    if not breaking:
+        return head + "\n  （未标记破坏性变更，但仍建议核对端点与快照字段）"
+    return head + "".join(f"\n  [破坏性变更] {line}" for line in breaking)
+
+
+def check_guide_version(server: str, *, known: int = KNOWN_GUIDE_VERSION) -> None:
+    """启动自检（tasks.md 1.4）：核对平台指南版本并对破坏性变更告警。
+
+    **绝不因自检失败而中止启动**——比赛不能因为一个诊断端点不可达就放弃。
+    """
+    try:
+        info = PlatformApi(HttpTransport(server)).guide_version()
+    except Exception as exc:  # noqa: BLE001
+        print(f"[警告] 指南版本自检失败（{type(exc).__name__}: {exc}），已跳过", file=sys.stderr)
+        return
+    warning = guide_version_warning(info, known)
+    if warning is None:
+        print(f"指南版本自检通过：平台 v{info.version}，代码依据 v{known}", file=sys.stderr)
+        return
+    print(f"[警告] {warning}", file=sys.stderr)
+    print(f"  核对后请更新 majiang/client/api.py 的 KNOWN_GUIDE_VERSION", file=sys.stderr)
+
+
 # 平台 /state 限速为 16/s。取 14 留出窗口余量：实测发现突发容量也会影响判定，
 # 因此不仅压速率，令牌桶的突发上限也压到 2。
 PLATFORM_STATE_RATE_PER_SEC = 14.0
-DECIDERS: dict[str, Callable[[Mode], Decider]] = {    "heuristic": lambda mode: HeuristicDecider(PolicyConfig.for_mode(mode)),
+
+DECIDERS: dict[str, Callable[[Mode], Decider]] = {
+    "heuristic": lambda mode: HeuristicDecider(PolicyConfig.for_mode(mode)),
     # 同向听改用「进张最多」做次排序（tasks.md 5.4 的优化方向）
     "ukeire": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode, tiebreak="ukeire")
@@ -133,6 +177,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="测试房跑完一轮后再次到位开启下一轮（正式赛事不要打开）",
     )
+    parser.add_argument(
+        "--skip-version-check",
+        action="store_true",
+        help="跳过启动时的指南版本自检（离线或用假令牌测试时使用）",
+    )
     return parser
 
 
@@ -171,6 +220,8 @@ def main(argv: list[str] | None = None) -> int:
         f"日志 {Path(args.log_dir).resolve()}",
         file=sys.stderr,
     )
+    if not args.skip_version_check:
+        check_guide_version(args.server)
 
     runtimes = [
         Runtime(token, server=args.server, decider=decider, options=options)
@@ -193,11 +244,15 @@ def main(argv: list[str] | None = None) -> int:
     duration = args.duration if args.duration > 0 else None
     summaries: list[object] = []
     threads: list[threading.Thread] = []
+    failures: list[BaseException] = []
 
     def drive(runtime: Runtime) -> None:
         try:
             summaries.append(runtime.run(duration_sec=duration))
         except Exception as exc:  # noqa: BLE001
+            # 记下来并让进程以非零退出：守护脚本靠退出码区分「崩溃该重启」与
+            # 「赛事终态正常收工」。若在此吞掉异常并返回 0，崩溃后守护不会重启。
+            failures.append(exc)
             print(f"运行时异常退出: {type(exc).__name__}: {exc}", file=sys.stderr)
 
     for runtime in runtimes:
@@ -210,6 +265,12 @@ def main(argv: list[str] | None = None) -> int:
     print("\n收尾：", file=sys.stderr)
     for summary in summaries:
         print(f"  {summary}", file=sys.stderr)
+    if failures:
+        print(
+            f"{len(failures)} 个身份异常退出，以退出码 1 结束以便守护脚本重启",
+            file=sys.stderr,
+        )
+        return 1
     return 0
 
 
