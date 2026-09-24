@@ -310,6 +310,29 @@ def test_error_carries_body_for_diagnosis() -> None:
 # --- 指南版本自检（tasks.md 1.4） ---------------------------------------------------
 
 
+def test_tournament_gone_is_retryable_not_permanent() -> None:
+    """指南 v35 的破坏性变更：TOURNAMENT_GONE 与 TOURNAMENT_NOT_FOUND 共用 404。
+
+    两者含义相反——前者「房暂时不可达」应重试，后者「房不存在」应放弃。判型必须用
+    响应体的 code。这里把结论钉住：若哪天有人只看状态码，或把它误并入永久集合，
+    比赛时会把可恢复的场面当成淘汰。
+    """
+    gone = make_api_error(404, {"code": "TOURNAMENT_GONE", "message": "房暂时不可达"})
+    missing = make_api_error(404, {"code": "TOURNAMENT_NOT_FOUND"})
+    assert gone.status == missing.status == 404
+    assert is_retryable(gone) is True
+    assert is_permanent(gone) is False
+    assert is_retryable(missing) is False
+    assert is_permanent(missing) is True
+
+
+def test_error_without_code_falls_back_to_retryable_side() -> None:
+    """响应体没有 code 时退化为 HTTP_<status>，落在「未知」一侧（重试），而非放弃。"""
+    bare = make_api_error(404, None, "raw")
+    assert bare.code == "HTTP_404"
+    assert is_retryable(bare) is False and is_permanent(bare) is False
+
+
 def test_guide_warning_is_silent_when_platform_matches_or_is_older() -> None:
     from majiang.cli import KNOWN_GUIDE_VERSION, guide_version_warning
 

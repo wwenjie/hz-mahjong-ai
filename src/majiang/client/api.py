@@ -25,7 +25,11 @@ GUIDE_VERSION_PATH = "/portal/api/guide/version"
 
 # 代码所依据的接入指南版本。平台发布新版本时，若含破坏性变更（端点或快照字段改动），
 # 启动自检会告警。跟进指南改动后同步更新此常量。
-KNOWN_GUIDE_VERSION = 34
+#
+# v35（更新于 2026-09-23）唯一的破坏性变更已跟进：新增具名 ``404 TOURNAMENT_GONE``
+# ——「房暂时不可达」应与 ``404 TOURNAMENT_NOT_FOUND``（「房不存在」）区分并**重试**，
+# 已加入 ``errors.RETRYABLE_CODES``。
+KNOWN_GUIDE_VERSION = 35
 
 
 @dataclass(frozen=True, slots=True)

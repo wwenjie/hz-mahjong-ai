@@ -28,8 +28,14 @@ class TransportError(Exception):
     """网络层失败（连接中断、超时、TLS 错误等），未取得 HTTP 响应。"""
 
 
-# 可退避重试：限速与临时忙
-RETRYABLE_CODES = frozenset({"RATE_LIMITED", "MATCH_BUSY"})
+# 可退避重试：限速、临时忙、房暂时不可达
+#
+# ``TOURNAMENT_GONE`` 是指南 v35 新增并具名的码：它与 ``TOURNAMENT_NOT_FOUND``
+# **共用 404**，但含义相反——前者是「房暂时不可达」（应重试），后者是「房不存在」
+# （应放弃）。因此判型必须用响应体里的 ``code``，绝不能用 HTTP 状态码。
+# 未具名时它落在「未知码」分支也恰好会被重试，但那只是巧合；这里显式声明意图，
+# 以免将来有人把「未知码」改成默认放弃时把可恢复的场面误判成淘汰。
+RETRYABLE_CODES = frozenset({"RATE_LIMITED", "MATCH_BUSY", "TOURNAMENT_GONE"})
 
 # 永久条件：重试不会改变结果，应改变策略或放弃
 PERMANENT_CODES = frozenset(
