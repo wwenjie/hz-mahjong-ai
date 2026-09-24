@@ -1,0 +1,217 @@
+"""命令行入口。
+
+令牌来源优先级：``--token-env`` 指定的环境变量 > ``--env-prefix`` 收集到的多个环境变量
+> ``--token`` 直接传参。推荐用环境变量，避免令牌出现在命令行与进程列表里。
+
+单身份::
+
+    uv run python -m majiang --token-env TEST_TOKEN_QINGLONG --duration 600
+
+多身份（联调用，一个进程内各身份各自独立限速）::
+
+    uv run python -m majiang --env-prefix TEST_TOKEN_ --duration 600
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import signal
+import sys
+import threading
+from collections.abc import Callable
+from pathlib import Path
+
+from .runtime.decider import Decider, FirstLegalDecider
+from .runtime.engine import Runtime, RuntimeOptions
+from .runtime.logging import DEFAULT_LOG_DIR
+from .strategy.policy import HeuristicDecider, Mode, PolicyConfig
+from .strategy.opponent import load_or_none
+from .strategy.search import SearchConfig, SearchDecider
+from .strategy.value import ValueDecider, ValueModel, ValueModelError
+
+DEFAULT_SERVER = "https://10.240.169.190:18080"
+# 价值模型默认路径；缺失或版本不兼容时 ValueDecider 会退回启发式并给出提示
+VALUE_MODEL_PATH = "models/value_model.json"
+OPPONENT_MODEL_PATH = "models/opponent_model.json"
+
+
+def _value_decider(mode: Mode, path: str) -> Decider:
+    """价值模型驱动；模型不可用时退回启发式（绝不因模型缺失而中止）。"""
+    heuristic = HeuristicDecider(PolicyConfig.for_mode(mode))
+    try:
+        return ValueDecider(model=ValueModel.load(path), heuristic=heuristic)
+    except ValueModelError as exc:
+        print(f"[警告] 价值模型不可用（{exc}），退回启发式", file=sys.stderr)
+        return heuristic
+# 平台 /state 限速为 16/s。取 14 留出窗口余量：实测发现突发容量也会影响判定，
+# 因此不仅压速率，令牌桶的突发上限也压到 2。
+PLATFORM_STATE_RATE_PER_SEC = 14.0
+DECIDERS: dict[str, Callable[[Mode], Decider]] = {    "heuristic": lambda mode: HeuristicDecider(PolicyConfig.for_mode(mode)),
+    # 同向听改用「进张最多」做次排序（tasks.md 5.4 的优化方向）
+    "ukeire": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="ukeire")
+    ),
+    # 确定化前瞻搜索（tasks.md 5.15）。samples/top_k 越小越快
+    "search": lambda mode: SearchDecider(
+        HeuristicDecider(PolicyConfig.for_mode(mode)),
+        SearchConfig(samples=6, top_k=2),
+    ),
+    "search-deep": lambda mode: SearchDecider(
+        HeuristicDecider(PolicyConfig.for_mode(mode)),
+        SearchConfig(samples=16, top_k=3),
+    ),
+    # 开启路线分叉（tasks.md 5.6）。实测为负收益，仅在实验时使用
+    "route-aware": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, route_aware=True)
+    ),
+    # 实验档位：绝不打出财神（验证能否把爆头/财飘链制造出来）
+    "preserve-god": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, preserve_god=True)
+    ),
+    # 实验档位：按纯真牌算向听，逼策略做 4 组自然面子以谋求爆头（＋留财神）
+    "natural": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, preserve_god=True, natural_route=True)
+    ),
+    # 对照：关闭「弃胡求爆头」（用于量化该决策的期望值）
+    "no-chase": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, chase_baotou=False)
+    ),
+    # 价值模型驱动（tasks.md 5.15）：用自对弈学到的价值函数给出牌打分
+    "value": lambda mode: _value_decider(mode, VALUE_MODEL_PATH),
+    # 对手听牌模型驱动的风险（tasks.md 6B）：模型不可用时自动回退手写启发式
+    "risk": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode), risk_model=load_or_none(OPPONENT_MODEL_PATH)
+    ),
+    "first-legal": lambda _mode: FirstLegalDecider(),
+}
+
+
+def collect_tokens(prefix: str, environment: dict[str, str] | None = None) -> list[tuple[str, str]]:
+    source = os.environ if environment is None else environment
+    found: list[tuple[str, str]] = []
+    for key in sorted(source):
+        if key.startswith(prefix):
+            value = source[key].strip()
+            if value:
+                found.append((key[len(prefix) :], value))
+    return found
+
+
+def make_decider(name: str, mode: Mode) -> Decider:
+    factory = DECIDERS.get(name)
+    if factory is None:
+        raise SystemExit(f"未知决策器 {name!r}，可选: {', '.join(sorted(DECIDERS))}")
+    return factory(mode)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="majiang", description="杭州麻将 AI 参赛程序")
+    parser.add_argument("--server", default=os.environ.get("MAJIANG_SERVER", DEFAULT_SERVER))
+    parser.add_argument("--token", help="参赛令牌（不推荐：会出现在进程列表里）")
+    parser.add_argument("--token-env", help="存有参赛令牌的环境变量名")
+    parser.add_argument("--env-prefix", help="收集该前缀下的所有环境变量作为多身份令牌")
+    parser.add_argument("--decider", default="heuristic", help="决策器名称")
+    parser.add_argument(
+        "--mode",
+        default=Mode.QUALIFIER.value,
+        choices=[mode.value for mode in Mode],
+        help="策略模式：晋级轮稳健 / 决赛激进",
+    )
+    parser.add_argument("--duration", type=float, default=0.0, help="运行秒数，0 表示直到赛事终态")
+    parser.add_argument("--log-dir", default=DEFAULT_LOG_DIR)
+    parser.add_argument("--quiet", action="store_true", help="不往控制台打日志")
+    parser.add_argument(
+        "--rate",
+        type=float,
+        default=None,
+        help=f"每身份每秒请求上限，缺省 {PLATFORM_STATE_RATE_PER_SEC}（略低于平台 16/s 以留窗口余量）",
+    )
+    parser.add_argument("--max-workers", type=int, default=16)
+    parser.add_argument(
+        "--reopen-test-room",
+        action="store_true",
+        help="测试房跑完一轮后再次到位开启下一轮（正式赛事不要打开）",
+    )
+    return parser
+
+
+def resolve_tokens(args: argparse.Namespace) -> list[tuple[str, str]]:
+    if args.env_prefix:
+        tokens = collect_tokens(args.env_prefix)
+        if not tokens:
+            raise SystemExit(f"环境变量里没有以 {args.env_prefix} 开头的令牌")
+        return tokens
+    if args.token_env:
+        value = os.environ.get(args.token_env, "").strip()
+        if not value:
+            raise SystemExit(f"环境变量 {args.token_env} 为空")
+        return [(args.token_env, value)]
+    if args.token:
+        return [("argv", args.token)]
+    raise SystemExit("必须提供 --token-env、--env-prefix 或 --token 之一")
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    tokens = resolve_tokens(args)
+    mode = Mode(args.mode)
+    decider = make_decider(args.decider, mode)
+    rate = args.rate if args.rate else PLATFORM_STATE_RATE_PER_SEC
+    options = RuntimeOptions(
+        rate_per_sec=rate,
+        max_workers=args.max_workers,
+        log_dir=args.log_dir,
+        log_console=not args.quiet,
+        reopen_finished_test_room=args.reopen_test_room,
+    )
+    print(f"启动 {len(tokens)} 个身份：{', '.join(name for name, _ in tokens)}", file=sys.stderr)
+    print(
+        f"服务器 {args.server}  决策器 {args.decider}({mode.value})  每身份限速 {rate:.1f}/s  "
+        f"日志 {Path(args.log_dir).resolve()}",
+        file=sys.stderr,
+    )
+
+    runtimes = [
+        Runtime(token, server=args.server, decider=decider, options=options)
+        for _, token in tokens
+    ]
+
+    stopping = threading.Event()
+
+    def handle_signal(_signum: int, _frame: object) -> None:
+        if stopping.is_set():
+            return
+        stopping.set()
+        print("收到中断，正在收尾…", file=sys.stderr)
+        for runtime in runtimes:
+            runtime.request_stop()
+
+    signal.signal(signal.SIGINT, handle_signal)
+    signal.signal(signal.SIGTERM, handle_signal)
+
+    duration = args.duration if args.duration > 0 else None
+    summaries: list[object] = []
+    threads: list[threading.Thread] = []
+
+    def drive(runtime: Runtime) -> None:
+        try:
+            summaries.append(runtime.run(duration_sec=duration))
+        except Exception as exc:  # noqa: BLE001
+            print(f"运行时异常退出: {type(exc).__name__}: {exc}", file=sys.stderr)
+
+    for runtime in runtimes:
+        thread = threading.Thread(target=drive, args=(runtime,), name="runtime")
+        thread.start()
+        threads.append(thread)
+    for thread in threads:
+        thread.join()
+
+    print("\n收尾：", file=sys.stderr)
+    for summary in summaries:
+        print(f"  {summary}", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

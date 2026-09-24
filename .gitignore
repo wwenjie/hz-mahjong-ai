@@ -1,0 +1,22 @@
+# 虚拟环境与构建产物
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# 凭据：令牌只允许经环境变量或启动参数传入，不得入仓
+.env
+.env.*
+*.token
+tokens*.txt
+secrets*
+
+# 联调抓取、自对弈数据与运行日志（体积大且可重生成）
+data/
+logs/
+# 模型产物：仅实验用途。若某个模型成为默认档位的运行必需项，
+# 再显式提交它（`git add -f models/xxx.json`）并把默认档位切过去。
+models/

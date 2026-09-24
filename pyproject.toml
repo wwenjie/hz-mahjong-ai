@@ -1,0 +1,26 @@
+[project]
+name = "majiang-ai"
+version = "0.1.0"
+description = "杭州麻将 AI 竞技赛参赛程序"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+majiang = "majiang.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/majiang"]
+
+[dependency-groups]
+dev = [
+    "numpy>=2.5.3",
+    "pytest>=8.0",
+    "scikit-learn>=1.9.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
