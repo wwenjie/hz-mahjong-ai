@@ -23,6 +23,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from .client.api import KNOWN_GUIDE_VERSION, GuideVersion, PlatformApi
+from .client.errors import ApiError
 from .client.transport import HttpTransport
 from .runtime.decider import Decider, FirstLegalDecider
 from .runtime.engine import Runtime, RuntimeOptions
@@ -182,6 +183,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="跳过启动时的指南版本自检（离线或用假令牌测试时使用）",
     )
+    parser.add_argument(
+        "--auto-match",
+        action="store_true",
+        help="走自由匹配：先用 POST /api/match 取得房号再参赛（需全局令牌，非报名令牌）",
+    )
     return parser
 
 
@@ -199,6 +205,46 @@ def resolve_tokens(args: argparse.Namespace) -> list[tuple[str, str]]:
     if args.token:
         return [("argv", args.token)]
     raise SystemExit("必须提供 --token-env、--env-prefix 或 --token 之一")
+
+
+def resolve_auto_rooms(tokens: list[tuple[str, str]], server: str) -> list[tuple[str, str]]:
+    """每个身份先调一次 ``POST /api/match`` 取得房号，返回 ``[(名字, 房号)]``。
+
+    逐个身份报错**不互相影响**：某个令牌类型不对（报名令牌会 400 ``TOKEN_NOT_SCOPED``）
+    或身份未绑定（403 ``PORTAL_BINDING_REQUIRED``），只跳过该身份。
+
+    自动房不会出现在 ``/api/me`` 的 ``active_games`` 里（实测为空），所以房号只能这样带入。
+    """
+    assigned: list[tuple[str, str]] = []
+    for name, token in tokens:
+        try:
+            result = PlatformApi(HttpTransport(server), token).match()
+        except ApiError as error:
+            print(
+                f"[警告] {name} 自动匹配失败（{error.status} {error.code}: {error.message}），跳过该身份",
+                file=sys.stderr,
+            )
+            continue
+        except Exception as exc:  # noqa: BLE001
+            print(
+                f"[警告] {name} 自动匹配异常（{type(exc).__name__}: {exc}），跳过该身份",
+                file=sys.stderr,
+            )
+            continue
+        if not result.room_id:
+            print(f"[警告] {name} 未返回房号，跳过该身份", file=sys.stderr)
+            continue
+        config = result.config
+        print(
+            f"  {name} 入席 {result.room_id}"
+            f"（Kind={config.get('Kind')} M={config.get('M')} Rounds={config.get('Rounds')}"
+            f" 出牌{config.get('DiscardTimeoutSec')}s"
+            f" 碰{config.get('PengTimeoutSec')}s"
+            f" 吃{config.get('ChiTimeoutSec')}s）",
+            file=sys.stderr,
+        )
+        assigned.append((name, result.room_id))
+    return assigned
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -223,10 +269,29 @@ def main(argv: list[str] | None = None) -> int:
     if not args.skip_version_check:
         check_guide_version(args.server)
 
-    runtimes = [
-        Runtime(token, server=args.server, decider=decider, options=options)
-        for _, token in tokens
-    ]
+    if args.auto_match:
+        print("自由匹配：为每个身份调用 POST /api/match 取得房号", file=sys.stderr)
+        assigned = resolve_auto_rooms(tokens, args.server)
+        if not assigned:
+            print("没有身份成功入席，退出", file=sys.stderr)
+            return 1
+        by_name = dict(assigned)
+        runtimes = [
+            Runtime(
+                token,
+                server=args.server,
+                decider=decider,
+                options=options,
+                tournament_id=by_name[name],
+            )
+            for name, token in tokens
+            if name in by_name
+        ]
+    else:
+        runtimes = [
+            Runtime(token, server=args.server, decider=decider, options=options)
+            for _, token in tokens
+        ]
 
     stopping = threading.Event()
 

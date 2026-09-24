@@ -284,6 +284,10 @@ class GameRunner:
             candidates=[a.describe() for a in actions],
             elapsed_ms=round(elapsed_ms, 2),
             budget_ms=budget_ms,
+            # 仪器：`window_deadline_ms` 是指南里未出现的字段（我们按抓包反推），
+            # 因此把原值与本地墙上时钟一并记下，用于事后核对它到底是绝对毫秒还是别的量纲。
+            window_deadline_ms=snapshot.window_deadline_ms,
+            local_ms=int(time.time() * 1000),
         )
         if choice is not None and window_key is not None:
             self._acted_windows.add(window_key)
@@ -300,7 +304,16 @@ class GameRunner:
             self._api.submit_action(self.game_id, payload)
         except ApiError as error:
             if is_race(error):
-                self.log.log("action.rejected", action=action.describe(), code=error.code)
+                # 记下当时的阶段：响应阶段被拒多半是窗口已关（提交太晚），
+                # 出牌阶段被拒则更可能是局面已变（我们等了太久或与他人动作撞车）。
+                snapshot = getattr(self, "snapshot", None)
+                self.log.log(
+                    "action.rejected",
+                    action=action.describe(),
+                    code=error.code,
+                    phase=None if snapshot is None else snapshot.phase,
+                    round_no=None if snapshot is None else snapshot.round_no,
+                )
                 return
             self.errors += 1
             self.log.log("error.action", action=action.describe(), code=error.code)
@@ -404,9 +417,13 @@ class Runtime:
         transport: Transport | None = None,
         options: RuntimeOptions | None = None,
         logger: Logger | None = None,
+        tournament_id: str | None = None,
     ) -> None:
         self._options = options or RuntimeOptions()
         self._token = token
+        # 显式指定时跳过「从 /api/me 推断」：自动房不会出现在 /api/me 的 active_games 里
+        # （实测 active_games 为空），只能由 POST /api/match 的返回值带入。
+        self._tournament_id = tournament_id
         bucket = TokenBucket(self._options.rate_per_sec)
         gate = ConcurrencyGate(self._options.max_in_flight)
         base = transport or HttpTransport(server)
@@ -428,14 +445,26 @@ class Runtime:
         for runner in list(self._runners.values()):
             runner.request_stop()
 
+    def _config_for(self, tournament_id: str) -> TournamentConfig:
+        """规则配置。
+
+        自动房必须从赛事状态里取——``/api/tournaments/me/rules`` 是「我的绑定锦标赛」，
+        需要报名令牌，而自动房用的是全局令牌，那条路径会 400 ``TOKEN_NOT_SCOPED``。
+        """
+        if self._tournament_id:
+            return self._api.tournament(tournament_id).config
+        return self._api.rules()
+
     def run(self, *, duration_sec: float | None = None) -> RunSummary:
         deadline = None if duration_sec is None else time.monotonic() + duration_sec
         me = self._api.me()
-        tournament_id = me.tournament_id
+        tournament_id = self._tournament_id or me.tournament_id
         if not tournament_id:
-            raise ValueError("令牌未绑定锦标赛：请使用门户派发的参赛令牌")
+            raise ValueError(
+                "令牌未绑定锦标赛：请使用门户派发的参赛令牌，或用 --auto-match 走自动匹配"
+            )
         self.summary.tournament_id = tournament_id
-        config = self._api.rules()
+        config = self._config_for(tournament_id)
         configure = getattr(self._guarded, "configure", None)
         if callable(configure):
             configure(config)
@@ -510,7 +539,9 @@ class Runtime:
                 if state.status in READY_STATUSES:
                     # 崩溃重赛后确认要重做，因此把 stage_crashed 纳入键，避免误判为已确认
                     key = f"{state.status}:{state.stage_status}:{state.stage_crashed}"
-                    if key != last_ready_key:
+                    # 自动房的入席与到位由 POST /api/match 完成：直连 register/ready 会
+                    # 409 AUTO_MATCH_ONLY，重复到位也没有意义，因此整段跳过
+                    if not config.is_auto_room and key != last_ready_key:
                         self._ready(state, tournament_id, logger)
                         last_ready_key = key
                     if state.is_eliminated:

@@ -19,6 +19,7 @@ from .models import MyInfo, TournamentConfig, TournamentState
 from .transport import Transport
 
 ME_PATH = "/api/me"
+MATCH_PATH = "/api/match"
 RULES_PATH = "/api/tournaments/me/rules"
 READY_ME_PATH = "/api/tournaments/me/ready"
 GUIDE_VERSION_PATH = "/portal/api/guide/version"
@@ -90,6 +91,27 @@ class GuideVersion:
             if version > known_version and change.get("type") == "breaking":
                 summaries.append(str(change.get("summary", "")))
         return tuple(summaries)
+
+
+@dataclass(frozen=True, slots=True)
+class MatchResult:
+    """``POST /api/match`` 的返回：``{room_id, config, round_no}``。
+
+    ``round_no == 0`` 且 ``config["Kind"] == "auto"`` 表示自动房已建好但**尚未开赛**
+    （等满 4 人）。等待期重复调用幂等返回原房，绝不双房双席。
+    """
+
+    room_id: str
+    round_no: int = 0
+    config: Mapping[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def parse(cls, raw: Mapping[str, Any]) -> MatchResult:
+        return cls(
+            room_id=str(raw.get("room_id", "")),
+            round_no=int(raw.get("round_no", 0) or 0),
+            config=raw.get("config") or {},
+        )
 
 
 class PlatformApi:
@@ -169,6 +191,16 @@ class PlatformApi:
     ) -> Mapping[str, Any]:
         return self._call("POST", f"/api/games/{game_id}/action", body=payload, token=token)
 
+    def match(self, body: Mapping[str, Any] | None = None) -> MatchResult:
+        """自动匹配建房与入席。
+
+        **需全局令牌**——报名令牌会 400 ``TOKEN_NOT_SCOPED``，存量匿名全局令牌会
+        403 ``PORTAL_BINDING_REQUIRED``。``body`` 可声明可承受上限 ``{"M":10,"Rounds":8}``，
+        但**不要声明低于服务默认（M=10/Rounds=8）的上限**（会 404 ``NO_ROOM_AVAILABLE``，
+        永久条件），省略最安全。限速 10 次/分/用户，等待期重复调用幂等返回原房。
+        """
+        return MatchResult.parse(self._call("POST", MATCH_PATH, body=body))
+
     def guide_version(self) -> GuideVersion:
         """免认证的接入指南版本，用于启动自检。"""
         return GuideVersion.parse(
@@ -179,9 +211,11 @@ class PlatformApi:
 __all__ = [
     "GUIDE_VERSION_PATH",
     "KNOWN_GUIDE_VERSION",
+    "MATCH_PATH",
     "ApiError",
     "GameEnvelope",
     "GuideVersion",
+    "MatchResult",
     "PlatformApi",
 ]
 
