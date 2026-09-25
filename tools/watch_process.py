@@ -109,6 +109,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--duration", type=float, default=0.0, help="0 表示一直采样到进程消失")
     parser.add_argument("--log-dir", default="logs")
     parser.add_argument("--out", default="data/stability")
+    parser.add_argument(
+        "--follow",
+        action="store_true",
+        help="目标进程消失时继续寻找同关键字的新进程（挂机进程重启后仍能接上，长稳记录不断档）",
+    )
     args = parser.parse_args(argv)
 
     out_dir = Path(args.out)
@@ -121,13 +126,22 @@ def main(argv: list[str] | None = None) -> int:
 
     while True:
         if pid and not Path(f"/proc/{pid}").exists():
-            print("目标进程已退出，停止采样", flush=True)
-            break
+            if not args.follow:
+                print("目标进程已退出，停止采样", flush=True)
+                break
+            # 挂机进程重启后接上：重新按关键字定位，保持长稳记录连续
+            print(f"目标进程 {pid} 已退出，重新定位…", flush=True)
+            pid = 0
         if not pid:
-            pid = find_pid(args.match) or 0
-            if not pid:
+            if args.pid:
+                # 显式指定了 pid 就不该去跟别的进程
+                print("指定的进程已退出，停止采样", flush=True)
+                break
+            found = find_pid(args.match)
+            if not found:
                 time.sleep(args.interval)
                 continue
+            pid = found
         record = sample(pid)
         if record is None:
             pid = 0
