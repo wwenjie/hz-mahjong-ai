@@ -122,6 +122,11 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
     "no-chase": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode, chase_baotou=False)
     ),
+    # 吃碰闸门放宽档（tasks.md 5.5）：接受「向听不变且未听牌」的吃碰。
+    # 依据是实测我们副露 0.591/局 vs 对手 1.093/局（1.85 倍）。
+    "meld-equal": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, meld_tolerance="equal")
+    ),
     # 价值模型驱动（tasks.md 5.15）：用自对弈学到的价值函数给出牌打分
     "value": lambda mode: _value_decider(mode, VALUE_MODEL_PATH),
     # 对手听牌模型驱动的风险（tasks.md 6B）：模型不可用时自动回退手写启发式

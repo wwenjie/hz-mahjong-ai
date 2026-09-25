@@ -56,6 +56,24 @@ class Commitment(StrEnum):
     MELD = "meld"
 
 
+class MeldTolerance(StrEnum):
+    """吃碰闸门的松紧（tasks.md 5.5）。
+
+    **由真实对局统计决定的档位**（1129 份事件流 / 8969 局，见 `tools/meld_census.py`
+    与 `tools/analyze_meld_gate.py`）：
+
+    - 我们每局**持有副露 0.591 次**，对手 **1.093 次**（1.85 倍）
+    - 2372 次碰/吃机会中，闸门②「向听必须严格下降」拒绝了 1504 次（63%），
+      其中**向听不变**的有 844 次（36%），且这些里面只有 132+410 次发生在 0 向听
+    - 对手的副露率恰好落在「几乎接受全部『向听不变且未听牌』的机会」那一档上
+
+    0 向听（已听牌）时副露只会换掉听口，不会让你更接近胡牌，因此放宽档**仍拒绝**它。
+    """
+
+    STRICT = "strict"
+    EQUAL = "equal"
+
+
 @dataclass(frozen=True, slots=True)
 class PolicyConfig:
     mode: Mode = Mode.QUALIFIER
@@ -74,6 +92,8 @@ class PolicyConfig:
     # 而不是共用一张。在此之前保持关闭。
     route_aware: bool = False
     commitment: Commitment = Commitment.NONE
+    # 吃碰闸门松紧（tasks.md 5.5）。默认 strict 是**改动前的行为**，放宽档需先过 A/B。
+    meld_tolerance: MeldTolerance = MeldTolerance.STRICT
     # 同向听候选项之间的次排序键。实测「到听牌」这一步贡献了绝大部分胜率差
     # （0 向听 40% vs 1 向听 22%），因此同向听之间该往「进张更多」的方向选。
     tiebreak: str = "blocks"
@@ -649,18 +669,36 @@ class HeuristicDecider:
                 self.last_reason = "保留七对路线：不吃不碰"
                 return fallback
             best_legacy: tuple[int, Action] | None = None
+            # 放宽档允许「向听不变」的副露，但**排除已听牌**（0 向听）——那时副露只会
+            # 换掉听口，不会让你更接近胡牌。见 MeldTolerance 的实测依据。
+            # **必须用 == 而不是 is**：`PolicyConfig.for_mode(mode, meld_tolerance="equal")`
+            # 传进来的是普通 str，而 StrEnum 成员与它的值是 `==` 相等但 `is` 不等，
+            # 用 `is` 会让这个档位**静默退化成 strict**（造档时踩过一次）。
+            accept_equal = (
+                self.config.meld_tolerance == MeldTolerance.EQUAL and current >= 1
+            )
             for action in actions:
                 if action.kind not in (PENG, CHI):
                     continue
                 after_legacy = self._shanten_after_meld(situation, offered, action.kind)
-                if after_legacy is None or after_legacy >= current:
+                if after_legacy is None or after_legacy > current:
                     continue
-                if best_legacy is None or after_legacy < best_legacy[0]:
+                if after_legacy == current and not accept_equal:
+                    continue
+                # 同向听时优先碰：吃全局最多 2 副，碰不占这个额度
+                rank = (after_legacy, 0 if action.kind == PENG else 1)
+                if best_legacy is None or rank < (
+                    best_legacy[0],
+                    0 if best_legacy[1].kind == PENG else 1,
+                ):
                     best_legacy = (after_legacy, action)
             if best_legacy is None:
                 self.last_reason = f"不副露：向听 {current} 无改善"
                 return fallback
-            self.last_reason = f"副露 {best_legacy[1].describe()}：向听 {current}→{best_legacy[0]}"
+            suffix = "（向听不变，放宽档）" if best_legacy[0] == current else ""
+            self.last_reason = (
+                f"副露 {best_legacy[1].describe()}：向听 {current}→{best_legacy[0]}{suffix}"
+            )
             return best_legacy[1]
 
         pair_route, meld_route = routes.evaluate(situation, base_score=self.config.base_score)
