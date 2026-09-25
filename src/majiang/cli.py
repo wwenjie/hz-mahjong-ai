@@ -92,7 +92,13 @@ def check_guide_version(server: str, *, known: int = KNOWN_GUIDE_VERSION) -> Non
 PLATFORM_STATE_RATE_PER_SEC = 14.0
 
 DECIDERS: dict[str, Callable[[Mode], Decider]] = {
+    # 默认档位：`PolicyConfig` 的默认 tiebreak 已是 "exact-ukeire"（见其注释）
     "heuristic": lambda mode: HeuristicDecider(PolicyConfig.for_mode(mode)),
+    # 对照：同向听用**骨架厚度**次排序（2026-09-26 之前的默认行为）。
+    # 2000 配对场显示它显著差于精确进张，保留仅为后续对照。
+    "blocks": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="blocks")
+    ),
     # 同向听改用「进张最多」做次排序（tasks.md 5.4 的优化方向）
     # **注意**：这个档位用的是廉价估计，实测与精确进张只有 14.7% 的选择一致
     # （tools/analyze_ukeire_fidelity.py），因此它当年测出的「无增益」不可采信。

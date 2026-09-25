@@ -87,12 +87,16 @@ def test_configure_preserves_every_variant_knob() -> None:
 
 def test_decider_name_reveals_the_variant() -> None:
     """日志记的是 `decider=<name>`；名字若恒为 heuristic，事后无法分辨跑的是哪个档位。"""
-    assert HeuristicDecider(PolicyConfig()).name == "heuristic"
-    name = HeuristicDecider(PolicyConfig(meld_tolerance=MeldTolerance.EQUAL)).name
+    from majiang.strategy.policy import PolicyConfig as Config
+
+    assert HeuristicDecider(Config()).name == "heuristic"
+    name = HeuristicDecider(Config(meld_tolerance=MeldTolerance.EQUAL)).name
     assert name.startswith("heuristic[") and "meld-tolerance" in name
-    assert HeuristicDecider(
-        PolicyConfig(tiebreak="exact-ukeire", chase_baotou=False)
-    ).name.count("=") == 2
+    # 用**明确的非默认值**构造，否则默认值一变这个断言就失效（刚才就被默认 tiebreak
+    # 从 blocks 改为 exact-ukeire 抓到一次）
+    multi = HeuristicDecider(Config(tiebreak="blocks", chase_baotou=False)).name
+    assert multi.count("=") == 2, multi
+    assert "tiebreak" in multi and "chase-baotou" in multi
 
 
 def _situations(seed: int, count: int = 400):

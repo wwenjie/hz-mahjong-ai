@@ -118,9 +118,18 @@ class PolicyConfig:
     commitment: Commitment = Commitment.NONE
     # 吃碰闸门松紧（tasks.md 5.5）。默认 strict 是**改动前的行为**，放宽档需先过 A/B。
     meld_tolerance: MeldTolerance = MeldTolerance.STRICT
-    # 同向听候选项之间的次排序键。实测「到听牌」这一步贡献了绝大部分胜率差
-    # （0 向听 40% vs 1 向听 22%），因此同向听之间该往「进张更多」的方向选。
-    tiebreak: str = "blocks"
+    # 同向听候选项之间的次排序键。**默认 "exact-ukeire"**。
+    #
+    # 历史：原默认是 "blocks"（骨架厚度）。5.4 曾试过 "ukeire" 并记为「无增益」，
+    # 但那个档位用的是 `cheap_ukeire`（quick_shanten 贪心近似），实测它与精确口径
+    # **只在 14.7% 的手牌上选出同一张打牌**、不一致时平均放弃 15.4 张精确进张
+    # （tools/analyze_ukeire_fidelity.py），所以那次 A/B 测的是噪声。
+    #
+    # 改用精确进张后**两个独立种子、共 2000 配对场**一致显著为正（合并估计）：
+    #   名次分 +0.285/场（t 4.03）· 胡次数 +0.088/场（t 4.46）· 总得分 +1.525/场（t 2.55）
+    #   白板数不受损（+0.014，不显著）；胡率 25.6% vs 24.5%
+    # 故切为默认。旧行为保留在 `--decider blocks` 供后续对照。
+    tiebreak: str = "exact-ukeire"
     # 实验档位：绝不打出财神（只在无其他可打牌时才打）。
     # 用途是验证一条尚未测过的假设——爆头需要「4 组**自然**面子 + 1 张闲余财神」，
     # 而此前的 0 次爆头是被动观测到的（现有策略会把财神当百搭用掉）。若把财神硬留，
