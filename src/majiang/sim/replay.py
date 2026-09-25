@@ -7,9 +7,16 @@
 - ``tile_discarded````{seat, tile, data:{catch_play}}``
 - ``peng``          ``{seat, tile}``
 - ``chi``           ``{seat, tile, data:{tiles:[三张]}}``
-- ``gang``          （实测数据里未出现，本模块只计数不猜测）
+- ``gang``          ``{seat, tile, data:{kind: ming|bu|an}}``——实测 1828 次 / 1100 局
+- ``pass``          ``{seat}``——响应窗口放弃，**不改变局面**（实测占全部事件的 13%）
 - ``timeout``       ``{seat, data:{kind}}``——服务端超时兜底，**不改变局面**
 - ``round_ended`` / ``game_ended``  ``data`` 带官方 ``fan``/``detail``/``scores``
+
+### 一份事件流是**一场多局**（实测 Rounds=8）
+
+8 局各有自己的 ``start_hands`` / ``dealer``，边界只能由 ``blocks[].round_no`` 变化判定
+（事件流里没有 ``round_started``）。**必须逐局重建**：把 8 局事件铺在同一局面上跑，
+第 2 局起的起手牌全错（实测 34% 的出牌「手上没有这张牌」）。用 :func:`iter_rounds`。
 
 ### 重建目标不是还原真相，而是还原「当时可见的信息」
 
@@ -33,7 +40,7 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Iterator, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from majiang.rules import melds as melds_module
 from majiang.rules import table as table_rules
@@ -50,6 +57,7 @@ DRAWN = "tile_drawn"
 PENG = "peng"
 CHI = "chi"
 GANG = "gang"
+PASS = "pass"
 TIMEOUT = "timeout"
 ROUND_ENDED = "round_ended"
 GAME_ENDED = "game_ended"
@@ -141,32 +149,94 @@ def _tile_of(raw: object) -> int | None:
         return None
 
 
-def from_payload(payload: Mapping[str, object]) -> ReplayState:
-    """由一局的事件流构造初始局面（起手手牌 + 庄家/局号）。"""
+def _sorted_blocks(payload: Mapping[str, object]) -> list[Mapping[str, object]]:
     blocks = sorted(
         payload.get("blocks") or [], key=lambda block: block.get("seq_start", 0)  # type: ignore[union-attr]
     )
     if not blocks:
         raise ValueError("事件流没有 blocks")
-    first = blocks[0]
-    start_hands = first.get("start_hands") or []
-    rounds = payload.get("rounds") or []
-    result = rounds[0] if rounds else None
+    return blocks
 
+
+@dataclass(frozen=True)
+class RoundSpan:
+    """一局（``round_no``）在整个事件流里占的片段。
+
+    **这条边界必须显式处理**：``blocks`` 只是按 seq 区间分页，而**每块都自带一份
+    ``start_hands`` / ``dealer`` / ``round_no``**（实测确认）。一场 8 局的自由匹配对局
+    是一份事件流，若把 8 局的事件铺在同一个局面上跑，第 2 局起手牌就全错——实测表现为
+    34% 的出牌「手上没有这张牌」。事件流里没有 ``round_started``，边界只能由 ``round_no``
+    变化判定。
+    """
+
+    round_no: int
+    dealer: int
+    start_hands: tuple[object, ...]
+    events: tuple[Mapping[str, object], ...]
+
+
+def round_spans(payload: Mapping[str, object]) -> list[RoundSpan]:
+    """把事件流按局切分，顺序与 seq 一致。"""
+    spans: list[RoundSpan] = []
+    for block in _sorted_blocks(payload):
+        round_no = int(block.get("round_no", 1) or 1)
+        if not spans or spans[-1].round_no != round_no:
+            spans.append(
+                RoundSpan(
+                    round_no=round_no,
+                    dealer=int(block.get("dealer", 0) or 0),
+                    start_hands=tuple(block.get("start_hands") or ()),
+                    events=(),
+                )
+            )
+        spans[-1] = replace(spans[-1], events=(*spans[-1].events, *(block.get("events") or ())))
+    return spans
+
+
+def _round_result(payload: Mapping[str, object], round_no: int) -> Mapping[str, object] | None:
+    for entry in payload.get("rounds") or ():  # type: ignore[union-attr]
+        if int(entry.get("round_no", 0) or 0) == round_no:
+            return entry  # type: ignore[return-value]
+    return None
+
+
+def state_for_span(
+    payload: Mapping[str, object], span: RoundSpan
+) -> ReplayState:
+    """为某一局构造初始局面（该局起手手牌 + 庄家/局号）。"""
     seats: list[ReplaySeat] = []
-    for hand_codes in start_hands:
-        counts = tiles.counts_from(tiles.parse_all(list(hand_codes)))
+    for hand_codes in span.start_hands:
+        counts = tiles.counts_from(tiles.parse_all(list(hand_codes)))  # type: ignore[arg-type]
         seats.append(ReplaySeat(hand=list(counts)))
     while len(seats) < SEATS:
         seats.append(ReplaySeat())
-    dealer = int((result or first).get("dealer", 0) or 0)  # type: ignore[union-attr]
     return ReplayState(
         seats=seats,
-        dealer=dealer,
-        round_no=int((result or first).get("round_no", 1) or 1),  # type: ignore[union-attr]
-        turn=dealer,
-        result=result,
+        dealer=span.dealer,
+        round_no=span.round_no,
+        turn=span.dealer,
+        result=_round_result(payload, span.round_no),
     )
+
+
+def iter_rounds(
+    payload: Mapping[str, object],
+) -> Iterator[tuple[ReplayState, list[Mapping[str, object]]]]:
+    """按局产出 ``(该局的初始状态, 该局事件列表)``。
+
+    状态对象**每局都是新的**（调用方按顺序自行 ``apply_event``），因此不存在跨局污染。
+    """
+    for span in round_spans(payload):
+        yield state_for_span(payload, span), list(span.events)
+
+
+def from_payload(payload: Mapping[str, object]) -> ReplayState:
+    """由事件流构造**第一局**的初始局面。
+
+    多局对局请改用 :func:`iter_rounds`——它按 ``round_no`` 逐局重建。
+    """
+    span = round_spans(payload)[0]
+    return state_for_span(payload, span)
 
 
 def _take_from_discards(state: ReplayState, discarder: int, tile: int) -> bool:
@@ -265,9 +335,31 @@ def apply_event(state: ReplayState, event: Mapping[str, object]) -> None:
             seat_state.piao_count = 0
             if not _take_from_discards(state, state.last_discarder, tile):
                 state.anomalies["chi-discard-missing"] += 1
-    elif kind == GANG:
-        # 实测事件流里没有 gang；不猜测其语义，避免算错牌数
-        state.anomalies["gang-unhandled"] += 1
+    elif kind == GANG and tile is not None and 0 <= seat < SEATS:
+        # 实测事件流的 gang 共 1828 次 / 1100 局（ming 947 / bu 532 / an 349），
+        # 不是稀有事件——原先整支丢弃会让杠家的暗手多出 3~4 张、副露少一个。
+        # 杠后补牌由随后的 ``tile_drawn`` 承担，这里只处理手牌与副露。
+        gang_kind = str(data.get("kind", ""))  # type: ignore[union-attr]
+        seat_state = state.seats[seat]
+        if gang_kind == "an":
+            seat_state.hand[tile] = max(0, seat_state.hand[tile] - tiles.COPIES_PER_KIND)
+            seat_state.melds.append(Meld(kind=melds_module.GANG, tiles=(tile,) * 4, concealed=True))
+        elif gang_kind == "bu":
+            seat_state.hand[tile] = max(0, seat_state.hand[tile] - 1)
+            for index, meld in enumerate(seat_state.melds):
+                if meld.kind == melds_module.PENG and meld.tiles[0] == tile:
+                    seat_state.melds[index] = Meld(kind=melds_module.GANG, tiles=(tile,) * 4)
+                    break
+            else:
+                state.anomalies["bugang-without-peng"] += 1
+        elif gang_kind == "ming":
+            seat_state.hand[tile] = max(0, seat_state.hand[tile] - 3)
+            seat_state.melds.append(Meld(kind=melds_module.GANG, tiles=(tile,) * 4))
+            if not _take_from_discards(state, state.last_discarder, tile):
+                state.anomalies["minggang-discard-missing"] += 1
+        else:
+            state.anomalies[f"gang-unknown-kind:{gang_kind}"] += 1
+        seat_state.chain_count += 1
     elif kind == ROUND_ENDED:
         # 只有 round_ended 的 data 带官方 fan/detail/scores；**不能让 game_ended 覆盖它**
         # （game_ended 的 data 只有 final_scores，覆盖后 fan 就丢了）
@@ -276,7 +368,9 @@ def apply_event(state: ReplayState, event: Mapping[str, object]) -> None:
     elif kind == GAME_ENDED:
         if data:
             state.final_scores = tuple(data.get("final_scores") or ())  # type: ignore[union-attr]
-    elif kind == TIMEOUT:
+    elif kind == TIMEOUT or kind == PASS:
+        # 服务端超时兜底与显式放弃：都不改变局面。pass 实测占全部事件 13%，
+        # 若计入 unknown 会把真正的未知事件淹没。
         pass
     else:
         state.anomalies[f"unknown:{kind}"] += 1
@@ -300,11 +394,13 @@ def iter_before_each_event(
 
     状态是**复用的同一对象**，调用方必须在下一次迭代前把需要的东西取走（或自行拷贝）。
     这样设计是为了避免每个事件都深拷贝四家手牌。
+
+    跨局时会切换到该局**全新**的状态对象——否则第 2 局的事件会铺在第 1 局的终局局面上。
     """
-    state = from_payload(payload)
-    for event in all_events(payload):
-        yield event, state
-        apply_event(state, event)
+    for state, events in iter_rounds(payload):
+        for event in events:
+            yield event, state
+            apply_event(state, event)
 
 
 def conservation(state: ReplayState) -> dict[str, int]:
@@ -328,9 +424,13 @@ def conservation(state: ReplayState) -> dict[str, int]:
 __all__ = [
     "ReplaySeat",
     "ReplayState",
+    "RoundSpan",
     "all_events",
     "apply_event",
     "conservation",
     "from_payload",
     "iter_before_each_event",
+    "iter_rounds",
+    "round_spans",
+    "state_for_span",
 ]

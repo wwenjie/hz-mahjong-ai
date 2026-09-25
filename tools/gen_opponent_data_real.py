@@ -58,32 +58,37 @@ def is_tenpai(state: replay.ReplayState, seat: int) -> bool:
 
 
 def samples_from(payload: dict) -> tuple[list[list[float]], list[float], Counter, Counter]:
-    """一局事件流 → 样本。返回 ``(特征行, 标签, 计数, 重建异常)``。"""
+    """一份事件流（**一场 8 局**）→ 样本。返回 ``(特征行, 标签, 计数, 重建异常)``。
+
+    逐局重建：8 局各有自己的起手手牌，铺在同一局面上跑会让第 2 局起的局面全错。
+    """
     stats: Counter = Counter()
     rows: list[list[float]] = []
     labels: list[float] = []
-    state = replay.from_payload(payload)
-    for event in replay.all_events(payload):
-        # 注意：此时 state 是**该事件发生之前**的局面
-        if str(event.get("type")) in SAMPLE_ON:
-            if not state.opened:
-                # 未摸第一张牌时牌墙为 84，TableState（按发牌 53 张定义）不接受
-                stats["skipped-before-first-draw"] += 1
-            else:
-                stats["moments"] += 1
-                for observer in range(SEATS):
-                    try:
-                        situation = state.situation_for(observer)
-                    except Exception:  # noqa: BLE001 —— 单个时刻不可重建不应中断整局
-                        stats["situation-failed"] += 1
-                        continue
-                    for target in range(SEATS):
-                        if target == observer:
+    anomalies: Counter = Counter()
+    for state, events in replay.iter_rounds(payload):
+        for event in events:
+            # 注意：此时 state 是**该事件发生之前**的局面
+            if str(event.get("type")) in SAMPLE_ON:
+                if not state.opened:
+                    # 未摸第一张牌时牌墙为 84，TableState（按发牌 53 张定义）不接受
+                    stats["skipped-before-first-draw"] += 1
+                else:
+                    stats["moments"] += 1
+                    for observer in range(SEATS):
+                        try:
+                            situation = state.situation_for(observer)
+                        except Exception:  # noqa: BLE001 —— 单个时刻不可重建不应中断整局
+                            stats["situation-failed"] += 1
                             continue
-                        rows.append(extract(situation, target))
-                        labels.append(1.0 if is_tenpai(state, target) else 0.0)
-        replay.apply_event(state, event)
-    return rows, labels, stats, state.anomalies
+                        for target in range(SEATS):
+                            if target == observer:
+                                continue
+                            rows.append(extract(situation, target))
+                            labels.append(1.0 if is_tenpai(state, target) else 0.0)
+            replay.apply_event(state, event)
+        anomalies.update(state.anomalies)
+    return rows, labels, stats, anomalies
 
 
 def main(argv: list[str] | None = None) -> int:

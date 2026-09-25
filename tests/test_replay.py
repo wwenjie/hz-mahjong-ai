@@ -147,6 +147,72 @@ def test_peng_takes_two_from_hand_and_one_from_discards() -> None:
     assert count_of(state, "9b") == 4
 
 
+# --- 杠：实测共 1828 次 / 1100 局，原先整支被丢弃 ------------------------------------
+
+
+def test_angang_moves_four_tiles_from_hand_to_a_concealed_meld() -> None:
+    # 用「东」做杠牌：它不在 DEALER_HAND / OTHER_HAND 里，计数才干净
+    seat_one = ["东", "东", "东", "东", "2t", "3t", "4t", "5t", "6t", "7t", "8t", "9t", "6b"]
+    events = [event("gang", 1, "东", {"kind": "an"})]
+    state = run(events, start_hands=[DEALER_HAND, seat_one, OTHER_HAND, OTHER_HAND])
+    meld = state.seats[1].melds[0]
+    assert meld.kind == melds_module.GANG and meld.concealed is True
+    assert state.seats[1].hand[tiles.parse("东")] == 0
+    assert state.seats[1].chain_count == 1
+    assert dict(state.anomalies) == {}
+    assert count_of(state, "东") == 4
+
+
+def test_bugang_upgrades_the_existing_peng_meld() -> None:
+    """碰 3 张后摸到第 4 张补杠：手牌少一张，原刻子升级为杠。"""
+    seat_one = ["东", "东", "2t", "3t", "4t", "5t", "6t", "7t", "8t", "9t", "6b", "7b", "8b"]
+    events = [
+        event("tile_discarded", 2, "东"),
+        event("peng", 1, "东"),
+        event("tile_drawn", 1, "东"),
+        event("gang", 1, "东", {"kind": "bu"}),
+    ]
+    discarder = ["东", "2t", "3t", "4t", "5t", "6t", "7t", "8t", "9t", "6b", "7b", "8b", "9b"]
+    state = run(events, start_hands=[DEALER_HAND, seat_one, discarder, OTHER_HAND])
+    meld = state.seats[1].melds[0]
+    assert meld.kind == melds_module.GANG and len(meld.tiles) == 4
+    assert state.seats[1].hand[tiles.parse("东")] == 0
+    assert len(state.seats[1].melds) == 1, "补杠是升级，不能新增一个副露"
+    assert dict(state.anomalies) == {}
+    assert count_of(state, "东") == 4
+
+
+def test_bugang_without_a_peng_is_recorded_not_guessed() -> None:
+    seat_one = ["东", "2t", "3t", "4t", "5t", "6t", "7t", "8t", "9t", "6b", "7b", "8b", "9b"]
+    events = [event("gang", 1, "东", {"kind": "bu"})]
+    state = run(events, start_hands=[DEALER_HAND, seat_one, OTHER_HAND, OTHER_HAND])
+    assert state.anomalies["bugang-without-peng"] == 1
+    assert state.seats[1].melds == []
+
+
+def test_minggang_takes_three_from_hand_and_the_claimed_discard() -> None:
+    seat_one = ["东", "东", "东", "2t", "3t", "4t", "5t", "6t", "7t", "8t", "9t", "6b", "7b"]
+    events = [
+        event("tile_discarded", 2, "东"),
+        event("gang", 1, "东", {"kind": "ming"}),
+    ]
+    discarder = ["东", "2t", "3t", "4t", "5t", "6t", "7t", "8t", "9t", "6b", "7b", "8b", "9b"]
+    state = run(events, start_hands=[DEALER_HAND, seat_one, discarder, OTHER_HAND])
+    meld = state.seats[1].melds[0]
+    assert meld.kind == melds_module.GANG and meld.concealed is False
+    assert state.seats[1].hand[tiles.parse("东")] == 0
+    assert state.seats[2].discards == [], "被杠走的那张要从牌河里移除"
+    assert dict(state.anomalies) == {}
+    assert count_of(state, "东") == 4
+
+
+def test_gang_with_unknown_kind_is_recorded_not_guessed() -> None:
+    events = [event("gang", 1, "东", {"kind": "wat"})]
+    state = run(events)
+    assert state.anomalies["gang-unknown-kind:wat"] == 1
+    assert state.seats[1].melds == []
+
+
 # --- 抓打圈与链条 ---------------------------------------------------------------------
 
 
@@ -215,8 +281,8 @@ def test_wall_shrinks_by_one_per_draw() -> None:
 
 
 def test_unknown_event_types_are_counted_not_guessed() -> None:
-    state = run([event("gang", 1, "9b")])
-    assert state.anomalies["gang-unhandled"] == 1
+    state = run([event("liangzi", 1, "9b")])
+    assert state.anomalies["unknown:liangzi"] == 1
 
 
 def test_iter_before_each_event_yields_the_state_prior_to_the_event() -> None:

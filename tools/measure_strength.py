@@ -107,19 +107,19 @@ def process(
     mine = ids.index(ours) if ours in ids else None
     ours_agg = by_group.setdefault(group, Aggregate()) if group is not None else None
 
-    state = replay.from_payload(payload)
-    for event in replay.all_events(payload):
-        if str(event.get("type")) == DRAW:
-            seat = event.get("seat")
-            if isinstance(seat, int) and 0 <= seat < 4:
-                tenpai = is_tenpai(state.seats[seat])
-                bucket = per_user[ids[seat]]
-                bucket.discard_moments += 1
-                bucket.tenpai_moments += int(tenpai)
-                if ours_agg is not None and seat == mine:
-                    ours_agg.discard_moments += 1
-                    ours_agg.tenpai_moments += int(tenpai)
-        replay.apply_event(state, event)
+    for state, events in replay.iter_rounds(payload):
+        for event in events:
+            if str(event.get("type")) == DRAW:
+                seat = event.get("seat")
+                if isinstance(seat, int) and 0 <= seat < 4:
+                    tenpai = is_tenpai(state.seats[seat])
+                    bucket = per_user[ids[seat]]
+                    bucket.discard_moments += 1
+                    bucket.tenpai_moments += int(tenpai)
+                    if ours_agg is not None and seat == mine:
+                        ours_agg.discard_moments += 1
+                        ours_agg.tenpai_moments += int(tenpai)
+            replay.apply_event(state, event)
 
     for result in payload.get("rounds") or []:
         scores = result.get("scores") or []

@@ -147,6 +147,11 @@ def harvest(
         path = root / "events" / f"{game_id}.json"
         if path.exists() and not force:
             continue
+        if not (payload.get("blocks") or ()):
+            # 实测有 ``status:"abandoned"`` 且 ``blocks: []`` 的批次（房中途废弃）。
+            # 落盘只会污染数据（解析期直接抛「事件流没有 blocks」），且按 game_id 命名
+            # 意味着写进去就再也不会被刷新，所以宁可不写。
+            continue
         path.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf-8")
         fresh += 1
 
