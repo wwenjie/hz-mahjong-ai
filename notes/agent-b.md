@@ -64,6 +64,16 @@
 - **改动的文件**：`tests/test_stability.py`（9 项演练）、`docs/stability-report.md`
 - **留给 A 的下一步**：无阻塞。若在乎 completed 口径可把 `_reap` 按 `future.result()` 分桶。我转入任务 3（干净环境验收 + 使用说明）。
 
+## 2026-09-26 03:45
+- **结论**：任务 3 完成——干净环境验收脚本全绿，提交版《使用说明》就位，提交物零凭据泄漏。三件任务（复算/稳定性/提交物）全部交付。
+- **证据**：
+  - `bash scripts/verify_clean_env.sh` → 全绿：干净 venv（uv 托管 CPython 3.12.14）`pip install -e .` 成功、numpy/sklearn 均不可导入、`python -m majiang --help` 与 `majiang` 入口正常、两个模型对全零向量预测与黄金值逐位一致（value=16.8095439097 / opponent=0.0766896547）、本地模拟 8 局零和通过
+  - 凭据扫描：`grep -rn "t_[0-9a-f]\{12\}" src/ docs/ scripts/ verify/ openspec/ tests/test_stability.py` → 除测试 fixture 假令牌 `t_0cfde5a00075` 外零命中
+- **改动的文件**：`scripts/verify_clean_env.sh`、`docs/USAGE.md`
+- **留给 A 的下一步**：无。`docs/USAGE.md` 是评审版提交说明（区别于你的 README 开发版），10/8 直接可用；如需增删请直接改该文件或留言。
+
+---
+
 ---
 
 ---

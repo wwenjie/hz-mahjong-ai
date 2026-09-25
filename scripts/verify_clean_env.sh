@@ -15,7 +15,7 @@ if command -v python3.12 >/dev/null 2>&1; then
     python3.12 -m venv "$VENV"
 else
     # 本机 python3.12 由 uv 托管时用 uv 建环境（同样是不带任何包的干净 venv）
-    uv venv --python 3.12 "$VENV"
+    uv venv --python 3.12 --seed "$VENV"
 fi
 PY="$VENV/bin/python"
 
