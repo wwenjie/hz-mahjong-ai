@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 from typing import Any
 
@@ -35,6 +35,22 @@ from . import risk, routes
 
 OPPONENT_FAN_PRIOR = 2.0
 ANGANG = "angang"
+# 会改变打法、且**必须**在 configure() 里保留下来的开关。新增实验档位时记得加进来，
+# 否则真机上会静默跑成默认档（踩过一次，见 configure 的说明）。
+VARIANT_FIELDS = (
+    "meld_tolerance",
+    "tiebreak",
+    "chase_baotou",
+    "route_aware",
+    "preserve_god",
+    "natural_route",
+    "pair_route_pairs",
+    "shanten_weight",
+    "feed_weight",
+    "god_discard_penalty",
+    "value_weight",
+    "piao_threshold_scale",
+)
 # 精确进张只在这些条件下启用：向听越低越接近胜负、且候选越多越值得算
 # 实测开销（60 局自对弈）：heuristic 176 ms/局、廉价 ukeire 400 ms/局、精确 2510 ms/局。
 # 收紧到「打完仍是 1 向听 + 并列候选前 2 张」后降到可接受范围——1 向听正是
@@ -131,6 +147,11 @@ class PolicyConfig:
         return cls(mode=mode, **overrides)
 
 
+# 变体命名的比较基准。注意它与 `for_mode` 无关：命名的目的是让日志能区分档位，
+# 而不是判断「这个档位该不该叫变体」。
+_DEFAULT_POLICY = PolicyConfig()
+
+
 @dataclass(frozen=True, slots=True)
 class DiscardScore:
     tile: int
@@ -214,6 +235,7 @@ def _cheap_best_shanten(counts: list[int]) -> int:
 class HeuristicDecider:
     """启发式决策器，满足运行时依赖的 ``Decider`` 窄接口。"""
 
+    # 实例会在 __init__ 里按 config 覆盖成 `heuristic[<变体>]`，见 _refresh_name()
     name = "heuristic"
 
     def __init__(self, config: PolicyConfig | None = None, *, risk_model: object | None = None) -> None:
@@ -222,6 +244,7 @@ class HeuristicDecider:
         self.risk_model = risk_model
         self.last_reason = ""
         self.last_detail: dict[str, Any] = {}
+        self._refresh_name()
 
     def _risks(self, situation: Situation):
         """对手风险：注入了模型就用模型，否则用手写启发式（`risk.assess` 内部兜底）。"""
@@ -230,17 +253,41 @@ class HeuristicDecider:
         return risk.assess(situation, model=self.risk_model)  # type: ignore[arg-type]
 
     def configure(self, tournament) -> None:
-        """由运行时注入赛事配置：底分与「有财必拷响」必须取自服务端，不能写死。"""
-        self.config = PolicyConfig(
-            mode=self.config.mode,
+        """由运行时注入赛事配置：底分与「有财必拷响」必须取自服务端，不能写死。
+
+        **必须用 ``replace`` 而不是重建 ``PolicyConfig``。** 原先的实现只把 6 个字段带上，
+        把下面这些**静默丢弃**并回落到默认值：
+
+        ``meld_tolerance`` / ``tiebreak`` / ``chase_baotou`` / ``commitment`` /
+        ``preserve_god`` / ``natural_route`` / ``pair_route_pairs`` / ``shanten_weight``
+
+        实测后果（严重）：``configure`` 只在**真机**路径被调用（`engine.py` 的
+        `Runtime.run`），自对弈路径不调用它。于是真机上所有实验档位
+        （no-chase / ukeire / meld-equal）**都跑成了默认档**，而自对弈跑的是真档位——
+        表现为「自对弈有差异、真机无差异」，看起来像噪声，实际是档位根本没生效。
+        """
+        self.config = replace(
+            self.config,
             base_score=int(tournament.base_score),
             you_cai_bi_kao=bool(tournament.you_cai_bi_kao),
-            route_aware=self.config.route_aware,
-            feed_weight=self.config.feed_weight,
-            god_discard_penalty=self.config.god_discard_penalty,
-            value_weight=self.config.value_weight,
-            piao_threshold_scale=self.config.piao_threshold_scale,
         )
+        self._refresh_name()
+
+    def _refresh_name(self) -> None:
+        """把与默认档不同的开关拼进 ``name``。
+
+        ``name`` 是类属性且原本恒为 ``"heuristic"``，而日志记的是
+        ``decision.made ... decider=<name>``，所以**所有变体在日志里长得一模一样**，
+        事后无法从日志分辨某场会话跑的是哪个档位。
+        """
+        differences = [
+            f"{field.replace('_', '-')}={getattr(self.config, field)}"
+            for field in VARIANT_FIELDS
+            if getattr(self.config, field) != getattr(_DEFAULT_POLICY, field)
+        ]
+        if self.config.commitment is not Commitment.NONE:
+            differences.append(f"commitment={self.config.commitment.value}")
+        self.name = "heuristic" if not differences else "heuristic[" + ",".join(differences) + "]"
 
     # ---- 入口 -------------------------------------------------------------
 

@@ -39,6 +39,62 @@ def test_meld_equal_is_registered() -> None:
     assert "meld-equal" in DECIDERS
 
 
+class _Tournament:
+    base_score = 3
+    you_cai_bi_kao = True
+
+
+def test_configure_preserves_every_variant_knob() -> None:
+    """**回归防线**：`configure()` 曾在重建 PolicyConfig 时丢掉所有变体开关。
+
+    `configure` 只在真机路径被调用（`engine.py` 的 `Runtime.run`），自对弈不调用它。
+    于是真机上 no-chase / ukeire / meld-equal **全都跑成了默认档**，而自对弈跑的是真档位——
+    表现为「自对弈有差异、真机无差异」，看起来像噪声，实际是档位根本没生效。
+    """
+    from dataclasses import fields, replace
+
+    from majiang.strategy.policy import PolicyConfig, _DEFAULT_POLICY
+
+    custom = PolicyConfig(
+        meld_tolerance=MeldTolerance.EQUAL,
+        tiebreak="exact-ukeire",
+        chase_baotou=False,
+        route_aware=True,
+        preserve_god=True,
+        natural_route=True,
+        pair_route_pairs=4,
+        shanten_weight=7.5,
+        feed_weight=1.5,
+        god_discard_penalty=10.0,
+        value_weight=4.0,
+        piao_threshold_scale=0.85,
+    )
+    decider = HeuristicDecider(custom)
+    decider.configure(_Tournament())
+
+    # 服务端注入的字段必须生效
+    assert decider.config.base_score == 3
+    assert decider.config.you_cai_bi_kao is True
+    # 其余每一个字段都必须与 configure 前逐值相同（不逐个列举字段名，避免以后新增
+    # 开关时漏测——那正是这个 bug 的成因）
+    expected = replace(custom, base_score=3, you_cai_bi_kao=True)
+    for field in fields(PolicyConfig):
+        assert getattr(decider.config, field.name) == getattr(expected, field.name), (
+            f"configure 丢掉了 {field.name}"
+        )
+    assert decider.config != _DEFAULT_POLICY, "变体不该被 configuration 抹平"
+
+
+def test_decider_name_reveals_the_variant() -> None:
+    """日志记的是 `decider=<name>`；名字若恒为 heuristic，事后无法分辨跑的是哪个档位。"""
+    assert HeuristicDecider(PolicyConfig()).name == "heuristic"
+    name = HeuristicDecider(PolicyConfig(meld_tolerance=MeldTolerance.EQUAL)).name
+    assert name.startswith("heuristic[") and "meld-tolerance" in name
+    assert HeuristicDecider(
+        PolicyConfig(tiebreak="exact-ukeire", chase_baotou=False)
+    ).name.count("=") == 2
+
+
 def _situations(seed: int, count: int = 400):
     """从随机发牌里造出「我们面对别人打出的一张牌」的响应局面。"""
     rng = random.Random(seed)
