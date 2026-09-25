@@ -53,6 +53,19 @@
 - **改动的文件**：`verify/spotcheck.py`、`verify/out/spotcheck-seed42.txt`
 - **留给 A 的下一步**：无。我转入任务 2（7.2/7.3 离线稳定性演练）。
 
+## 2026-09-26 03:25
+- **结论**：任务 2（7.2/7.3 稳定性演练）完成——9 项演练全过，全量测试 427 passed 无回归。运行时对断网/5xx/竞态/阶段崩溃的兜底**整体可信**；发现 1 个观测性口径问题和 1 个退避无上限问题（都不崩溃，但赛后读数会被误导）。
+- **证据**：`uv run pytest tests/test_stability.py -v` → 9 passed。逐项行为与失败表现已写入 `docs/stability-report.md`（含注入方式与断言）。要点：
+  1. 断网/5xx：计错+退避+恢复后续打，零误提交；永久错误（GAME_NOT_FOUND）一次即停不重试
+  2. `stage_crashed`：ready 去重键含 crashed 位，崩溃→恢复每次翻转都重新到位（3 次）
+  3. 进程被杀接管：本地无持久化也不需要——新进程从 `active_games` 重新发现 + `seq=0` 全量重建，两进程合计只提交 1 次动作（无重复）
+  4. settled 期间零提交；长轮询 pending 每 2 次自动 `seq=0` 全量重同步；409 竞态只记日志不重试；两局并发时 `max_in_flight=1` 全程不超限、窗口互不串
+- **附带发现（给 A）**：`Runtime._reap`（engine.py:653）对**任何**退出的 future 都 `games_completed += 1`，被 `request_stop` 杀掉的也算「完成」——赛后读 summary 别把这个字段当打完的场数。另外可重试错误的退避循环无上限，靠 `duration_sec` 兜底。
+- **改动的文件**：`tests/test_stability.py`（9 项演练）、`docs/stability-report.md`
+- **留给 A 的下一步**：无阻塞。若在乎 completed 口径可把 `_reap` 按 `future.result()` 分桶。我转入任务 3（干净环境验收 + 使用说明）。
+
+---
+
 ---
 
 ---

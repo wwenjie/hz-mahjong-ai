@@ -16,15 +16,15 @@
 
 ## 4. 稳定性演练（7.2）
 
-- [ ] 4.1 实现假 transport（可控注入：连接拒绝/连续 5xx/409/pending 挂起），放 `tests/` 或 `scripts/fakes/`，验证运行时公开接口不变时假 transport 可被 pytest 使用
-- [ ] 4.2 `tests/test_stability_network.py`：不可达地址 + 连续 5xx，验证退避重试、不崩溃、不丢本地状态，记录失败时表现
-- [ ] 4.3 `tests/test_stability_stage.py`：`stage_crashed` 重赛 + 进程被杀后快照重建接管，验证不提交动作到作废阶段、不重复提交
+- [x] 4.1 实现假 transport（可控注入：连接拒绝/连续 5xx/409/pending 挂起），放 `tests/` 或 `scripts/fakes/`，验证运行时公开接口不变时假 transport 可被 pytest 使用
+- [x] 4.2 `tests/test_stability_network.py`：不可达地址 + 连续 5xx，验证退避重试、不崩溃、不丢本地状态，记录失败时表现
+- [x] 4.3 `tests/test_stability_stage.py`：`stage_crashed` 重赛 + 进程被杀后快照重建接管，验证不提交动作到作废阶段、不重复提交
 
 ## 5. 稳定性演练（7.3）
 
-- [ ] 5.1 `tests/test_stability_phase.py`：settled 期间动作→409 的处理、长轮询 pending 不误判掉线
-- [ ] 5.2 `tests/test_stability_race.py`：动作冲突竞态至多一个被接受、多场并发决策互不干扰且限速受遵守
-- [ ] 5.3 每项演练的可复现运行方式 + 观察结果 + 失败表现写入 `docs/stability-report.md` 并追加 `notes/agent-b.md`
+- [x] 5.1 `tests/test_stability_phase.py`：settled 期间动作→409 的处理、长轮询 pending 不误判掉线
+- [x] 5.2 `tests/test_stability_race.py`：动作冲突竞态至多一个被接受、多场并发决策互不干扰且限速受遵守
+- [x] 5.3 每项演练的可复现运行方式 + 观察结果 + 失败表现写入 `docs/stability-report.md` 并追加 `notes/agent-b.md`
 
 ## 6. 提交物（8.3）
 
