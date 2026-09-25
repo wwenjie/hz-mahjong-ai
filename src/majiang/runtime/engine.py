@@ -427,6 +427,7 @@ class Runtime:
         options: RuntimeOptions | None = None,
         logger: Logger | None = None,
         tournament_id: str | None = None,
+        stop_event: threading.Event | None = None,
     ) -> None:
         self._options = options or RuntimeOptions()
         self._token = token
@@ -444,7 +445,9 @@ class Runtime:
             RateLimitedTransport(base, bucket, gate, priority_bucket=priority_bucket), token
         )
         self._guarded = GuardedDecider(decider, on_fallback=self._on_fallback)
-        self._stop = threading.Event()
+        # 外部注入停机信号：置位后主循环跳出、各场 GameRunner 一并收尾（不截断已提交的动作）。
+        # 长跑脚本据此把 SIGTERM 变成「当前会话打完即退出」，而不是半途放弃对局。
+        self._stop = stop_event or threading.Event()
         self._logger = logger or NullLogger()
         self._pool = ThreadPoolExecutor(max_workers=self._options.max_workers)
         self._runners: dict[str, GameRunner] = {}

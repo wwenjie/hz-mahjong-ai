@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import signal
 import sys
 import threading
 import time
@@ -44,6 +45,11 @@ from tools.harvest_room import harvest
 
 DEFAULT_SERVER = "https://10.240.169.190:18080"
 DEFAULT_OUT = "data/auto_sessions"
+
+# 优雅停机：SIGTERM/SIGINT 置位后，**当前会话打完即退出**，不做半途放弃。
+# 直接 kill 会让正在进行的 M=10 局同时失去响应、对手只能等到超时，
+# 平台上留下 status:"abandoned" 的房（实测已有 9 个来自以前的粗暴重启）。
+SHUTDOWN = threading.Event()
 # 事件流只在**整场（8 回合）全部打完**后才可取（未打完一直是 403 GAME_NOT_FINISHED），
 # 而房在打完约 60 秒后就关停、连免认证端点一起 404。因此采集必须足够密才抓得住那个窗口。
 HARVEST_INTERVAL_SEC = 10.0
@@ -117,6 +123,7 @@ def run_one_session(
     session_cap: float,
     out_root: Path,
     harvest_interval: float = HARVEST_INTERVAL_SEC,
+    stop_event: threading.Event | None = None,
 ) -> dict:
     match = api.match()
     room = match.room_id
@@ -154,6 +161,7 @@ def run_one_session(
             decider=make_decider(decider_name, mode),
             options=options,
             tournament_id=room,
+            stop_event=stop_event,
         )
         summary = runtime.run(duration_sec=session_cap)
         runtime_fields = {
@@ -260,8 +268,13 @@ def main(argv: list[str] | None = None) -> int:
         print("--decider 为空", file=sys.stderr)
         return 1
     print(f"决策器轮换表: {deciders}", flush=True)
+    signal.signal(signal.SIGTERM, lambda *_: SHUTDOWN.set())
+    signal.signal(signal.SIGINT, lambda *_: SHUTDOWN.set())
     done = 0
     while args.sessions == 0 or done < args.sessions:
+        if SHUTDOWN.is_set():
+            print("收到停机信号，退出", flush=True)
+            break
         # 交错而非顺序：同一时段内交替使用不同档位，抵消对手组合与时间漂移
         chosen = deciders[done % len(deciders)]
         try:
@@ -275,6 +288,7 @@ def main(argv: list[str] | None = None) -> int:
                 session_cap=args.session_cap,
                 out_root=out_root,
                 harvest_interval=args.harvest_interval,
+                stop_event=SHUTDOWN,
             )
         except Exception as exc:  # noqa: BLE001 —— 单会话失败不影响后续
             print(f"会话异常：{type(exc).__name__}: {exc}", flush=True)
