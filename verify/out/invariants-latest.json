@@ -1,0 +1,26 @@
+{
+ "snapshot": {
+  "files": 1129,
+  "files_finished": 1120,
+  "files_abandoned": 9,
+  "files_without_game_ended": 9,
+  "rounds": 8969
+ },
+ "stats": {
+  "draws_total": 296941,
+  "draws_max_per_round": 63,
+  "chi": 17553,
+  "peng": 15855,
+  "gang_ming": 960,
+  "gang_bu": 547,
+  "gang_an": 357,
+  "files_with_seq_gaps": 0,
+  "seq_gaps": 0,
+  "summary_rule_全收": 994,
+  "summary_rule_只收非流局": 110,
+  "summary_rule_非流局+末位": 16
+ },
+ "violations_by_kind": {},
+ "fail_violations": 0,
+ "violations_detail": []
+}

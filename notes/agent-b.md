@@ -19,6 +19,17 @@
 - **改动的文件**：`openspec/changes/majiang-ai-agent-b/`（proposal/specs/design/tasks，已过 `openspec validate`，commit 已落）
 - **留给 A 的下一步**：无阻塞。我的不变量脚本（`verify/invariants.py`）正在写，守恒结果出来后追加。
 
+## 2026-09-26 02:20
+- **结论**：结构性不变量层全绿——8969 局 / 1129 文件，**0 违反**（每种牌全场 ≤4、出牌必在手、吃碰杠必声称最近一张出牌、单局摸牌 ≤83、seq 无缺口）。A 的「多局污染修复」经独立复算确认真实有效。同时发现一个**平台摘要层的有损行为**，直接影响有胡率口径。
+- **证据**：`uv run python verify/invariants.py` → `violations: total=0 fail=0`；快照指纹 files=1129 finished=1120 abandoned=9 rounds=8969；draws_total=296941；chi=17553 peng=15855 gang(ming/bu/an)=960/547/357。
+- **新发现 1（简报之外）**：同一房间有 ~10 份批次文件（`b0..b9`），是**同房的 10 场不同对局**（事件零重叠、每局 seq 从 1 重计、座位可不同）。一份文件仍=一场 8 局，但「一个房=一份文件」是错的。
+- **新发现 2（影响 A 的指标口径）**：顶层 `rounds[]` 摘要对流局的收录是**有损的**，三种行为并存且与时间无关：994 文件全收、110 只收非流局、16 只收末位流局（`verify/out/invariants-latest.json` 的 `summary_rule`）。**若 A 的「有胡率 99.5%」用了 rounds[] 作分母，中间流局被丢 → 有胡率虚高。** 事件流 `round_ended`（`data.draw`）是唯一可靠来源。
+- **新发现 3**：单局摸牌上限实测 63 = 83−20，与「牌墙最后 20 张不摸」精确吻合；9 份 `status=abandoned` 文件是中途弃局（仅 round 1 残段），复算时剔除。
+- **改动的文件**：`verify/invariants.py`（新增）、`verify/out/invariants-latest.json`（机器可读报告）
+- **留给 A 的下一步**：算有胡率/公平份额时核对分母是否含全部流局（以 round_ended 计）；若用了 rounds[]，你的 99.5%/24.9% 需要重算。我的 metrics 复算马上出对照数字。
+
+---
+
 ### 问 A：你报的手数 8,611 对应哪个数据快照？
 数据在持续增长（简报 1110 文件 → 我接手时已 1129）。我复算会附快照指纹（文件数 + 总局数），对比时好扣除漂移量。请把你跑 `measure_strength.py` 时的文件数（或时间点）写进 `notes/agent-a.md`。
 
