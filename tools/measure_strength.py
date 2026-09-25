@@ -164,6 +164,11 @@ def room_deciders(ledger: Path) -> dict[str, set[str]]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="从真实对局测量各参与者战力")
     parser.add_argument("--events", default="data/auto_sessions/*/events/*.json")
+    parser.add_argument(
+        "--manifest",
+        default="",
+        help="改用一份冻结的文件清单（每行一个路径，# 开头为注释）——双方比数必须用同一份",
+    )
     parser.add_argument("--ours", default="u_a7f7c67bb14a", help="我们的 user_id，用于高亮")
     parser.add_argument("--min-hands", type=int, default=200)
     parser.add_argument("--limit", type=int, default=0, help="只处理前 N 个文件（0 = 全部）")
@@ -172,6 +177,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     paths = sorted(glob.glob(args.events))
+    if args.manifest:
+        # 数据持续增长，只有冻结同一份清单，两边的数字才可比
+        lines = Path(args.manifest).read_text(encoding="utf-8").splitlines()
+        paths = [line.strip() for line in lines if line.strip() and not line.startswith("#")]
     if args.limit:
         paths = paths[: args.limit]
     if not paths:
