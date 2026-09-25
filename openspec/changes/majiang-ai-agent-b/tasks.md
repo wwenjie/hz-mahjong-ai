@@ -30,4 +30,4 @@
 
 - [x] 6.1 写 `scripts/verify_clean_env.sh`：干净 venv 安装 + CLI 可用 + 本地模拟 8 局 + 模型求值无 numpy/sklearn，脚本跑通退出码 0
 - [x] 6.2 写 `docs/USAGE.md` 评审版使用说明：接入方式/启动步骤/依赖环境/令牌环境变量配置；grep 提交物确认无明文令牌
-- [ ] 6.3 最终验收：`openspec validate majiang-ai-agent-b` 通过，`uv run pytest -q` 全绿，全部结论已入 `notes/agent-b.md`
+- [x] 6.3 最终验收：`openspec validate majiang-ai-agent-b` 通过，`uv run pytest -q` 全绿，全部结论已入 `notes/agent-b.md`
