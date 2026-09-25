@@ -112,6 +112,28 @@ def collect_stats(root: Path, user_id: str) -> dict:
     }
 
 
+def prior_sessions(ledger: Path) -> int:
+    """账本里已有的会话数——用于把决策器轮换位置恢复到上次的位置。
+
+    只数**能解析且带 decider 字段**的行：账本可能因为进程被强杀而留下半行 JSON，
+    把半行也算进去会让轮换整体错位。
+    """
+    if not ledger.exists():
+        return 0
+    count = 0
+    for line in ledger.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            record = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(record, dict) and record.get("decider"):
+            count += 1
+    return count
+
+
 def run_one_session(
     api: PlatformApi,
     transport: HttpTransport,
@@ -270,7 +292,12 @@ def main(argv: list[str] | None = None) -> int:
     print(f"决策器轮换表: {deciders}", flush=True)
     signal.signal(signal.SIGTERM, lambda *_: SHUTDOWN.set())
     signal.signal(signal.SIGINT, lambda *_: SHUTDOWN.set())
-    done = 0
+    # **轮换位置必须从账本恢复**，不能每次都从 0 开始。进程会被环境周期性回收并重启，
+    # 若 `done` 归零，重启后的每一轮都从 deciders[0] 开始，交错 A/B 就系统性偏向第一个
+    # 档位——样本看起来是「交错」的，实际不是。
+    done = prior_sessions(ledger)
+    if done:
+        print(f"账本已有 {done} 场会话，轮换从 deciders[{done % len(deciders)}] 继续", flush=True)
     while args.sessions == 0 or done < args.sessions:
         if SHUTDOWN.is_set():
             print("收到停机信号，退出", flush=True)
