@@ -1,0 +1,55 @@
+{
+ "snapshot": {
+  "manifest": "notes/manifest-20260926.txt",
+  "files": 1129,
+  "files_skipped_not_finished_or_no_us": 9
+ },
+ "rounds": {
+  "total": 8960,
+  "decisive": 8728,
+  "draws": 232
+ },
+ "us": {
+  "hands": 8960,
+  "wins": 1808,
+  "win_rate": 0.2017857142857143,
+  "win_rate_decisive_only": 0.2071494042163153,
+  "fan_avg": 1.269358407079646,
+  "melds_per_round": 0.5998883928571429,
+  "discards_at_win_avg": 8.806969026548673
+ },
+ "opp": {
+  "hands": 26880,
+  "wins": 6920,
+  "win_rate": 0.25744047619047616,
+  "win_rate_decisive_only": 0.2642835319278949,
+  "fan_avg": 1.3156069364161849,
+  "melds_per_round": 1.1113839285714286,
+  "discards_at_win_avg": 8.70028901734104
+ },
+ "has_hu_rate": 0.9741071428571428,
+ "fair_share": 0.2435267857142857,
+ "placement_per_match": {
+  "n": 1120,
+  "dist": {
+   "1.0": 188,
+   "1.5": 10,
+   "2.0": 251,
+   "2.5": 31,
+   "3.0": 238,
+   "3.5": 58,
+   "4.0": 344
+  },
+  "pts_avg": -0.4919642857142857
+ },
+ "placement_per_complete_room": {
+  "rooms": 112,
+  "dist": {
+   "1.0": 7,
+   "2.0": 16,
+   "3.0": 38,
+   "4.0": 51
+  },
+  "pts_avg": -1.375
+ }
+}
