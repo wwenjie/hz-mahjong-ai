@@ -94,8 +94,15 @@ PLATFORM_STATE_RATE_PER_SEC = 14.0
 DECIDERS: dict[str, Callable[[Mode], Decider]] = {
     "heuristic": lambda mode: HeuristicDecider(PolicyConfig.for_mode(mode)),
     # 同向听改用「进张最多」做次排序（tasks.md 5.4 的优化方向）
+    # **注意**：这个档位用的是廉价估计，实测与精确进张只有 14.7% 的选择一致
+    # （tools/analyze_ukeire_fidelity.py），因此它当年测出的「无增益」不可采信。
     "ukeire": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode, tiebreak="ukeire")
+    ),
+    # 同向听改用**精确**进张做次排序。只在向听 ≤2 且并列候选前 3 张上计算，
+    # 带 0.6 秒墙钟上限；出牌预算 1800 ms。
+    "ukeire-exact": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire")
     ),
     # 确定化前瞻搜索（tasks.md 5.15）。samples/top_k 越小越快
     "search": lambda mode: SearchDecider(

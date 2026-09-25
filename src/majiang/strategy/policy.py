@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
@@ -34,6 +35,13 @@ from . import risk, routes
 
 OPPONENT_FAN_PRIOR = 2.0
 ANGANG = "angang"
+# 精确进张只在这些条件下启用：向听越低越接近胜负、且候选越多越值得算
+# 实测开销（60 局自对弈）：heuristic 176 ms/局、廉价 ukeire 400 ms/局、精确 2510 ms/局。
+# 收紧到「打完仍是 1 向听 + 并列候选前 2 张」后降到可接受范围——1 向听正是
+# 「中段落后」出现的地方（见 tools/analyze_hand_progress.py 的 n=7~8 曲线）。
+EXACT_UKEIRE_MAX_SHANTEN = 1
+EXACT_UKEIRE_CANDIDATES = 2
+EXACT_UKEIRE_BUDGET_SEC = 0.6
 
 
 class Mode(StrEnum):
@@ -502,7 +510,7 @@ class HeuristicDecider:
             reverse=True,
         )
         best = scores[0]
-        if self.config.tiebreak == "ukeire":
+        if self.config.tiebreak in ("ukeire", "exact-ukeire"):
             best = self._break_ties_by_ukeire(situation, scores) or best
         self.last_detail["discards"] = [score.describe() for score in scores[:4]]
         self.last_reason = f"出牌：{best.describe()}"
@@ -513,29 +521,50 @@ class HeuristicDecider:
     ) -> DiscardScore | None:
         """在向听相同的候选项里，选出**进张最多**的那张。
 
-        只有向听并列时才计算进张（每张约 1.1–1.6 ms，精确 ``ukeire`` 是 42–157 ms）：
-        实测「到听牌」这一步几乎决定了全部胜率差，所以同向听之间应该往进张更多的方向选，
-        而不是看骨架厚度。
+        两种口径（`tools/analyze_ukeire_fidelity.py` 量化了差别）：
+
+        - ``ukeire``：廉价估计，每张 1.1–1.6 ms。**实测不可用** —— 在 150 副 1 向听手牌上，
+          它与精确口径选出同一张打牌的比例只有 **14.7%**，不一致时平均放弃 **15.4 张**
+          精确进张（同位置最佳与最差候选平均差 29.5 张）。所以旧档位测出「无增益」是噪声。
+        - ``exact-ukeire``：精确 ``shanten.ukeire``，42–157 ms/张。只算**向听 ≤ 2 且并列
+          候选最多前 3 张**，并加 0.6 秒墙钟上限——出牌预算 1800 ms，当前实测决策耗时
+          仅 0.5–4 ms，余量足够；超时即用已算出的最优，绝不阻塞窗口。
         """
         top_shanten = scores[0].shanten
         tied = [score for score in scores if score.shanten == top_shanten]
         if len(tied) < 2:
             return None
+        exact = self.config.tiebreak == "exact-ukeire"
+        if exact and top_shanten > EXACT_UKEIRE_MAX_SHANTEN:
+            return None
+        if exact:
+            tied = tied[:EXACT_UKEIRE_CANDIDATES]
         visible = shanten_module.visible_counts(
             situation.hand.counts,
             [meld.tiles for meld in situation.all_melds],
             situation.discards,
         )
+        deadline = time.monotonic() + EXACT_UKEIRE_BUDGET_SEC if exact else None
         best: tuple[int, DiscardScore] | None = None
         for score in tied:
             counts = list(situation.hand.counts)
             counts[score.tile] -= 1
-            _, copies = cheap_ukeire(counts, visible)
+            if exact:
+                if deadline is not None and time.monotonic() > deadline and best is not None:
+                    self.last_detail["tiebreak_timeout"] = True
+                    break
+                entries = shanten_module.ukeire(
+                    counts, situation.hand.meld_count, visible=visible
+                )
+                copies = sum(copy for _, copy in entries)
+            else:
+                _, copies = cheap_ukeire(counts, visible)
             if best is None or copies > best[0]:
                 best = (copies, score)
         if best is not None:
             self.last_detail["tiebreak"] = (
-                f"向听 {top_shanten} 并列 {len(tied)} 张，进张 {best[0]} 张"
+                f"向听 {top_shanten} 并列 {len(tied)} 张，"
+                f"{'精确' if exact else '廉价'}进张 {best[0]} 张"
             )
         return None if best is None else best[1]
 
