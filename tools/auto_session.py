@@ -225,7 +225,12 @@ def print_record(record: dict, user_id: str) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="自由匹配长跑会话")
     parser.add_argument("--sessions", type=int, default=1, help="跑几个会话（0 = 无限）")
-    parser.add_argument("--decider", default="heuristic")
+    parser.add_argument(
+        "--decider",
+        default="heuristic",
+        help="逗号分隔；多个值时**按会话轮换**——这是真机上的交错 A/B，能抵消对手组合与"
+        "时间漂移（顺序对比做不到这一点）",
+    )
     parser.add_argument("--mode", default="qualifier", choices=["qualifier", "final"])
     parser.add_argument("--rate", type=float, default=14.0)
     parser.add_argument("--log-dir", default="logs")
@@ -250,14 +255,21 @@ def main(argv: list[str] | None = None) -> int:
     ledger = out_root / "sessions.jsonl"
 
     mode = Mode(args.mode)
+    deciders = [name.strip() for name in args.decider.split(",") if name.strip()]
+    if not deciders:
+        print("--decider 为空", file=sys.stderr)
+        return 1
+    print(f"决策器轮换表: {deciders}", flush=True)
     done = 0
     while args.sessions == 0 or done < args.sessions:
+        # 交错而非顺序：同一时段内交替使用不同档位，抵消对手组合与时间漂移
+        chosen = deciders[done % len(deciders)]
         try:
             record = run_one_session(
                 api,
                 transport,
                 me.user_id,
-                decider_name=args.decider,
+                decider_name=chosen,
                 mode=mode,
                 options=options,
                 session_cap=args.session_cap,
