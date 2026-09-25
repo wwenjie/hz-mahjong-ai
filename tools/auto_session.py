@@ -58,36 +58,43 @@ def now_iso() -> str:
 
 
 def collect_stats(root: Path, user_id: str) -> dict:
-    """从已采到的事件流里统计我们的战绩，并与同房三家对比。"""
+    """从已采到的事件流里统计我们的战绩，并与同房三家对比。
+
+    **必须遍历 ``rounds`` 的每一局**：一个事件流文件覆盖该场（8 回合）的**全部**回合，
+    只取 ``rounds[0]`` 会把 8 局当成 1 局（曾因此把 6248 手算成 792 手）。
+    """
     ours_score = 0
     wins = draws = hands = 0
     fan_total = 0
     per_user: dict[str, dict] = {}
     for path in sorted((root / "events").glob("*.json")):
         payload = json.loads(path.read_text(encoding="utf-8"))
-        rounds = payload.get("rounds") or []
         seats = payload.get("seats") or []
-        if not rounds or not seats:
+        if len(seats) != 4:
             continue
-        result = rounds[0]
-        scores = result.get("scores") or []
-        if len(scores) != len(seats):
-            continue
-        hands += 1
-        for index, seat in enumerate(seats):
-            who = str(seat.get("user_id", ""))
-            bucket = per_user.setdefault(who, {"score": 0, "wins": 0, "hands": 0})
-            bucket["score"] += int(scores[index])
-            bucket["hands"] += 1
-        mine = next((i for i, seat in enumerate(seats) if str(seat.get("user_id")) == user_id), None)
-        if mine is None:
-            continue
-        ours_score += int(scores[mine])
-        if result.get("is_draw"):
-            draws += 1
-        elif int(result.get("winner", -1)) == mine:
-            wins += 1
-            fan_total += int(result.get("multiplier", 1) or 1)
+        ids = [str(seat.get("user_id", "")) for seat in seats]
+        mine = ids.index(user_id) if user_id in ids else None
+        for result in payload.get("rounds") or []:
+            scores = result.get("scores") or []
+            if len(scores) != len(seats):
+                continue
+            hands += 1
+            for index, who in enumerate(ids):
+                bucket = per_user.setdefault(who, {"score": 0, "wins": 0, "hands": 0})
+                bucket["score"] += int(scores[index])
+                bucket["hands"] += 1
+            if result.get("is_draw"):
+                draws += 1
+                continue
+            winner = int(result.get("winner", -1))
+            if 0 <= winner < len(ids):
+                per_user[ids[winner]]["wins"] += 1
+            if mine is None:
+                continue
+            ours_score += int(scores[mine])
+            if winner == mine:
+                wins += 1
+                fan_total += int(result.get("multiplier", 1) or 1)
     return {
         "hands": hands,
         "our_score": ours_score,
