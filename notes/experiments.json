@@ -36,6 +36,30 @@
    ],
    "status": "pending",
    "hypothesis": "对照：验证「exact-ukeire 优于 blocks」在换种子后仍成立（等价于反向复现）。若这版不显著甚至反向，说明前两个种子的显著结论不稳。"
+  },
+  {
+   "id": "meld-equal-in-melding-field",
+   "treatment": "meld-equal",
+   "baseline": "heuristic",
+   "field": "meld-equal",
+   "matches": 200,
+   "seeds": [
+    20260927
+   ],
+   "status": "pending",
+   "hypothesis": "在**会副露的场**里重新评估副露放宽档。真机对手副露 1.093/局，我们 0.591/局；而默认 field=baseline 的自对弈里另三座是几乎不副露的我们自己——结构性测不出副露的价值。这一版让另三座也走 meld-equal，衡量「在副露场里跟上节奏」是否划算。"
+  },
+  {
+   "id": "ukeire-in-melding-field",
+   "treatment": "heuristic",
+   "baseline": "blocks",
+   "field": "meld-equal",
+   "matches": 200,
+   "seeds": [
+    20260927
+   ],
+   "status": "pending",
+   "hypothesis": "已切为默认的 exact-ukeire 在副露场里是否仍有优势。若优势消失，说明它只是在「慢场」里有效；若仍在，则它是与场强无关的稳健改进。"
   }
  ]
 }

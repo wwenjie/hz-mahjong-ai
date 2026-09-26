@@ -102,21 +102,45 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--rounds", type=int, default=8)
     parser.add_argument("--base-score", type=int, default=1)
     parser.add_argument("--seed", type=int, default=20260923)
+    parser.add_argument(
+        "--field",
+        default="",
+        help=(
+            "另三座坐谁（默认＝baseline，即原来的行为）。**这是评估「副露」类假设的必要条件**："
+            "真机对手副露 1.093/局，而我们自己的策略只 0.591/局——所以「默认 field=baseline」"
+            "等于让我们对着三个几乎不副露的复制品打分，结构上测不出副露的价值。"
+        ),
+    )
     args = parser.parse_args(argv)
 
     rounds, base = args.rounds, args.base_score
+    field = args.field or args.baseline
     print(
-        f"treatment={args.treatment}  baseline={args.baseline}  "
+        f"treatment={args.treatment}  baseline={args.baseline}  场上另三座={field}  "
         f"场数 {args.matches}  每场 {rounds} 局  种子 {args.seed}（四座位旋转）"
     )
 
     started = time.perf_counter()
-    baseline_names = [args.baseline] * SEATS
-    # baseline 与旋转无关，先算一次复用，避免重复 4 遍
-    baseline_runs = [
-        play(baseline_names, index, rounds=rounds, base_score=base, seed=args.seed)
-        for index in range(args.matches)
-    ]
+    # 对照侧与试验侧必须在**同一个场**里测，否则差分会混入场强差异。
+    # field == baseline 时退化成「一个 [baseline]*4 跑一遍、按旋转取座」，与原实现等价
+    # （也省掉 4 倍重复计算）。
+    same_field = field == args.baseline
+    field_names = [field] * SEATS
+    if same_field:
+        shared = [
+            play(field_names, index, rounds=rounds, base_score=base, seed=args.seed)
+            for index in range(args.matches)
+        ]
+        baseline_runs = [[row[seat] for seat in range(SEATS)] for row in shared]
+    else:
+        baseline_runs = []
+        for index in range(args.matches):
+            row = []
+            for rotation in range(SEATS):
+                names = list(field_names)
+                names[rotation] = args.baseline
+                row.append(play(names, index, rounds=rounds, base_score=base, seed=args.seed)[rotation])
+            baseline_runs.append(row)
 
     score_diff: list[float] = []
     place_diff: list[float] = []
@@ -126,7 +150,7 @@ def main(argv: list[str] | None = None) -> int:
     collected: list[tuple[float, float, float, float, float]] = []
 
     for rotation in range(SEATS):
-        names = list(baseline_names)
+        names = list(field_names)
         names[rotation] = args.treatment
         mine_total = theirs_total = 0
         for index in range(args.matches):

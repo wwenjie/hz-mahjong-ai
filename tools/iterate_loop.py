@@ -83,6 +83,7 @@ def run_job(job: dict, timeout_sec: float) -> dict:
     baseline = job.get("baseline", "heuristic")
     matches = int(job.get("matches", 300))
     seeds = job.get("seeds") or [20260926]
+    field = job.get("field") or ""
     pooled: dict[str, list[tuple[float, float]]] = {}
     raw: list[str] = []
     for seed in seeds:
@@ -94,6 +95,10 @@ def run_job(job: dict, timeout_sec: float) -> dict:
             "--matches", str(matches),
             "--seed", str(seed),
         ]
+        if field:
+            # 换掉「另三座坐谁」。这是评估副露类假设的必要条件：默认 field=baseline
+            # 等于让我们对着三个几乎不副露的复制品打分，结构上测不出副露的价值。
+            cmd += ["--field", field]
         proc = subprocess.run(
             cmd, cwd=REPO, capture_output=True, text=True, timeout=timeout_sec
         )
