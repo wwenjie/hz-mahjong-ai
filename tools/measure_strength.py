@@ -40,7 +40,8 @@ from pathlib import Path
 from majiang.rules.shanten import quick_shanten
 from majiang.sim import replay
 
-DRAW = "tile_discarded"
+DRAW = "tile_discarded"  # 注意：常量名沿用旧代码，实际是**出牌**事件（见 is_tenpai 的口径）
+ROUND_ENDED = "round_ended"
 DEFAULT_LEDGER = "data/auto_sessions/sessions.jsonl"
 
 
@@ -107,9 +108,18 @@ def process(
     mine = ids.index(ours) if ours in ids else None
     ours_agg = by_group.setdefault(group, Aggregate()) if group is not None else None
 
+    # **局数与流局必须取自事件流，不能取自顶层 ``rounds[]``。**
+    # agent B 独立复核发现：``rounds[]`` 对中间流局的收录是**有损的**，且同一批数据里
+    # 三种行为并存（994 文件全收 / 110 只收非流局 / 16 只收末位流局），与时间无关。
+    # 用它当分母会漏掉约 192 条中间流局，使**有胡率虚高**（原报 99.5%，真值 97.4%），
+    # 公平份额也随之虚高（24.9% → 24.36%）。``round_ended.data.draw`` 是唯一可靠来源。
+    rounds_total = 0
+    draws_total = 0
     for state, events in replay.iter_rounds(payload):
+        rounds_total += 1
         for event in events:
-            if str(event.get("type")) == DRAW:
+            kind = str(event.get("type"))
+            if kind == DRAW:
                 seat = event.get("seat")
                 if isinstance(seat, int) and 0 <= seat < 4:
                     tenpai = is_tenpai(state.seats[seat])
@@ -119,9 +129,14 @@ def process(
                     if ours_agg is not None and seat == mine:
                         ours_agg.discard_moments += 1
                         ours_agg.tenpai_moments += int(tenpai)
+            elif kind == ROUND_ENDED:
+                data = event.get("data") or {}
+                if data.get("draw"):
+                    draws_total += 1
             replay.apply_event(state, event)
 
-    for result in payload.get("rounds") or []:
+    summary = payload.get("rounds") or []
+    for result in summary:
         scores = result.get("scores") or []
         if len(scores) != 4:
             continue
@@ -143,6 +158,16 @@ def process(
         if ours_agg is not None and winner == mine:
             ours_agg.wins += 1
             ours_agg.fan += fan
+
+    # 摘要丢了中间流局 → 把缺的那几局补回**每一家**的手数分母。
+    # 赢家与得分不受影响：被丢的都是流局（无赢家、四家 0 分）。
+    missing = rounds_total - len(summary)
+    if missing > 0:
+        for bucket in per_user.values():
+            bucket.hands += missing
+        if ours_agg is not None:
+            ours_agg.hands += missing
+    return rounds_total, draws_total
 
 
 def room_deciders(ledger: Path) -> dict[str, set[str]]:
@@ -192,6 +217,8 @@ def main(argv: list[str] | None = None) -> int:
     by_group: dict[str, Aggregate] = defaultdict(Aggregate)
     mixed = 0
     games = 0
+    rounds_all = 0
+    draws_all = 0
     for path in paths:
         room = Path(path).parent.parent.name
         group: str | None = None
@@ -204,14 +231,24 @@ def main(argv: list[str] | None = None) -> int:
                 mixed += 1
         try:
             payload = json.loads(Path(path).read_text(encoding="utf-8"))
-            process(payload, per_user, args.ours, by_group, group)
+            seen, drawn = process(payload, per_user, args.ours, by_group, group)
         except Exception as exc:  # noqa: BLE001
             print(f"  跳过 {Path(path).name}: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
         games += 1
+        rounds_all += seen
+        draws_all += drawn
 
     rows = [(uid, agg) for uid, agg in per_user.items() if agg.hands >= args.min_hands]
     rows.sort(key=lambda kv: -kv[1].score_per_hand)
+    if rounds_all:
+        winner_rate = 1.0 - draws_all / rounds_all
+        print(
+            f"局数 {rounds_all}（流局 {draws_all} = {draws_all / rounds_all:.2%}）"
+            f"  有胡率 {winner_rate:.2%}  公平份额 {winner_rate / 4:.2%}"
+        )
+        print("（局数与流局取自**事件流**的 round_ended.data.draw；顶层 rounds[] 对中间流局的"
+              "收录是有损的，用它当分母会让有胡率虚高约 2 个百分点）")
     print(f"对局文件 {games} 个；参与人数 {len(per_user)}，其中手数 ≥{args.min_hands} 的 {len(rows)} 人")
     print("（'听牌率' = 每次出牌时处于听牌的近似比例；分值重尾，小样本的每手分不可靠）")
     print()
