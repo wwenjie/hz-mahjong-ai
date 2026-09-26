@@ -96,6 +96,11 @@ class MeldTolerance(StrEnum):
 
     STRICT = "strict"
     EQUAL = "equal"
+    # 更保守的放宽：只在**离听牌还远**（向听 ≥2）时接受向听不变的副露。
+    # 依据是 agent B 的全量进度曲线——差距从第 2 摸起就单调扩大（n=3 +3.0pp、
+    # n=5 +7.4pp、n=8 +10.9pp），说明吃碰的价值在**早段**；而 1 向听已接近听牌，
+    # 那时副露的边际收益低、还会牺牲听口质量。
+    EQUAL_EARLY = "equal-early"
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,7 +157,13 @@ class PolicyConfig:
     def for_mode(cls, mode: Mode, **overrides: Any) -> PolicyConfig:
         """晋级轮稳健、决赛激进：决赛以总得分为唯一目标，因此更愿意追高番。"""
         if mode is Mode.FINAL:
-            return cls(mode=mode, piao_threshold_scale=0.85, feed_weight=1.5, **overrides)
+            # 用 setdefault 而不是直接传：原来写成 `cls(mode=mode, feed_weight=1.5, **overrides)`，
+            # 只要 overrides 里也带 feed_weight（例如 `--decider feed-low`）就会
+            # **TypeError: got multiple values for keyword argument**，
+            # 而且只在 final 模式启动时才炸——比赛当天才会暴露。
+            overrides.setdefault("piao_threshold_scale", 0.85)
+            overrides.setdefault("feed_weight", 1.5)
+            return cls(mode=mode, **overrides)
         return cls(mode=mode, **overrides)
 
 
@@ -759,9 +770,12 @@ class HeuristicDecider:
             # **必须用 == 而不是 is**：`PolicyConfig.for_mode(mode, meld_tolerance="equal")`
             # 传进来的是普通 str，而 StrEnum 成员与它的值是 `==` 相等但 `is` 不等，
             # 用 `is` 会让这个档位**静默退化成 strict**（造档时踩过一次）。
-            accept_equal = (
-                self.config.meld_tolerance == MeldTolerance.EQUAL and current >= 1
-            )
+            tolerance = self.config.meld_tolerance
+            threshold = {
+                MeldTolerance.EQUAL: 1,
+                MeldTolerance.EQUAL_EARLY: 2,
+            }.get(tolerance)  # type: ignore[arg-type]
+            accept_equal = threshold is not None and current >= threshold
             for action in actions:
                 if action.kind not in (PENG, CHI):
                     continue

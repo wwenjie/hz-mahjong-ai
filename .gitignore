@@ -20,3 +20,7 @@ logs/
 # 模型产物：仅实验用途。若某个模型成为默认档位的运行必需项，
 # 再显式提交它（`git add -f models/xxx.json`）并把默认档位切过去。
 models/
+
+# 自动刷新的状态页（由 tools/iterate_loop.py 生成，避免每次刷新产生提交噪声）
+notes/STATUS.md
+data/experiments/.lock

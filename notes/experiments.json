@@ -1,0 +1,41 @@
+{
+ "note": "由 tools/iterate_loop.py 消费。安全性：只跑离线配对自对弈，不碰平台；结果只报告，不改默认档。登记与结果都在本文件，随 git 版本化。",
+ "jobs": [
+  {
+   "id": "feed-low",
+   "treatment": "feed-low",
+   "baseline": "heuristic",
+   "matches": 300,
+   "seeds": [
+    20260927,
+    771014
+   ],
+   "status": "running",
+   "hypothesis": "喂牌权重 3.0 是从「有点炮」的麻将直觉来的，但本平台没有点炮——喂牌只让对手吃碰加速。降到 1.0 应让出牌更看重手牌质量。自对弈里若显著为正，再考虑真机。",
+   "started_at": "2026-09-27T01:13:23+08:00"
+  },
+  {
+   "id": "meld-equal-early",
+   "treatment": "meld-equal-early",
+   "baseline": "heuristic",
+   "matches": 300,
+   "seeds": [
+    20260927,
+    771014
+   ],
+   "status": "pending",
+   "hypothesis": "agent B 的全量进度曲线显示差距从第 2 摸起单调扩大（n=3 +3.0pp、n=5 +7.4pp、n=8 +10.9pp），指向早段的吃碰价值。上一版 meld-equal（向听不变即接受，含 1 向听）自对弈略负且显著掉白板；这版只在向听>=2 时放宽，应避开那个代价。"
+  },
+  {
+   "id": "blocks-control",
+   "treatment": "blocks",
+   "baseline": "heuristic",
+   "matches": 300,
+   "seeds": [
+    771014
+   ],
+   "status": "pending",
+   "hypothesis": "对照：验证「exact-ukeire 优于 blocks」在换种子后仍成立（等价于反向复现）。若这版不显著甚至反向，说明前两个种子的显著结论不稳。"
+  }
+ ]
+}

@@ -140,6 +140,16 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
     "meld-equal": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode, meld_tolerance="equal")
     ),
+    # 只在向听 >=2（离听牌还远）时接受向听不变的副露。依据是 agent B 的进度曲线：
+    # 差距从第 2 摸起就单调扩大，吃碰的价值集中在早段。
+    "meld-equal-early": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, meld_tolerance="equal-early")
+    ),
+    # 喂牌权重下调档。本平台**没有点炮**，喂牌只让对手吃碰加速，不该压过手牌质量；
+    # 默认 3.0 是从「有点炮」的直觉来的。
+    "feed-low": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, feed_weight=1.0)
+    ),
     # 价值模型驱动（tasks.md 5.15）：用自对弈学到的价值函数给出牌打分
     "value": lambda mode: _value_decider(mode, VALUE_MODEL_PATH),
     # 对手听牌模型驱动的风险（tasks.md 6B）：模型不可用时自动回退手写启发式
