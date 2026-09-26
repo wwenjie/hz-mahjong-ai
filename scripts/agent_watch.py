@@ -33,6 +33,7 @@ INBOX = os.path.join(OUT, "inbox.log")
 STATUS = os.path.join(OUT, "watch.status")
 PIDFILE = os.path.join(OUT, "watch.pid")
 AGENT_A = os.path.join(ROOT, "notes", "agent-a.md")
+THREAD = os.path.join(ROOT, "notes", "THREAD.md")
 MANIFEST = os.path.join(ROOT, "notes", "manifest-20260926.txt")
 INVARIANTS = os.path.join(ROOT, "verify", "invariants.py")
 
@@ -124,11 +125,11 @@ def count_event_files():
 
 
 def run_invariants():
-    """重跑不变量校验；返回 (是否通过, 摘要行)。"""
+    """重跑不变量校验；返回 (是否通过, 摘要行)。nice -n 15（算力纪律 §5.4）。"""
     try:
         proc = subprocess.run(
-            [sys.executable, INVARIANTS],
-            cwd=ROOT, capture_output=True, text=True, timeout=600,
+            ["nice", "-n", "15", sys.executable, INVARIANTS],
+            cwd=ROOT, capture_output=True, text=True, timeout=900,
         )
         first = (proc.stdout or "").splitlines()
         summary = " | ".join(first[:3]) if first else "(无输出)"
@@ -190,6 +191,24 @@ def main():
                     inbox(f"A 新增 {len(titles)} 条: {'; '.join(titles)}")
                 for line in for_b:
                     inbox(f"A→B: {line}")
+
+            # 1b. watch THREAD.md 里 TO B 的新消息（协议 §3 通道）
+            ht = file_hash(THREAD)
+            if ht and ht != st.get("thread_hash"):
+                st["thread_hash"] = ht
+                try:
+                    with open(THREAD, encoding="utf-8") as f:
+                        thread_text = f.read()
+                    msgs = [m for m in thread_text.split("\n### ") if " TO B " in m]
+                    seen_t = set(st.get("thread_msgs", []))
+                    for m in msgs:
+                        mh = hashlib.sha256(m.encode()).hexdigest()[:16]
+                        if mh not in seen_t:
+                            seen_t.add(mh)
+                            inbox(f"THREAD TO B 新消息: {m.splitlines()[0].strip()}")
+                    st["thread_msgs"] = sorted(seen_t)
+                except OSError:
+                    pass
 
             # 2./3. 数据增长 → 重校验 + 复算提醒
             files = count_event_files()

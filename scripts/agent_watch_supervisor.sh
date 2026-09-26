@@ -21,7 +21,10 @@ echo $$ > "$PIDFILE"
 
 child=0
 forward() {
+    # 转发给 uv 包装层，并按 pid 文件直杀 python 孙进程（防 uv run 转发失败留孤儿）
     if [ "$child" -ne 0 ]; then kill -TERM "$child" 2>/dev/null; fi
+    wpid=$(cat verify/out/watch.pid 2>/dev/null || echo "")
+    if [ -n "$wpid" ] && [ "$wpid" != "$$" ]; then kill -TERM "$wpid" 2>/dev/null; fi
     exit 0
 }
 trap forward TERM INT
