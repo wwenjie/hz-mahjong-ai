@@ -60,6 +60,18 @@
    ],
    "status": "pending",
    "hypothesis": "已切为默认的 exact-ukeire 在副露场里是否仍有优势。若优势消失，说明它只是在「慢场」里有效；若仍在，则它是与场强无关的稳健改进。"
+  },
+  {
+   "id": "ukeire-wide",
+   "treatment": "ukeire-wide",
+   "baseline": "heuristic",
+   "matches": 300,
+   "seeds": [
+    20260927,
+    771014
+   ],
+   "status": "pending",
+   "hypothesis": "扩大精确进张的候选面（2 -> 6）。实测我们听口窄于对手约 21%（听口张数 11.53 vs 14.66）；机制是候选按 total 排序，而同向听时 total 被喂牌代价主导（-3*feed 可达 9 分），于是「听口更好但喂牌稍多」的那张会在进入精确比较之前就被截掉。墙钟上限仍 0.6 秒，成本有界。"
   }
  ]
 }

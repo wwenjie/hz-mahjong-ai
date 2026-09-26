@@ -40,6 +40,7 @@ ANGANG = "angang"
 VARIANT_FIELDS = (
     "meld_tolerance",
     "tiebreak",
+    "ukeire_candidates",
     "chase_baotou",
     "route_aware",
     "preserve_god",
@@ -56,7 +57,7 @@ VARIANT_FIELDS = (
 # 收紧到「打完仍是 1 向听 + 并列候选前 2 张」后降到可接受范围——1 向听正是
 # 「中段落后」出现的地方（见 tools/analyze_hand_progress.py 的 n=7~8 曲线）。
 EXACT_UKEIRE_MAX_SHANTEN = 1
-EXACT_UKEIRE_CANDIDATES = 2
+EXACT_UKEIRE_DEFAULT_CANDIDATES = 2
 EXACT_UKEIRE_BUDGET_SEC = 0.6
 
 
@@ -123,6 +124,12 @@ class PolicyConfig:
     commitment: Commitment = Commitment.NONE
     # 吃碰闸门松紧（tasks.md 5.5）。默认 strict 是**改动前的行为**，放宽档需先过 A/B。
     meld_tolerance: MeldTolerance = MeldTolerance.STRICT
+    # 精确进张要评估几张候选。**候选面本身是个缺陷来源**：
+    # 候选按 ``total`` 排序，而同向听时 ``total`` 被喂牌代价主导（`-3*feed`，可达 9 分），
+    # 于是「听口明显更好但喂牌稍多」的那张会在进入精确比较之前就被截掉。
+    # 实测我们的听口窄于对手约 21%（听口张数 11.53 vs 14.66，
+    # `tools/analyze_wait_quality.py`），与这个截断方向一致。
+    ukeire_candidates: int = EXACT_UKEIRE_DEFAULT_CANDIDATES
     # 同向听候选项之间的次排序键。**默认 "exact-ukeire"**。
     #
     # 历史：原默认是 "blocks"（骨架厚度）。5.4 曾试过 "ukeire" 并记为「无增益」，
@@ -605,7 +612,7 @@ class HeuristicDecider:
         if exact and top_shanten > EXACT_UKEIRE_MAX_SHANTEN:
             return None
         if exact:
-            tied = tied[:EXACT_UKEIRE_CANDIDATES]
+            tied = tied[: max(1, self.config.ukeire_candidates)]
         visible = shanten_module.visible_counts(
             situation.hand.counts,
             [meld.tiles for meld in situation.all_melds],

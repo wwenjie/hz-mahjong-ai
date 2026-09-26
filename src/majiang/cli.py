@@ -110,6 +110,12 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
     "ukeire-exact": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire")
     ),
+    # 扩大精确进张的候选面（2 -> 6 张）。实测我们听口窄于对手约 21%，
+    # 而候选按 ``total`` 排序、同向听时被喂牌代价主导，好听的牌可能被提前截掉。
+    # 墙钟上限仍是 0.6 秒，故成本有界。
+    "ukeire-wide": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", ukeire_candidates=6)
+    ),
     # 确定化前瞻搜索（tasks.md 5.15）。samples/top_k 越小越快
     "search": lambda mode: SearchDecider(
         HeuristicDecider(PolicyConfig.for_mode(mode)),
