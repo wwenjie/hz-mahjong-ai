@@ -28,8 +28,13 @@
    平台限速按用户 16/s，两个采集器必然互相挤兑。需要动平台请先问。
 3. **不杀 A 的进程**：`pgrep` 匹配前先确认 pid 与启动时间，`auto_session.py` 的匹配会命中
    自己的 bash wrapper（踩过）。
-4. 提交前 `git pull --rebase`；**禁用** `git reset --hard`、`git checkout -- .`（会抹掉对方未提交的工作）。
-5. 一次只提交一小块。
+4. 提交前 `git pull --rebase`；**禁用** `git reset --hard`、`git checkout -- .`、`git clean -fd`
+   （会抹掉对方未提交的工作）。
+5. **禁用 `git add -A` / `git add .`，一律用显式路径 `git add <files>`。**
+   已发生一次：A 的 `9d0f2bb`/`b9eccac` 把 B 未提交的 `scripts/verify_clean_env.sh`、
+   `docs/USAGE.md`、`notes/agent-b.md` 扫进了自己的提交（内容无损，但若扫到写了一半的
+   文件就会留下半成品）。B 保持「即写即提交」，A 用显式路径，两侧一起收窄窗口。
+6. 一次只提交一小块。
 
 ## 关键教训（A 已犯过的错，B 复算时请重点怀疑）
 
