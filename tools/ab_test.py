@@ -27,6 +27,7 @@ import time
 
 from majiang.cli import DECIDERS, make_decider
 from majiang.sim.batch import SEATS, run_match
+from majiang.strategy import versions
 from majiang.strategy.policy import Mode
 
 TALLY = {"heuristic": Mode.QUALIFIER, "final": Mode.FINAL, "qualifier": Mode.QUALIFIER}
@@ -40,9 +41,11 @@ def build(name: str):
     if name in TALLY:
         return make_decider("heuristic", TALLY[name])
     resolved = ALIASES.get(name, name)
-    if resolved not in DECIDERS:
+    # 允许直接指名版本号（`--treatment v2 --baseline v1`），见 strategy/versions.py
+    if resolved not in DECIDERS and not versions.is_version(resolved):
         raise SystemExit(
             f"未知策略 {name!r}，可选: {sorted(set(DECIDERS) | set(TALLY) | set(ALIASES))}"
+            f" 或版本号 {sorted(versions.BY_ID)}"
         )
     return make_decider(resolved, Mode.QUALIFIER)
 

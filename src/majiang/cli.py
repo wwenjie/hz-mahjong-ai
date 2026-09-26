@@ -29,6 +29,7 @@ from .runtime.decider import Decider, FirstLegalDecider
 from .runtime.engine import Runtime, RuntimeOptions
 from .runtime.logging import DEFAULT_LOG_DIR
 from .strategy.policy import HeuristicDecider, Mode, PolicyConfig
+from .strategy import versions
 from .strategy.opponent import load_or_none
 from .strategy.search import SearchConfig, SearchDecider
 from .strategy.value import ValueDecider, ValueModel, ValueModelError
@@ -178,6 +179,10 @@ def collect_tokens(prefix: str, environment: dict[str, str] | None = None) -> li
 
 
 def make_decider(name: str, mode: Mode) -> Decider:
+    # 版本库优先于 `DECIDERS`：`v1`/`v2` 是**已胜出并冻结**的冠军版本，
+    # `DECIDERS` 是尚未胜出的实验档位。两者同名时以版本库为准（不该发生，但要有定论）。
+    if versions.is_version(name):
+        return versions.build(name, mode)
     factory = DECIDERS.get(name)
     if factory is None:
         raise SystemExit(f"未知决策器 {name!r}，可选: {', '.join(sorted(DECIDERS))}")

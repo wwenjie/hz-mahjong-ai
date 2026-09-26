@@ -166,10 +166,15 @@
 
 ### 7.3 代码
 
+- **版本库 `src/majiang/strategy/versions.py`：每次改默认档必须同时新增一个版本快照。**
+  `--decider v1` / `v2` 可直接指名版本对打（`ab_test --treatment v2 --baseline v1`）。
+  不新增快照 = 旧默认档的行为永久丢失，以后只能拿近似档位当替身（`blocks` 就是这么补救的）。
+  版本只冻结**变体开关**，不冻结 `base_score` / `you_cai_bi_kao`（那两个由服务端注入）。
 - `HeuristicDecider.configure()` 只带 6 个字段重建 `PolicyConfig`，
   曾把 `meld_tolerance`/`tiebreak`/`chase_baotou` 等**全部静默丢弃**。
   而 `configure` **只在真机路径被调用**（自对弈不调用）→ 真机上所有实验档位跑的都是
-  默认档。已修（`dataclasses.replace`）。**结论：真机 A/B 必须先在日志里确认档位生效。**
+  默认档。已修（`dataclasses.replace`）。**结论：真机 A/B 必须先在日志里确认档位生效**
+  （日志的 `decider=<name>` 带变体后缀，例如 `heuristic[tiebreak=exact-ukeire]`）。
 - `measure_strength.py` 的常量 `DRAW` 值其实是 `"tile_discarded"`（**出牌**），
   所以它的听牌率是**出牌前**口径；`analyze_hand_progress.py` 是**摸牌前**口径。
   **引用听牌率必须写明是哪一个。**
