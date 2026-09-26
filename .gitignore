@@ -24,3 +24,5 @@ models/
 # 自动刷新的状态页（由 tools/iterate_loop.py 生成，避免每次刷新产生提交噪声）
 notes/STATUS.md
 data/experiments/.lock
+notes/manifest-pre-cut.txt
+notes/manifest-post-cut.txt
