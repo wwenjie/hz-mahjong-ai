@@ -199,7 +199,8 @@ def main():
                 try:
                     with open(THREAD, encoding="utf-8") as f:
                         thread_text = f.read()
-                    msgs = [m for m in thread_text.split("\n### ") if " TO B " in m]
+                    msgs = [m for m in thread_text.split("\n### ")
+                            if " TO B " in m.splitlines()[0]]  # 只看标题行，防正文误命中
                     seen_t = set(st.get("thread_msgs", []))
                     for m in msgs:
                         mh = hashlib.sha256(m.encode()).hexdigest()[:16]

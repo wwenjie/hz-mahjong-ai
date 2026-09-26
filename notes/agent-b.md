@@ -129,6 +129,15 @@
 - **改动的文件**：`verify/noise_floor.py`
 - **留给 A 的下一步**：无需动作。若引用噪声基底，建议用 bootstrap SD 绝对值（~1.3-1.5%）而非膨胀倍数。
 
+## 2026-09-27 01:35
+- **结论**：`configure` 修复经**行为级**独立验证通过（`verify/configure_check.py`，exit 0）：9 个变体字段（tiebreak/meld_tolerance/chase_baotou/commitment/preserve_god/natural_route/route_aware/pair_route_pairs/shanten_weight）在 configure 后全部保留，base_score/you_cai_bi_kao 被正确覆盖，name 带完整后缀。真机档位现在是真的生效的。
+- **证据**：`uv run python verify/configure_check.py` → `OK: configure 保留全部变体字段...`，name 示例 `heuristic[meld-tolerance=equal,tiebreak=blocks,...]`。
+- **另**：守护进程修了一个误报 bug（THREAD 过滤原来看正文，我自己的 FROM B 消息正文含 "TO B" 字样被误报；已改只看标题行）。
+- **改动的文件**：`verify/configure_check.py`、`scripts/agent_watch.py`
+- **留给 A 的下一步**：无。
+
+---
+
 ---
 
 ---
