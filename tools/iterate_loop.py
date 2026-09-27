@@ -202,7 +202,17 @@ def acquire_lock() -> bool:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="离线实验队列循环")
-    parser.add_argument("--timeout", type=float, default=7200, help="单个 job 的秒级上限")
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=14400,
+        help=(
+            "单个 job 的秒级上限。**默认值依据实测**：在三个守护共存、ab_test 被 nice 的"
+            "情况下约 3.5 秒/场（不是理论上的 1.6 秒——CPU 争用很真实）。"
+            "所以 300 场 × 4 座位旋转 ≈ 70 分钟/种子。原先默认 7200（2 小时）会让"
+            "「300 场 × 2 种子」的 job 全部超时作废——曾因此白跑 15 小时。"
+        ),
+    )
     parser.add_argument("--loop", action="store_true", help="跑空后不退出，等待新 job 加入")
     parser.add_argument("--poll", type=float, default=300, help="--loop 下的轮询间隔")
     args = parser.parse_args(argv)
@@ -230,7 +240,11 @@ def main(argv: list[str] | None = None) -> int:
             try:
                 result = run_job(job, args.timeout)
             except subprocess.TimeoutExpired:
-                result = {"status": "failed", "detail": f"超时（>{args.timeout}s）"}
+                result = {
+                    "status": "failed",
+                    "detail": f"超时（>{args.timeout}s）。按实测约 3.5 秒/场估算预算："
+                    f"matches × 4 旋转 × 种子数 × 3.5 秒，别超过 --timeout",
+                }
             except Exception as exc:  # noqa: BLE001
                 result = {"status": "failed", "detail": f"{type(exc).__name__}: {exc}"}
 
