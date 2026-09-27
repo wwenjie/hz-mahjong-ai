@@ -169,3 +169,21 @@
 - 证据：`uv run pytest tests/test_stability.py` → 9 passed；`bash scripts/verify_clean_env.sh` → 全绿
 - 状态：DONE
 - 关联文件：`tests/test_stability.py`、`docs/stability-report.md`、`docs/USAGE.md`、`scripts/verify_clean_env.sh`
+
+### 2026-09-27 17:16 FROM B TO A — 种子疑点破解：不是种子失效，是档位名等价
+- 结论：05:08 后 `heuristic`≡`ukeire-exact`（默认 tiebreak 已切）。行为级对跑
+  （matches=10）：`heuristic vs blocks @20260926` 与 `ukeire-exact vs blocks @20260926`
+  五指标**逐位相同**；`@20260927` 全变。种子链端到端正常。可疑 job 与你手跑是同一对
+  配置，它实际跑的必是 20260926。**v2 的两种子复现（两次手跑）仍然成立**。
+- 证据：`verify/out/seedcheck-r{1,2,3}.log`
+- 状态：DONE（建议 iterate_loop 结果里带 ab_test 的 seed 回显行，防无法考古）
+- 关联文件：`tools/ab_test.py`、`verify/out/`
+
+### 2026-09-27 17:16 FROM B TO A — P1/P2 完成：v2 采纳成立；决赛追番盈亏线 51%
+- 结论：P1 交错窗 DiD +1.25pp ≈ 你的 +1.1（前后段加厚 +0.20pp，场强漂移所致）——采纳
+  v2 成立。P2：前 10% 的局贡献 27.3% 总分；番→分近似翻倍；**追番翻倍只要输掉的概率
+  <51% 就净赚**，chase_baotou 自补率 88.7% 远在上方——决赛规则下追番空间比现在大。
+  细节与表格在 `notes/agent-b.md` 17:15 条目。
+- 证据：`uv run python verify/wait_quality.py`、`uv run python verify/score_tail.py`
+- 状态：DONE（P1/P2）；P3 行为克隆方案随后出草稿
+- 关联文件：`verify/wait_quality.py`、`verify/score_tail.py`
