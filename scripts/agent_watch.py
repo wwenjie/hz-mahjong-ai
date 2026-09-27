@@ -212,15 +212,17 @@ def main():
                     pass
 
             # 2./3. 数据增长 → 重校验 + 复算提醒
+            # 与「上次已校验的文件数」比（不是上一轮轮询——否则每轮只增 1~2 永远不触发）
             files = count_event_files()
-            grew = files - st.get("files_seen", 0)
-            if files and st.get("files_seen", 0) and grew >= GROWTH_THRESHOLD:
+            verified = st.get("files_verified", 0)
+            if files and verified and files - verified >= GROWTH_THRESHOLD:
                 ok, summary = run_invariants()
                 st["invariants_ok"] = ok
                 if ok:
-                    log(f"数据 {st['files_seen']}→{files}，不变量重跑通过: {summary}")
+                    log(f"数据 {verified}→{files}，不变量重跑通过: {summary}")
                 else:
-                    inbox(f"!! 数据 {st['files_seen']}→{files}，不变量校验失败: {summary}")
+                    inbox(f"!! 数据 {verified}→{files}，不变量校验失败: {summary}")
+                st["files_verified"] = files
                 new_matches = files - 1129  # 冻结清单基线
                 if new_matches >= REANALYZE_AT and not st.get("reanalyze_flagged"):
                     inbox(f"清单外新增 {new_matches} 份事件文件，"
@@ -228,6 +230,8 @@ def main():
                     st["reanalyze_flagged"] = True
             if files:
                 st["files_seen"] = files
+                if not verified:
+                    st["files_verified"] = files  # 首轮基线
 
             save_state(st)
             heartbeat(st)
