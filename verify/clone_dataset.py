@@ -110,8 +110,12 @@ def scan_room(path, room_id, out_x, out_y, out_meta, stats):
                     feat[108] = rnd["round_no"]
                     feat[109] = 1.0 if s == dealer else 0.0
                     feat[110] = counts[tiles.GOD]
+                    # 爆头态按摸牌前的 13 张手判定（14 张含摸牌时 is_baotou 恒 False）
                     try:
-                        feat[111] = 1.0 if win.is_baotou(counts, melds[s]) else 0.0
+                        pre = list(counts)
+                        if last_drawn[s] is not None:
+                            pre[tiles.parse(last_drawn[s])] -= 1
+                        feat[111] = 1.0 if win.is_baotou(pre, melds[s]) else 0.0
                     except Exception:
                         feat[111] = 0.0
                     feat[112:116] = match_scores

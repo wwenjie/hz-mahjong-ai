@@ -115,6 +115,11 @@ def main():
         if m.sum():
             evaluate(model, x[m], y[m], f"同房留出·{tname}对手", classes)
 
+    import pickle
+    with open("verify/out/clone_model.pkl", "wb") as f:
+        pickle.dump({"model": model, "classes": classes, "n_features": x.shape[1]}, f)
+    print("模型已存 verify/out/clone_model.pkl")
+
 
 if __name__ == "__main__":
     main()
