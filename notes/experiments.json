@@ -11,7 +11,8 @@
    "treatment": "feed-low",
    "baseline": "heuristic",
    "hypothesis": "喂牌权重 3.0 -> 1.0。本平台没有点炮，喂牌只让对手吃碰加速，不该压过手牌质量；3.0 是从「有点炮」的麻将直觉来的。",
-   "started_at": "2026-09-27T16:39:38+08:00"
+   "started_at": "2026-09-27T17:29:02+08:00",
+   "claimed_by": 1966613
   },
   {
    "id": "feed-low-s771014",
@@ -23,7 +24,8 @@
    "treatment": "feed-low",
    "baseline": "heuristic",
    "hypothesis": "喂牌权重 3.0 -> 1.0。本平台没有点炮，喂牌只让对手吃碰加速，不该压过手牌质量；3.0 是从「有点炮」的麻将直觉来的。",
-   "started_at": "2026-09-27T16:40:27+08:00"
+   "started_at": "2026-09-27T17:29:02+08:00",
+   "claimed_by": 1966613
   },
   {
    "id": "meld-equal-early-s20260927",
@@ -31,10 +33,12 @@
    "seeds": [
     20260927
    ],
-   "status": "pending",
+   "status": "running",
    "treatment": "meld-equal-early",
    "baseline": "heuristic",
-   "hypothesis": "只在向听 >=2 时接受向听不变的副吃碰。依据 B 的进度曲线（差距从第 2 摸起单调扩大）指向早段价值，避开上一版含1 向听时显著掉白板的代价。"
+   "hypothesis": "只在向听 >=2 时接受向听不变的副吃碰。依据 B 的进度曲线（差距从第 2 摸起单调扩大）指向早段价值，避开上一版含1 向听时显著掉白板的代价。",
+   "started_at": "2026-09-27T17:29:02+08:00",
+   "claimed_by": 1966613
   },
   {
    "id": "meld-equal-early-s771014",
@@ -237,6 +241,28 @@
    ],
    "status": "pending",
    "hypothesis": "审计用：v2（exact-ukeire）vs v1（blocks）在**明确不同的种子**下重跑，并保留原始 stdout。若三个种子的均值确实不同，则「两个独立种子复现」成立；若逐位相同，说明种子在某条路径上没生效，v2 的证据要下调。"
+  },
+  {
+   "id": "chase-more-s20260927",
+   "treatment": "chase-more",
+   "baseline": "heuristic",
+   "matches": 200,
+   "seeds": [
+    20260927
+   ],
+   "status": "pending",
+   "hypothesis": "追番阈值缩到 0.5（当前默认 1.0，final 档 0.85）。依据 agent B 的 P2 定量：追番翻倍只要输掉概率 <51% 就净赚，而我们弃胡自补率实测 88.7%，远在盈亏线上方。**判据：总得分**（重尾目标下这才是决赛的键），名次分作参考。"
+  },
+  {
+   "id": "chase-more-s771014",
+   "treatment": "chase-more",
+   "baseline": "heuristic",
+   "matches": 200,
+   "seeds": [
+    771014
+   ],
+   "status": "pending",
+   "hypothesis": "追番阈值缩到 0.5（当前默认 1.0，final 档 0.85）。依据 agent B 的 P2 定量：追番翻倍只要输掉概率 <51% 就净赚，而我们弃胡自补率实测 88.7%，远在盈亏线上方。**判据：总得分**（重尾目标下这才是决赛的键），名次分作参考。"
   }
  ]
 }

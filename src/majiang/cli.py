@@ -183,6 +183,13 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
     "dealer-hard": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode, dealer_feed_scale=2.0)
     ),
+    # 追番更激进（依据 agent B 的 P2 定量）：前 10% 的局贡献 27.3% 总分，
+    # **追番翻倍只要「输掉的概率 < 51%」就净赚**，而我们的弃胡自补率实测 88.7%，
+    # 远在盈亏线上方 —— 说明当前阈值（final 档也只缩到 0.85）过于保守。
+    # 这一档把阈值缩到 0.5，用于同时检验晋级轮与决赛。
+    "chase-more": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, piao_threshold_scale=0.5)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 

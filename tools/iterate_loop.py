@@ -148,6 +148,23 @@ def run_job(job: dict, timeout_sec: float) -> dict:
 def refresh_status(queue: dict, note: str = "") -> None:
     """写状态页：一眼看完「数据多少、在跑什么、B 有没有留言」。"""
     lines = [f"# 状态（{now_iso()}）", ""]
+    # **未读消息顶在最上面**：用户已经提过两次「要自己定时检查 B 的消息」，
+    # 说明靠记性不可靠。做成状态页第一行，我一读页面就无法忽略。
+    try:
+        from tools.thread import entries as thread_entries
+
+        unread = [
+            item for item in thread_entries()
+            if item[2] == "A" and not item[4]
+        ]
+        if unread:
+            lines.append(f"## ⚠️ 有 {len(unread)} 条未读消息（TO A）")
+            for when, sender, _receiver, topic, _handled in unread:
+                lines.append(f"- {when} FROM {sender} — {topic}")
+            lines.append("- 处理完执行 `uv run python tools/thread.py --ack`")
+            lines.append("")
+    except Exception:  # noqa: BLE001 —— 状态页绝不能因为可选的读信功能而写不出来
+        pass
     if note:
         lines += [note, ""]
 
