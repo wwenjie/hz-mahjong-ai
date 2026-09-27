@@ -29,6 +29,7 @@ import re
 import subprocess
 import sys
 import time
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -233,51 +234,138 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--loop", action="store_true", help="跑空后不退出，等待新 job 加入")
     parser.add_argument("--poll", type=float, default=300, help="--loop 下的轮询间隔")
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=3,
+        help=(
+            "并行跑几个 job。**依据**：本机 16 核，而 ab_test 是单线程（GIL 受限），"
+            "真机采集基本是 I/O 等待。串行时 21 个 job 要 16 小时；开 3 个降到约 5 小时。"
+            "不要开太大——碰/吃窗口只有 600 ms，CPU 被压满会污染真机数据。"
+        ),
+    )
     args = parser.parse_args(argv)
 
     if not acquire_lock():
         return 1
     try:
+        return run_pool(args)
+    finally:
+        LOCK.unlink(missing_ok=True)
+
+
+def claim(job_id: str) -> None:
+    """把 job 标为 running 并写下认领者 pid。
+
+    必须先落盘再开跑：否则进程被回收后重启，同一个 job 会被再跑一遍
+    （白烧一次算力，且结果互相覆盖）。
+    """
+    queue = load_queue()
+    for job in queue.get("jobs", []):
+        if job.get("id") == job_id:
+            job["status"] = "running"
+            job["started_at"] = now_iso()
+            job["claimed_by"] = os.getpid()
+            break
+    save_queue(queue)
+
+
+def recover_stale() -> int:
+    """把「标为 running 但认领进程已死」的 job 退回 pending。
+
+    环境会周期性回收长跑进程，所以这条恢复路径是必需品而不是保险。
+    """
+    queue = load_queue()
+    changed = 0
+    for job in queue.get("jobs", []):
+        if job.get("status") != "running":
+            continue
+        pid = job.get("claimed_by")
+        alive = False
+        if isinstance(pid, int):
+            try:
+                os.kill(pid, 0)
+                alive = True
+            except (ProcessLookupError, PermissionError):
+                alive = False
+        if not alive:
+            job["status"] = "pending"
+            job.pop("claimed_by", None)
+            changed += 1
+    if changed:
+        save_queue(queue)
+    return changed
+
+
+def finish(job_id: str, result: dict) -> None:
+    queue = load_queue()
+    for index, job in enumerate(queue.get("jobs", [])):
+        if job.get("id") == job_id:
+            job["result"] = result
+            job["status"] = result["status"]
+            job["ended_at"] = now_iso()
+            job.pop("claimed_by", None)
+            queue["jobs"][index] = job
+            break
+    save_queue(queue)
+
+
+def run_pool(args: argparse.Namespace) -> int:
+    recovered = recover_stale()
+    if recovered:
+        print(f"恢复 {recovered} 个「认领进程已死」的 job -> pending")
+    workers = max(1, args.workers)
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures: dict[object, str] = {}
         while True:
             queue = load_queue()
-            pending = [j for j in queue.get("jobs", []) if j.get("status") in (None, "pending")]
-            refresh_status(queue, note=f"待跑 {len(pending)} 个" if pending else "队列已跑空")
-            if not pending:
+            pending = [
+                job for job in queue.get("jobs", [])
+                if job.get("status") in (None, "pending")
+            ]
+            running = [job["id"] for job in queue.get("jobs", []) if job.get("status") == "running"]
+            note = f"在跑 {len(running)} 个；待跑 {len(pending)} 个"
+            refresh_status(queue, note=note)
+            if not pending and not futures:
                 if not args.loop:
                     print("队列已跑空，退出")
                     return 0
                 time.sleep(args.poll)
                 continue
+            while pending and len(futures) < workers:
+                job = pending.pop(0)
+                claim(job["id"])
+                print(f"[{now_iso()}] 开始 {job['id']}（并行 {len(futures) + 1}/{workers}）")
+                futures[pool.submit(run_job_safe, job, args.timeout)] = job["id"]
+            if not futures:
+                continue
+            done, _ = wait(list(futures), timeout=30, return_when=FIRST_COMPLETED)
+            for future in done:
+                job_id = futures.pop(future)
+                try:
+                    result = future.result()
+                except Exception as exc:  # noqa: BLE001
+                    result = {"status": "failed", "detail": f"{type(exc).__name__}: {exc}"}
+                finish(job_id, result)
+                summary = (result.get("metrics") or {}).get("总得分")
+                extra = f" 总得分 {summary['mean']:+.3f}" if summary else ""
+                print(f"[{now_iso()}] {job_id} -> {result['status']}{extra}")
 
-            job = pending[0]
-            job["status"] = "running"
-            job["started_at"] = now_iso()
-            save_queue(queue)
-            refresh_status(load_queue(), note=f"在跑 `{job['id']}`")
-            print(f"[{now_iso()}] 开始 {job['id']}: {job['treatment']}")
-            try:
-                result = run_job(job, args.timeout)
-            except subprocess.TimeoutExpired:
-                result = {
-                    "status": "failed",
-                    "detail": f"超时（>{args.timeout}s）。按实测约 3.5 秒/场估算预算："
-                    f"matches × 4 旋转 × 种子数 × 3.5 秒，别超过 --timeout",
-                }
-            except Exception as exc:  # noqa: BLE001
-                result = {"status": "failed", "detail": f"{type(exc).__name__}: {exc}"}
 
-            job["result"] = result
-            job["status"] = result["status"]
-            job["ended_at"] = now_iso()
-            queue = load_queue()
-            for index, existing in enumerate(queue.get("jobs", [])):
-                if existing.get("id") == job["id"]:
-                    queue["jobs"][index] = job
-            save_queue(queue)
-            print(f"[{now_iso()}] {job['id']} -> {result['status']}")
-    finally:
-        LOCK.unlink(missing_ok=True)
-    return 0
+def run_job_safe(job: dict, timeout_sec: float) -> dict:
+    """给线程池用的包装：把超时与异常都转成结果字典，绝不让异常穿出去。"""
+    try:
+        return run_job(job, timeout_sec)
+    except subprocess.TimeoutExpired:
+        return {
+            "status": "failed",
+            "detail": (
+                f"超时（>{timeout_sec}s）。按实测约 3.5 秒/场估算预算："
+                f"matches × 4 旋转 × 种子数 × 3.5 秒，别超过 --timeout"
+            ),
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {"status": "failed", "detail": f"{type(exc).__name__}: {exc}"}
 
 
 if __name__ == "__main__":

@@ -51,7 +51,7 @@ while [ "$stopping" -eq 0 ]; do
   child=0
   if [ "$stopping" -ne 0 ]; then
     echo "$(date -Is) 收到停机信号，退出（子进程码 $code）"
-    break
+    exit 0
   fi
   echo "$(date -Is) auto_session 退出（码 $code），${BACKOFF}s 后重启"
   sleep "$BACKOFF"
