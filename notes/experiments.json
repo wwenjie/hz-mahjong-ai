@@ -263,6 +263,28 @@
    ],
    "status": "pending",
    "hypothesis": "追番阈值缩到 0.5（当前默认 1.0，final 档 0.85）。依据 agent B 的 P2 定量：追番翻倍只要输掉概率 <51% 就净赚，而我们弃胡自补率实测 88.7%，远在盈亏线上方。**判据：总得分**（重尾目标下这才是决赛的键），名次分作参考。"
+  },
+  {
+   "id": "first-legal-vs-v2-s20260927",
+   "treatment": "first-legal",
+   "baseline": "v2",
+   "matches": 100,
+   "seeds": [
+    20260927
+   ],
+   "status": "pending",
+   "hypothesis": "**仪器方向检验的离线一半**。真机已在跑 v2 vs first-legal 交错臂：目前 first-legal 我们胜率 10.87%（46 手） vs v2 23.38%（154 手），差 12.5 个百分点。这个 job 给出**自对弈预测的差**，两者对照才能回答「仪器能不能预测量级」——只说方向对是不够的。matches=100 是因为效应极大，(总计得分方差也大，但 100x4=400 配对足够看数量级)。"
+  },
+  {
+   "id": "first-legal-vs-v2-s771014",
+   "treatment": "first-legal",
+   "baseline": "v2",
+   "matches": 100,
+   "seeds": [
+    771014
+   ],
+   "status": "pending",
+   "hypothesis": "**仪器方向检验的离线一半**。真机已在跑 v2 vs first-legal 交错臂：目前 first-legal 我们胜率 10.87%（46 手） vs v2 23.38%（154 手），差 12.5 个百分点。这个 job 给出**自对弈预测的差**，两者对照才能回答「仪器能不能预测量级」——只说方向对是不够的。matches=100 是因为效应极大，(总计得分方差也大，但 100x4=400 配对足够看数量级)。"
   }
  ]
 }
