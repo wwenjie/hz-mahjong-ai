@@ -197,6 +197,14 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
     "ukeire-early": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", ukeire_max_shanten=3)
     ),
+    # 适用向听包围测试（gate=2）：与 ukeire-g3 一起定位「进张该从几向听起生效」。
+    "ukeire-g2": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", ukeire_max_shanten=2)
+    ),
+    # 适用向听包围测试（gate=5）：与 ukeire-g3 一起定位「进张该从几向听起生效」。
+    "ukeire-g5": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", ukeire_max_shanten=5)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 

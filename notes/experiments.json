@@ -610,13 +610,68 @@
    "seeds": [
     771014
    ],
-   "status": "running",
+   "status": "done",
    "treatment": "ukeire-wide",
    "baseline": "heuristic",
    "field": "meld-equal",
    "hypothesis": "候选面扩大在副露场里是否仍有优势（场强敏感性）。",
    "started_at": "2026-09-27T22:10:29+08:00",
-   "claimed_by": 2021563
+   "result": {
+    "status": "done",
+    "seeds": [
+     771014
+    ],
+    "matches": 120,
+    "commands": [
+     [
+      "nice",
+      "-n",
+      "15",
+      "uv",
+      "run",
+      "python",
+      "tools/ab_test.py",
+      "--treatment",
+      "ukeire-wide",
+      "--baseline",
+      "heuristic",
+      "--matches",
+      "120",
+      "--seed",
+      "771014",
+      "--field",
+      "meld-equal"
+     ]
+    ],
+    "metrics": {
+     "总得分": {
+      "mean": 0.531,
+      "se": 1.163,
+      "t": 0.45657781599312125
+     },
+     "名次分": {
+      "mean": 0.021,
+      "se": 0.147,
+      "t": 0.14285714285714288
+     },
+     "白板数": {
+      "mean": 0.002,
+      "se": 0.044,
+      "t": 0.045454545454545456
+     },
+     "胡次数": {
+      "mean": -0.0020000000000000005,
+      "se": 0.042,
+      "t": -0.04761904761904763
+     },
+     "番数总和": {
+      "mean": 0.008,
+      "se": 0.064,
+      "t": 0.125
+     }
+    }
+   },
+   "ended_at": "2026-09-28T00:40:40+08:00"
   },
   {
    "id": "final-s20260927",
@@ -823,8 +878,10 @@
    "seeds": [
     771014
    ],
-   "status": "pending",
-   "hypothesis": "庄家局喂牌权重 x2.0（更防守） vs 当前默认。依据 tools/analyze_dealer.py（300 文件）：我们庄家胜率 27.07% vs 对手 30.21%，庄家局每局净分差 -1.59 是闲家局差（-0.90）的 1.8 倍（x8 赔付），而决策层完全不分庄闲。**符号无先验**（庄家收益:风险 3:1 支持谨慎、绝对收益最大支持进攻），故两个方向都测。**判据：总得分 + 庄家局净分**（后者需单独看）。"
+   "status": "running",
+   "hypothesis": "庄家局喂牌权重 x2.0（更防守） vs 当前默认。依据 tools/analyze_dealer.py（300 文件）：我们庄家胜率 27.07% vs 对手 30.21%，庄家局每局净分差 -1.59 是闲家局差（-0.90）的 1.8 倍（x8 赔付），而决策层完全不分庄闲。**符号无先验**（庄家收益:风险 3:1 支持谨慎、绝对收益最大支持进攻），故两个方向都测。**判据：总得分 + 庄家局净分**（后者需单独看）。",
+   "started_at": "2026-09-28T00:40:40+08:00",
+   "claimed_by": 2021563
   },
   {
    "id": "verify-v2-vs-v1-s20260927",
@@ -1016,6 +1073,50 @@
    ],
    "status": "pending",
    "hypothesis": "把精确进张的适用向听从 1 放宽到 3 —— **前中期也按进张选牌**。现状：shanten>=2 的出牌完全由「骨架厚度 + 喂牌代价」决定，而实测我们第 4 摸均向听就落后对手 0.16（同财神数下亦然），那段差距正由前中期出牌决定。这是**从未测过的结构性缺口**——ukeire-wide 只改了候选数、没改适用向听，所以它测的不是这件事。"
+  },
+  {
+   "id": "ukeire-g2-s20260927",
+   "treatment": "ukeire-g2",
+   "baseline": "heuristic",
+   "matches": 120,
+   "seeds": [
+    20260927
+   ],
+   "status": "pending",
+   "hypothesis": "适用向听门槛 = 2（默认 1，ukeire-early=3）。默认 1 意味着 shanten>=2 的前中期完全不看进张；这组是**包围测试**，用于定位进张该从几向听起生效。实测我们第 4 摸均向听就落后 0.16，那段正是前中期出牌决定的。"
+  },
+  {
+   "id": "ukeire-g2-s771014",
+   "treatment": "ukeire-g2",
+   "baseline": "heuristic",
+   "matches": 120,
+   "seeds": [
+    771014
+   ],
+   "status": "pending",
+   "hypothesis": "适用向听门槛 = 2（默认 1，ukeire-early=3）。默认 1 意味着 shanten>=2 的前中期完全不看进张；这组是**包围测试**，用于定位进张该从几向听起生效。实测我们第 4 摸均向听就落后 0.16，那段正是前中期出牌决定的。"
+  },
+  {
+   "id": "ukeire-g5-s20260927",
+   "treatment": "ukeire-g5",
+   "baseline": "heuristic",
+   "matches": 120,
+   "seeds": [
+    20260927
+   ],
+   "status": "pending",
+   "hypothesis": "适用向听门槛 = 5（默认 1，ukeire-early=3）。默认 1 意味着 shanten>=2 的前中期完全不看进张；这组是**包围测试**，用于定位进张该从几向听起生效。实测我们第 4 摸均向听就落后 0.16，那段正是前中期出牌决定的。"
+  },
+  {
+   "id": "ukeire-g5-s771014",
+   "treatment": "ukeire-g5",
+   "baseline": "heuristic",
+   "matches": 120,
+   "seeds": [
+    771014
+   ],
+   "status": "pending",
+   "hypothesis": "适用向听门槛 = 5（默认 1，ukeire-early=3）。默认 1 意味着 shanten>=2 的前中期完全不看进张；这组是**包围测试**，用于定位进张该从几向听起生效。实测我们第 4 摸均向听就落后 0.16，那段正是前中期出牌决定的。"
   }
  ]
 }
