@@ -21,18 +21,23 @@ import numpy as np
 from majiang.rules import tiles, win
 from majiang.rules.action import CHI, DISCARD, GANG, HU, PASS, PENG
 
-N_FEAT = 116
+N_FEAT = 150
 MODEL_PATH = "verify/out/clone_model.pkl"
 
 
 class CloneDecider:
     name = "clone-live-opp"
 
-    def __init__(self, model_path=MODEL_PATH, seed=0):
+    def __init__(self, model_path=MODEL_PATH, seed=0, temperature=1.0,
+                 peng_p=1.0, chi_p=1.0):
         with open(model_path, "rb") as f:
             bundle = pickle.load(f)
         self._model = bundle["model"]
         self._rng = random.Random(seed)
+        self._temperature = temperature
+        self._peng_p = peng_p
+        self._chi_p = chi_p
+        self.stats = {"discard": 0, "peng": 0, "chi": 0, "gang": 0, "pass": 0, "hu": 0}
 
     def configure(self, tournament) -> None:  # 兼容运行时段子；离线自对弈用不到
         return None
@@ -40,15 +45,24 @@ class CloneDecider:
     def choose(self, situation, actions, *, budget_ms):
         kinds = {a.kind for a in actions}
         if HU in kinds:
+            self.stats["hu"] += 1
             return next(a for a in actions if a.kind == HU)
         discards = [a for a in actions if a.kind == DISCARD]
         if discards:
+            self.stats["discard"] += 1
             return self._choose_discard(situation, discards)
-        for want in (GANG, PENG):
-            if want in kinds:
-                return next(a for a in actions if a.kind == want)
-        if CHI in kinds:
-            return self._choose_chi(situation, [a for a in actions if a.kind == CHI])
+        if GANG in kinds:
+            self.stats["gang"] += 1
+            return next(a for a in actions if a.kind == GANG)
+        if PENG in kinds and self._rng.random() < self._peng_p:
+            self.stats["peng"] += 1
+            return next(a for a in actions if a.kind == PENG)
+        if CHI in kinds and self._rng.random() < self._chi_p:
+            got = self._choose_chi(situation, [a for a in actions if a.kind == CHI])
+            if got is not None:
+                self.stats["chi"] += 1
+                return got
+        self.stats["pass"] += 1
         return next((a for a in actions if a.kind == PASS), None)
 
     # ---- 出牌：克隆分布采样 ----
@@ -80,7 +94,11 @@ class CloneDecider:
             feat[111] = 1.0 if win.is_baotou(pre, meld_self) else 0.0
         except Exception:
             feat[111] = 0.0
-        # [112:116] 前序累计分：Situation 不含，置 0（训练后期望也很小，影响有限）
+        feat[112:116] = 0.0  # 前序累计分：Situation 不含，置 0
+        # [116:150] 本座位本局此前弃牌（路线一致性信号）
+        if situation.discards and situation.seat < len(situation.discards):
+            for t in situation.discards[situation.seat]:
+                feat[116 + t] += 1.0
         return feat
 
     def _choose_discard(self, situation, discards):
@@ -95,6 +113,12 @@ class CloneDecider:
         if total <= 0:
             return self._rng.choice(discards)
         weights = [w / total for w in weights]
+        if self._temperature == 0.0:  # argmax
+            return discards[max(range(len(weights)), key=lambda i: weights[i])]
+        if self._temperature != 1.0:  # 温度锐化：缓解逐轮独立采样破坏路线一致性
+            weights = [w ** (1.0 / self._temperature) for w in weights]
+            z = sum(weights)
+            weights = [w / z for w in weights]
         r = self._rng.random()
         acc = 0.0
         for a, w in zip(discards, weights):
@@ -132,18 +156,29 @@ class CloneDecider:
 
 
 def _selftest():
-    """离线自测：四个克隆打一场 8 局，验证可运行 + 分布 sanity。"""
+    """温度扫描：克隆场的流局率/副露率/均番 vs 真机对手基线（2.6% / 1.09 / 1.32）。"""
     from majiang.sim.batch import run_match
 
-    deciders = [CloneDecider(seed=i) for i in range(4)]
-    result = run_match(deciders, rounds=8, seed=7)
-    total = sum(s.total_score for s in result.seats)
-    assert result.rounds == 8 and total == 0, (result.rounds, total)
-    print(f"自测通过：8 局完成，流局 {result.flows}，零和 OK")
-    for s in result.seats:
-        print(f"  座{s.seat}: 分 {s.total_score:+d} 胡 {s.wins} 均番 "
-              f"{s.fan_total / s.wins if s.wins else 0:.2f}")
+    for temp, pp, cp in ((1.0, 1.0, 1.0), (0.0, 1.0, 1.0), (0.0, 1.0, 0.3),
+                         (0.0, 0.7, 0.3), (0.0, 0.5, 0.2)):
+        agg = collections.Counter()
+        meld_n = 0
+        for seed in (7, 8, 9, 10, 11):
+            ds = [CloneDecider(seed=i * 10 + seed, temperature=temp,
+                               peng_p=pp, chi_p=cp) for i in range(4)]
+            result = run_match(ds, rounds=8, seed=seed)
+            agg["rounds"] += result.rounds
+            agg["flows"] += result.flows
+            agg["wins"] += sum(s.wins for s in result.seats)
+            agg["fan"] += sum(s.fan_total for s in result.seats)
+            for d in ds:
+                meld_n += d.stats["peng"] + d.stats["chi"] + d.stats["gang"]
+        melds_per_seat_round = meld_n / agg["rounds"] / 4
+        print("T=%.2f peng=%.1f chi=%.1f: 流局 %.0f%% 均番 %.2f 副露/座位局 %.2f" % (
+            temp, pp, cp, 100 * agg["flows"] / agg["rounds"],
+            agg["fan"] / max(1, agg["wins"]), melds_per_seat_round))
 
 
 if __name__ == "__main__":
+    import collections
     _selftest()

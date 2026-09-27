@@ -1,0 +1,20 @@
+/home/wuwenjie01/majiang_ai/.venv/lib/python3.12/site-packages/sklearn/linear_model/_logistic.py:1435: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=-1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+/home/wuwenjie01/majiang_ai/.venv/lib/python3.12/site-packages/sklearn/linear_model/_logistic.py:599: ConvergenceWarning: lbfgs failed to converge after 1000 iteration(s) (status=1):
+STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT
+
+Increase the number of iterations to improve the convergence (max_iter=1000).
+You might also want to scale the data as shown in:
+    https://scikit-learn.org/stable/modules/preprocessing.html
+Please also refer to the documentation for alternative solver options:
+    https://scikit-learn.org/stable/modules/linear_model.html#logistic-regression
+  n_iter_i = _check_optimize_result(
+样本 533421 特征 150 房 257
+训练 426633 / 同房测试 106788 / 跨房测试 109481  准备耗时 5s
+训练耗时 196s
+基线: 全局最频=5.5% 均匀随机≈7.1%
+  [同房留出(主指标)] top-1=40.3% top-3=71.7% logloss=2.135 (n=106788)
+  [跨房留出(泛化)] top-1=40.7% top-3=72.0% logloss=2.122 (n=109481)
+  [同房留出·strong对手] top-1=40.4% top-3=72.1% logloss=2.126 (n=55015)
+  [同房留出·weak对手] top-1=40.1% top-3=71.3% logloss=2.144 (n=51773)
+模型已存 verify/out/clone_model.pkl

@@ -14,6 +14,7 @@
     [110]    该座位手留白板数
     [111]    该座位爆头态（win.is_baotou）
     [112:116] 本场前序局累计分（相对该座位视角的原始 4 维）
+    [116:150] 该座位本局此前的弃牌计数（「路线一致性」信号：一直在打万就不会再收万）
   标签：实际打出的牌（0-33）
 
 过滤（不是自由决策，不教模型）：
@@ -34,7 +35,7 @@ import numpy as np
 from majiang.rules import tiles, win
 
 OUR_UID = "u_a7f7c67bb14a"
-N_FEAT = 116
+N_FEAT = 150
 
 
 def split_rounds(doc):
@@ -69,6 +70,7 @@ def scan_room(path, room_id, out_x, out_y, out_meta, stats):
         hand = [collections.Counter(h) for h in rnd["hands"]]
         melds = [0, 0, 0, 0]
         table_discards = collections.Counter()
+        seat_discards = [collections.Counter() for _ in range(4)]  # 各座位本局弃牌
         wall_draws = 0
         draw_no = [0, 0, 0, 0]
         last_drawn = [None] * 4
@@ -119,12 +121,15 @@ def scan_room(path, room_id, out_x, out_y, out_meta, stats):
                     except Exception:
                         feat[111] = 0.0
                     feat[112:116] = match_scores
+                    for code, c in seat_discards[s].items():
+                        feat[116 + tiles.parse(code)] = c
                     out_x.append(feat)
                     out_y.append(tiles.parse(tile))
                     out_meta.append((room_id, s, rnd["round_no"], draw_no[s]))
                     stats["samples"] += 1
                 hand[s][tile] -= 1
                 table_discards[tile] += 1
+                seat_discards[s][tile] += 1
             elif et == "chi" and s in (0, 1, 2, 3):
                 need = collections.Counter(data.get("tiles") or [])
                 need[tile] -= 1
