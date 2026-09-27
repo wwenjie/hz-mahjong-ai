@@ -86,6 +86,9 @@ def run_job(job: dict, timeout_sec: float) -> dict:
     field = job.get("field") or ""
     pooled: dict[str, list[tuple[float, float]]] = {}
     raw: list[str] = []
+    commands: list[list[str]] = []
+    log_dir = Path("data/experiments/logs")
+    log_dir.mkdir(parents=True, exist_ok=True)
     for seed in seeds:
         cmd = [
             "nice", "-n", "15",
@@ -99,18 +102,27 @@ def run_job(job: dict, timeout_sec: float) -> dict:
             # 换掉「另三座坐谁」。这是评估副露类假设的必要条件：默认 field=baseline
             # 等于让我们对着三个几乎不副露的复制品打分，结构上测不出副露的价值。
             cmd += ["--field", field]
+        commands.append(cmd)
         proc = subprocess.run(
             cmd, cwd=REPO, capture_output=True, text=True, timeout=timeout_sec
+        )
+        # **保存原始输出**。曾经出现过一次「不同种子给出逐位相同结果」的矛盾，
+        # 而我当时只存了解析后的五个数字、没有原始 stdout，只能靠猜。
+        # 有了这条审计线索，任何可疑结果都能事后核对（含完整命令）。
+        (log_dir / f"{job['id']}-seed{seed}.log").write_text(
+            " ".join(cmd) + "\n\n" + proc.stdout + "\n[stderr]\n" + proc.stderr,
+            encoding="utf-8",
         )
         raw.append(proc.stdout[-4000:])
         if proc.returncode != 0:
             return {
                 "status": "failed",
                 "detail": f"ab_test 退出码 {proc.returncode}: {proc.stderr[-500:]}",
+                "commands": commands,
             }
         metrics = parse_ab_output(proc.stdout)
         if not metrics:
-            return {"status": "failed", "detail": "未能从输出解析出指标"}
+            return {"status": "failed", "detail": "未能从输出解析出指标", "commands": commands}
         for name, values in metrics.items():
             pooled.setdefault(name, []).append((values["mean"], values["se"]))
 
@@ -123,7 +135,13 @@ def run_job(job: dict, timeout_sec: float) -> dict:
         mean = sum(m / (se**2) for m, se in pairs if se > 0) / weight_sum
         se = (1.0 / weight_sum) ** 0.5
         combined[name] = {"mean": mean, "se": se, "t": mean / se if se else 0.0}
-    return {"status": "done", "seeds": seeds, "matches": matches, "metrics": combined}
+    return {
+        "status": "done",
+        "seeds": seeds,
+        "matches": matches,
+        "commands": commands,
+        "metrics": combined,
+    }
 
 
 def refresh_status(queue: dict, note: str = "") -> None:

@@ -26,3 +26,4 @@ notes/STATUS.md
 data/experiments/.lock
 notes/manifest-pre-cut.txt
 notes/manifest-post-cut.txt
+data/experiments/logs/

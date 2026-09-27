@@ -204,6 +204,39 @@
    ],
    "status": "pending",
    "hypothesis": "庄家局喂牌权重 x2.0（更防守） vs 当前默认。依据 tools/analyze_dealer.py（300 文件）：我们庄家胜率 27.07% vs 对手 30.21%，庄家局每局净分差 -1.59 是闲家局差（-0.90）的 1.8 倍（x8 赔付），而决策层完全不分庄闲。**符号无先验**（庄家收益:风险 3:1 支持谨慎、绝对收益最大支持进攻），故两个方向都测。**判据：总得分 + 庄家局净分**（后者需单独看）。"
+  },
+  {
+   "id": "verify-v2-vs-v1-s20260927",
+   "treatment": "v2",
+   "baseline": "v1",
+   "matches": 200,
+   "seeds": [
+    20260927
+   ],
+   "status": "pending",
+   "hypothesis": "审计用：v2（exact-ukeire）vs v1（blocks）在**明确不同的种子**下重跑，并保留原始 stdout。若三个种子的均值确实不同，则「两个独立种子复现」成立；若逐位相同，说明种子在某条路径上没生效，v2 的证据要下调。"
+  },
+  {
+   "id": "verify-v2-vs-v1-s771014",
+   "treatment": "v2",
+   "baseline": "v1",
+   "matches": 200,
+   "seeds": [
+    771014
+   ],
+   "status": "pending",
+   "hypothesis": "审计用：v2（exact-ukeire）vs v1（blocks）在**明确不同的种子**下重跑，并保留原始 stdout。若三个种子的均值确实不同，则「两个独立种子复现」成立；若逐位相同，说明种子在某条路径上没生效，v2 的证据要下调。"
+  },
+  {
+   "id": "verify-v2-vs-v1-s31415926",
+   "treatment": "v2",
+   "baseline": "v1",
+   "matches": 200,
+   "seeds": [
+    31415926
+   ],
+   "status": "pending",
+   "hypothesis": "审计用：v2（exact-ukeire）vs v1（blocks）在**明确不同的种子**下重跑，并保留原始 stdout。若三个种子的均值确实不同，则「两个独立种子复现」成立；若逐位相同，说明种子在某条路径上没生效，v2 的证据要下调。"
   }
  ]
 }
