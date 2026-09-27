@@ -11,8 +11,8 @@
    "treatment": "feed-low",
    "baseline": "heuristic",
    "hypothesis": "喂牌权重 3.0 -> 1.0。本平台没有点炮，喂牌只让对手吃碰加速，不该压过手牌质量；3.0 是从「有点炮」的麻将直觉来的。",
-   "started_at": "2026-09-27T17:29:02+08:00",
-   "claimed_by": 1966613
+   "started_at": "2026-09-27T19:26:43+08:00",
+   "claimed_by": 2021563
   },
   {
    "id": "feed-low-s771014",
@@ -24,8 +24,8 @@
    "treatment": "feed-low",
    "baseline": "heuristic",
    "hypothesis": "喂牌权重 3.0 -> 1.0。本平台没有点炮，喂牌只让对手吃碰加速，不该压过手牌质量；3.0 是从「有点炮」的麻将直觉来的。",
-   "started_at": "2026-09-27T17:29:02+08:00",
-   "claimed_by": 1966613
+   "started_at": "2026-09-27T19:26:43+08:00",
+   "claimed_by": 2021563
   },
   {
    "id": "meld-equal-early-s20260927",
@@ -37,45 +37,51 @@
    "treatment": "meld-equal-early",
    "baseline": "heuristic",
    "hypothesis": "只在向听 >=2 时接受向听不变的副吃碰。依据 B 的进度曲线（差距从第 2 摸起单调扩大）指向早段价值，避开上一版含1 向听时显著掉白板的代价。",
-   "started_at": "2026-09-27T17:29:02+08:00",
-   "claimed_by": 1966613
+   "started_at": "2026-09-27T19:26:43+08:00",
+   "claimed_by": 2021563
   },
   {
    "id": "meld-equal-early-s771014",
-   "matches": 200,
+   "matches": 120,
    "seeds": [
     771014
    ],
-   "status": "pending",
+   "status": "running",
    "treatment": "meld-equal-early",
    "baseline": "heuristic",
-   "hypothesis": "只在向听 >=2 时接受向听不变的副吃碰。依据 B 的进度曲线（差距从第 2 摸起单调扩大）指向早段价值，避开上一版含1 向听时显著掉白板的代价。"
+   "hypothesis": "只在向听 >=2 时接受向听不变的副吃碰。依据 B 的进度曲线（差距从第 2 摸起单调扩大）指向早段价值，避开上一版含1 向听时显著掉白板的代价。",
+   "started_at": "2026-09-27T19:26:43+08:00",
+   "claimed_by": 2021563
   },
   {
    "id": "ukeire-wide-s20260927",
-   "matches": 200,
+   "matches": 120,
    "seeds": [
     20260927
    ],
-   "status": "pending",
+   "status": "running",
    "treatment": "ukeire-wide",
    "baseline": "heuristic",
-   "hypothesis": "精确进张候选面 2 -> 6。我们听口窄于对手 13.6%，机制是候选按 total 排序、同向听时被喂牌代价主导，好听的牌被提前截掉。"
+   "hypothesis": "精确进张候选面 2 -> 6。我们听口窄于对手 13.6%，机制是候选按 total 排序、同向听时被喂牌代价主导，好听的牌被提前截掉。",
+   "started_at": "2026-09-27T19:26:43+08:00",
+   "claimed_by": 2021563
   },
   {
    "id": "ukeire-wide-s771014",
-   "matches": 200,
+   "matches": 120,
    "seeds": [
     771014
    ],
-   "status": "pending",
+   "status": "running",
    "treatment": "ukeire-wide",
    "baseline": "heuristic",
-   "hypothesis": "精确进张候选面 2 -> 6。我们听口窄于对手 13.6%，机制是候选按 total 排序、同向听时被喂牌代价主导，好听的牌被提前截掉。"
+   "hypothesis": "精确进张候选面 2 -> 6。我们听口窄于对手 13.6%，机制是候选按 total 排序、同向听时被喂牌代价主导，好听的牌被提前截掉。",
+   "started_at": "2026-09-27T19:26:43+08:00",
+   "claimed_by": 2021563
   },
   {
    "id": "meld-equal-field-s20260927",
-   "matches": 200,
+   "matches": 120,
    "seeds": [
     20260927
    ],
@@ -87,7 +93,7 @@
   },
   {
    "id": "meld-equal-field-s771014",
-   "matches": 200,
+   "matches": 120,
    "seeds": [
     771014
    ],
@@ -99,7 +105,7 @@
   },
   {
    "id": "ukeire-wide-field-s20260927",
-   "matches": 200,
+   "matches": 120,
    "seeds": [
     20260927
    ],
@@ -111,7 +117,7 @@
   },
   {
    "id": "ukeire-wide-field-s771014",
-   "matches": 200,
+   "matches": 120,
    "seeds": [
     771014
    ],
@@ -125,7 +131,7 @@
    "id": "final-s20260927",
    "treatment": "final",
    "baseline": "heuristic",
-   "matches": 200,
+   "matches": 120,
    "seeds": [
     20260927
    ],
@@ -136,7 +142,7 @@
    "id": "final-s771014",
    "treatment": "final",
    "baseline": "heuristic",
-   "matches": 200,
+   "matches": 120,
    "seeds": [
     771014
    ],
@@ -147,7 +153,7 @@
    "id": "final-plus-s20260927",
    "treatment": "final-plus",
    "baseline": "heuristic",
-   "matches": 200,
+   "matches": 120,
    "seeds": [
     20260927
    ],
@@ -158,7 +164,7 @@
    "id": "final-plus-s771014",
    "treatment": "final-plus",
    "baseline": "heuristic",
-   "matches": 200,
+   "matches": 120,
    "seeds": [
     771014
    ],
@@ -169,7 +175,7 @@
    "id": "dealer-soft-s20260927",
    "treatment": "dealer-soft",
    "baseline": "heuristic",
-   "matches": 200,
+   "matches": 120,
    "seeds": [
     20260927
    ],
@@ -180,7 +186,7 @@
    "id": "dealer-soft-s771014",
    "treatment": "dealer-soft",
    "baseline": "heuristic",
-   "matches": 200,
+   "matches": 120,
    "seeds": [
     771014
    ],
@@ -191,7 +197,7 @@
    "id": "dealer-hard-s20260927",
    "treatment": "dealer-hard",
    "baseline": "heuristic",
-   "matches": 200,
+   "matches": 120,
    "seeds": [
     20260927
    ],
@@ -202,7 +208,7 @@
    "id": "dealer-hard-s771014",
    "treatment": "dealer-hard",
    "baseline": "heuristic",
-   "matches": 200,
+   "matches": 120,
    "seeds": [
     771014
    ],
@@ -213,7 +219,7 @@
    "id": "verify-v2-vs-v1-s20260927",
    "treatment": "v2",
    "baseline": "v1",
-   "matches": 200,
+   "matches": 120,
    "seeds": [
     20260927
    ],
@@ -224,7 +230,7 @@
    "id": "verify-v2-vs-v1-s771014",
    "treatment": "v2",
    "baseline": "v1",
-   "matches": 200,
+   "matches": 120,
    "seeds": [
     771014
    ],
@@ -235,7 +241,7 @@
    "id": "verify-v2-vs-v1-s31415926",
    "treatment": "v2",
    "baseline": "v1",
-   "matches": 200,
+   "matches": 120,
    "seeds": [
     31415926
    ],
@@ -246,7 +252,7 @@
    "id": "chase-more-s20260927",
    "treatment": "chase-more",
    "baseline": "heuristic",
-   "matches": 200,
+   "matches": 120,
    "seeds": [
     20260927
    ],
@@ -257,7 +263,7 @@
    "id": "chase-more-s771014",
    "treatment": "chase-more",
    "baseline": "heuristic",
-   "matches": 200,
+   "matches": 120,
    "seeds": [
     771014
    ],
