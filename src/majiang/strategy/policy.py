@@ -41,6 +41,7 @@ VARIANT_FIELDS = (
     "meld_tolerance",
     "tiebreak",
     "ukeire_candidates",
+    "dealer_feed_scale",
     "chase_baotou",
     "route_aware",
     "preserve_god",
@@ -153,6 +154,17 @@ class PolicyConfig:
     shanten_weight: float = 10.0
     pair_route_pairs: int = 5
     feed_weight: float = 3.0
+    # 庄家局对「喂牌代价」的额外缩放（tasks.md 5.3）。
+    #
+    # 动机来自实测（`tools/analyze_dealer.py`，300 文件）：我们作为庄家的胜率 27.07%
+    # 而对手 30.21%，**庄家局每局净分差 −1.59，是闲家局差（−0.90）的 1.8 倍**——
+    # 因为庄家的赔付是 ×8。而对手把「庄家结构性优势」兑现成 +5.3 点（30.21% vs 公平 24.9%），
+    # 我们只兑现 +2.2 点。
+    #
+    # 根因是**出牌与响应决策里没有任何庄闲项**（`_score_discard` 只有向听/骨架/喂牌/财神），
+    # 而赔付方向是 8 倍不对称。这个旋钮是最小侵入的试验口子：只缩放庄家局的喂牌权重。
+    # 1.0 = 现状（不分庄闲）。
+    dealer_feed_scale: float = 1.0
     god_discard_penalty: float = 25.0
     value_weight: float = 10.0
     piao_threshold_scale: float = 1.0
@@ -663,6 +675,13 @@ class HeuristicDecider:
         threat = sum(item.ready_probability for item in risks)
         feed = risk.visible_need(tile) * threat
         god_penalty = self.config.god_discard_penalty if tile == GOD else 0.0
+        # 庄家局的喂牌权重单独缩放：庄闲赔付是 8 倍不对称，而决策层此前完全不分庄闲。
+        feed_scale = self.config.feed_weight
+        if (
+            self.config.dealer_feed_scale != 1.0
+            and situation.table.dealer_seat == situation.seat
+        ):
+            feed_scale *= self.config.dealer_feed_scale
 
         if not self.config.route_aware and self.config.commitment is Commitment.NONE:
             if self.config.natural_route:
@@ -673,7 +692,7 @@ class HeuristicDecider:
             total = (
                 -self.config.shanten_weight * shanten_value
                 + block_value
-                - self.config.feed_weight * feed
+                - feed_scale * feed
                 - god_penalty
             )
             return DiscardScore(
@@ -702,7 +721,7 @@ class HeuristicDecider:
 
         total = (
             self.config.value_weight * best.value
-            - self.config.feed_weight * feed
+            - feed_scale * feed
             - god_penalty
         )
         return DiscardScore(

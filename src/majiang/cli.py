@@ -172,6 +172,17 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
     "final-plus": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(Mode.FINAL, piao_threshold_scale=0.7, feed_weight=1.0)
     ),
+    # 庄闲敏感档位（tasks.md 5.3）。实测（tools/analyze_dealer.py）我们庄家胜率 27.07%
+    # vs 对手 30.21%，庄家局每局净分差 -1.59 是闲家局差（-0.90）的 1.8 倍（x8 赔付），
+    # 而决策层此前完全不分庄闲。两个方向都测——我对符号没有先验把握：
+    # 庄家的「收益:风险」是 24:8=3:1，闲家是 10:1，比值更低反而说明庄家更该谨慎；
+    # 但庄家局的绝对收益也最大，两种论证方向相反，交给数据。
+    "dealer-soft": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, dealer_feed_scale=0.5)
+    ),
+    "dealer-hard": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, dealer_feed_scale=2.0)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 
