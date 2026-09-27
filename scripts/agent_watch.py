@@ -34,6 +34,7 @@ STATUS = os.path.join(OUT, "watch.status")
 PIDFILE = os.path.join(OUT, "watch.pid")
 AGENT_A = os.path.join(ROOT, "notes", "agent-a.md")
 THREAD = os.path.join(ROOT, "notes", "THREAD.md")
+EXPERIMENTS = os.path.join(ROOT, "notes", "experiments.json")
 MANIFEST = os.path.join(ROOT, "notes", "manifest-20260926.txt")
 INVARIANTS = os.path.join(ROOT, "verify", "invariants.py")
 
@@ -210,6 +211,19 @@ def main():
                     st["thread_msgs"] = sorted(seen_t)
                 except OSError:
                     pass
+
+            # 1c. watch 实验队列：有新完成的 job 提醒（可独立复算）
+            try:
+                with open(EXPERIMENTS, encoding="utf-8") as f:
+                    jobs = json.load(f).get("jobs", [])
+                done_ids = sorted(j["id"] for j in jobs if j.get("status") == "done")
+                prev_done = set(st.get("done_jobs", []))
+                fresh = [j for j in done_ids if j not in prev_done]
+                if prev_done and fresh:  # 首轮不刷（基线）
+                    inbox(f"队列新完成 {len(fresh)} 个 job: {', '.join(fresh)}")
+                st["done_jobs"] = done_ids
+            except (OSError, json.JSONDecodeError):
+                pass
 
             # 2./3. 数据增长 → 重校验 + 复算提醒
             # 与「上次已校验的文件数」比（不是上一轮轮询——否则每轮只增 1~2 永远不触发）
