@@ -27,6 +27,7 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
+from majiang.rules import shanten as shanten_module
 from majiang.rules import tiles
 from majiang.sim import replay
 
@@ -52,7 +53,7 @@ def scan(payload: dict, ours: str, stats: dict, counters: Counter) -> None:
     }
 
     for state, events in replay.iter_rounds(payload):
-        milestones: dict[int, int] = {}          # 座位 -> 第 MILESTONE 次摸牌时的财神数
+        milestones: dict[int, tuple[int, int]] = {}  # 座位 -> (财神数, 精确向听)
         draws: Counter = Counter()
         for event in events:
             kind = str(event.get("type"))
@@ -61,7 +62,17 @@ def scan(payload: dict, ours: str, stats: dict, counters: Counter) -> None:
                 if isinstance(seat, int) and 0 <= seat < SEATS:
                     draws[seat] += 1
                     if draws[seat] == MILESTONE:
-                        milestones[seat] = state.seats[seat].hand[tiles.GOD]
+                        seat_state = state.seats[seat]
+                        # **同一时点同时记下向听**：这是把「财神用不好」与
+                        # 「手牌本来就落后」分开的关键。若同财神数下我们的向听不大于对手、
+                        # 却胡得更少，问题在转化；若向听也落后，问题在出牌本身。
+                        try:
+                            value = shanten_module.shanten_any(
+                                seat_state.hand, len(seat_state.melds)
+                            )
+                        except Exception:  # noqa: BLE001
+                            value = -1
+                        milestones[seat] = (seat_state.hand[tiles.GOD], value)
             elif kind == DISCARDED:
                 seat = event.get("seat")
                 tile = replay._tile_of(event.get("tile"))  # noqa: SLF001
@@ -74,25 +85,28 @@ def scan(payload: dict, ours: str, stats: dict, counters: Counter) -> None:
         for seat in range(SEATS):
             group = US if seat == mine else THEM
             counters[f"{group} 参与局数"] += 1
-            counters[f"{group} 摸到财神"] += state.seats[seat].hand[tiles.GOD]  # 结束时持有
             if seat not in milestones:
                 counters[f"{group} 未到第{MILESTONE}摸"] += 1
                 continue
-            key = (group, bucket(milestones[seat]))
+            gods, shanten_value = milestones[seat]
+            key = (group, bucket(gods))
             stats[key][0] += 1
+            if shanten_value >= 0:
+                stats[key][2] += shanten_value
             if isinstance(winner, int) and winner == seat:
                 stats[key][1] += 1
 
 
 def report(stats: dict, counters: Counter) -> None:
-    print(f"{'':<8}{'第4摸时财神':<12}{'样本':>8}{'最终胡牌率':>12}{'占比':>9}")
+    print(f"{'':<8}{'第4摸时财神':<12}{'样本':>8}{'均向听':>8}{'最终胡牌率':>12}{'占比':>9}")
     for group in (US, THEM):
         total = sum(stats[(group, b)][0] for b in ("0张", "1张", "≥2张"))
         for label in ("0张", "1张", "≥2张"):
-            hands, wins = stats[(group, label)]
+            hands, wins, shanten_sum = stats[(group, label)]
             if not hands:
                 continue
-            print(f"{group:<8}{label:<12}{hands:>8}{wins / hands:>12.2%}{hands / total:>9.1%}")
+            print(f"{group:<8}{label:<12}{hands:>8}{shanten_sum / hands:>8.2f}"
+                  f"{wins / hands:>12.2%}{hands / total:>9.1%}")
         print()
     print("原始计数：")
     for key in sorted(counters):
@@ -118,7 +132,7 @@ def main(argv: list[str] | None = None) -> int:
         print("没有文件", file=sys.stderr)
         return 1
 
-    stats: dict = defaultdict(lambda: [0, 0])
+    stats: dict = defaultdict(lambda: [0, 0, 0])
     counters: Counter = Counter()
     used = 0
     for path in paths:

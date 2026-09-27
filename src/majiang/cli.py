@@ -190,6 +190,13 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
     "chase-more": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode, piao_threshold_scale=0.5)
     ),
+    # 把精确进张的适用向听从 1 放宽到 3：**前中期也按进张选牌**。
+    # 现状是 shanten >=2 时出牌完全由「骨架厚度 + 喂牌代价」决定，而
+    # 「第 4 摸均向听落后 0.16」正是这段决定的。这是从未测过的结构性缺口
+    # （`ukeire-wide` 只改了候选数、没改适用向听，所以它测的不是这件事）。
+    "ukeire-early": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", ukeire_max_shanten=3)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 

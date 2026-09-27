@@ -41,6 +41,7 @@ VARIANT_FIELDS = (
     "meld_tolerance",
     "tiebreak",
     "ukeire_candidates",
+    "ukeire_max_shanten",
     "dealer_feed_scale",
     "chase_baotou",
     "route_aware",
@@ -131,6 +132,11 @@ class PolicyConfig:
     # 实测我们的听口窄于对手约 21%（听口张数 11.53 vs 14.66，
     # `tools/analyze_wait_quality.py`），与这个截断方向一致。
     ukeire_candidates: int = EXACT_UKEIRE_DEFAULT_CANDIDATES
+    # 精确进张次排序适用的**最大向听**。默认 1 = 只在接近听牌时才比较进张，
+    # 意味着 shanten >=2 的整个前中期，出牌由「骨架厚度 + 喂牌代价」决定、**完全不看进张**。
+    # 而实测我们在第 4 摸时均向听就落后对手 0.16（同财神数下亦然，
+    # `tools/analyze_god_usage.py`）——那段差距正是由前中期出牌决定的。
+    ukeire_max_shanten: int = EXACT_UKEIRE_MAX_SHANTEN
     # 同向听候选项之间的次排序键。**默认 "exact-ukeire"**。
     #
     # 历史：原默认是 "blocks"（骨架厚度）。5.4 曾试过 "ukeire" 并记为「无增益」，
@@ -621,7 +627,7 @@ class HeuristicDecider:
         if len(tied) < 2:
             return None
         exact = self.config.tiebreak == "exact-ukeire"
-        if exact and top_shanten > EXACT_UKEIRE_MAX_SHANTEN:
+        if exact and top_shanten > self.config.ukeire_max_shanten:
             return None
         if exact:
             tied = tied[: max(1, self.config.ukeire_candidates)]
