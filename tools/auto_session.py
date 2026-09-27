@@ -112,6 +112,45 @@ def collect_stats(root: Path, user_id: str) -> dict:
     }
 
 
+def prior_counts(ledger: Path) -> dict[str, int]:
+    """账本里每个决策器已经跑过多少场会话。
+
+    用途：给**对照臂**设会话数上限（`--arm-limit first-legal=8`），跑到量就自动停用该臂。
+    没有这个机制，就只能靠人记得回来把对照臂从轮换表里删掉——而无人值守的长跑里
+    人不在，对照臂会一直吃掉一半样本。
+    """
+    counts: dict[str, int] = {}
+    if not ledger.exists():
+        return counts
+    for line in ledger.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            record = json.loads(line)
+        except ValueError:
+            continue
+        name = record.get("decider") if isinstance(record, dict) else None
+        if name:
+            counts[str(name)] = counts.get(str(name), 0) + 1
+    return counts
+
+
+def parse_arm_limits(spec: str) -> dict[str, int]:
+    """``"first-legal=8,v2=0"`` -> ``{"first-legal": 8, "v2": 0}``。"""
+    limits: dict[str, int] = {}
+    for piece in spec.split(","):
+        piece = piece.strip()
+        if not piece:
+            continue
+        name, _, raw = piece.partition("=")
+        try:
+            limits[name.strip()] = int(raw)
+        except ValueError as exc:
+            raise SystemExit(f"--arm-limit 解析失败: {piece!r}") from exc
+    return limits
+
+
 def prior_sessions(ledger: Path) -> int:
     """账本里已有的会话数——用于把决策器轮换位置恢复到上次的位置。
 
@@ -269,6 +308,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--token-env", default="MATCH_TOKEN", help="存有全局令牌的环境变量名")
     parser.add_argument("--session-cap", type=float, default=DEFAULT_SESSION_CAP_SEC)
     parser.add_argument("--harvest-interval", type=float, default=HARVEST_INTERVAL_SEC)
+    parser.add_argument(
+        "--arm-limit",
+        default="",
+        help=(
+            "给某些臂设会话数上限，形如 \"first-legal=8,v2=0\"。跑到量即自动停用该臂。"
+            "**无人值守长跑必需**：否则对照臂会一直占掉一半样本，而人不在、没人把它删掉。"
+        ),
+    )
     args = parser.parse_args(argv)
 
     token = os.environ.get(args.token_env, "")
@@ -292,18 +339,26 @@ def main(argv: list[str] | None = None) -> int:
     print(f"决策器轮换表: {deciders}", flush=True)
     signal.signal(signal.SIGTERM, lambda *_: SHUTDOWN.set())
     signal.signal(signal.SIGINT, lambda *_: SHUTDOWN.set())
+    limits = parse_arm_limits(args.arm_limit)
     # **轮换位置必须从账本恢复**，不能每次都从 0 开始。进程会被环境周期性回收并重启，
     # 若 `done` 归零，重启后的每一轮都从 deciders[0] 开始，交错 A/B 就系统性偏向第一个
     # 档位——样本看起来是「交错」的，实际不是。
     done = prior_sessions(ledger)
+    arm_counts = prior_counts(ledger)
     if done:
         print(f"账本已有 {done} 场会话，轮换从 deciders[{done % len(deciders)}] 继续", flush=True)
     while args.sessions == 0 or done < args.sessions:
         if SHUTDOWN.is_set():
             print("收到停机信号，退出", flush=True)
             break
-        # 交错而非顺序：同一时段内交替使用不同档位，抵消对手组合与时间漂移
-        chosen = deciders[done % len(deciders)]
+        # 交错而非顺序：同一时段内交替使用不同档位，抵消对手组合与时间漂移。
+        # 已到会话上限的臂（对照臂）跳过，但**保证至少留一个可用的**——
+        # 全部到量时退回第一个，绝不让循环空转。
+        available = [n for n in deciders if arm_counts.get(n, 0) < limits.get(n, 1 << 30)]
+        if not available:
+            available = deciders[:1]
+        chosen = available[done % len(available)]
+        arm_counts[chosen] = arm_counts.get(chosen, 0) + 1
         try:
             record = run_one_session(
                 api,

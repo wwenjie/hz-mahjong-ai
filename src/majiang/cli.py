@@ -163,6 +163,15 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
     "risk": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode), risk_model=load_or_none(OPPONENT_MODEL_PATH)
     ),
+    # 决赛特化（tasks.md 5.13 + agent B 的复核）。**计分口径**：三轮的排序键依次是
+    # 总得分 -> 名次分(+3/+1/-1/-3) -> 白板获取数，而**决赛只用总得分**（同分无限加赛）。
+    # 也就是说名次分连晋级轮都只是**次级键**，而我们最近的改动都在优化名次分/胡次数这类
+    # 低方差代理量——对「测量功效」是对的，对「决赛目标函数」是偏保守的。
+    # 番数连乘、分布重尾（可达 512），故决赛应更偏向追高番。
+    "final": lambda mode: HeuristicDecider(PolicyConfig.for_mode(Mode.FINAL)),
+    "final-plus": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(Mode.FINAL, piao_threshold_scale=0.7, feed_weight=1.0)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 

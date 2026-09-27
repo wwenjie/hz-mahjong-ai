@@ -26,6 +26,9 @@ CAP="${MAJIANG_COLLECT_SESSION_CAP:-10800}"
 INTERVAL="${MAJIANG_COLLECT_HARVEST_INTERVAL:-10}"
 OUT="${MAJIANG_COLLECT_OUT:-data/auto_sessions}"
 BACKOFF="${MAJIANG_COLLECT_BACKOFF:-20}"
+# 给对照臂设会话数上限（形如 `first-legal=8`），跑到量自动停用该臂。
+# 无人值守必需：否则对照臂会一直占掉一半样本，而人不在、没人把它从轮换表里删掉。
+ARM_LIMIT="${MAJIANG_COLLECT_ARM_LIMIT:-}"
 
 child=0
 stopping=0
@@ -40,6 +43,7 @@ while [ "$stopping" -eq 0 ]; do
     --session-cap "$CAP" \
     --harvest-interval "$INTERVAL" \
     --decider "$DECIDERS" \
+    ${ARM_LIMIT:+--arm-limit "$ARM_LIMIT"} \
     --out "$OUT" &
   child=$!
   wait "$child"
