@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""B 的守护进程：watch + verify + track（不打平台、不改任何人的文件）。
+"""B 的守护进程（[C 接手 2026-09-28]）：watch + verify + track（不打平台、不改任何人的文件）。
 
 每 POLL_SEC 秒一轮：
-1. watch  — 检测 notes/agent-a.md 新条目（含 `### 答 B:`/`### 问 B:`），摘要记入 inbox
+1. watch  — 检测 notes/agent-a.md 新条目（含 `### 答 C:`/`### 问 C:`），摘要记入 inbox
 2. verify — data/auto_sessions 文件数增长 ≥GROWTH_THRESHOLD 时重跑不变量校验，
             违反数 >0 立刻写进 inbox（早期抓数据污染）
 3. track  — 跟踪冻结清单之后的新增 finished 场数；达到 REANALYZE_AT 场提醒做独立复算
 
-产物（全部在 verify/out/，B 的地盘）：
+产物（全部在 verify/out/）：
   watch.log      滚动日志
-  inbox.log      给 B 的待办队列（A 的新条目摘要、数据警报）
+  inbox.log      待办队列（A 的新条目摘要、数据警报）
   watch.status   一行心跳（last_seen 时间戳 + 计数），供人/进程确认存活
   watch.state.json  跨重启的持久状态（文件哈希、已见条目、上次校验的文件数）
   watch.pid      自身 pid（只读不写别的进程）
@@ -181,7 +181,6 @@ def main():
     st.setdefault("files_seen", 0)
     log(f"agent_watch 启动 pid={os.getpid()} poll={POLL_SEC}s")
     inbox("agent_watch 上线：watch(agent-a.md) + verify(invariants) + track(新数据)")
-
     while True:
         try:
             # 1. watch A 的条目
@@ -192,7 +191,7 @@ def main():
                 if titles:
                     inbox(f"A 新增 {len(titles)} 条: {'; '.join(titles)}")
                 for line in for_b:
-                    inbox(f"A→B: {line}")
+                    inbox(f"A→C: {line}")
 
             # 1b2. watch C 的条目（agent-c.md）
             hc = file_hash(AGENT_C)
@@ -202,7 +201,8 @@ def main():
                 if titles_c:
                     inbox(f"C 新增 {len(titles_c)} 条: {'; '.join(titles_c)}")
 
-            # 1b. watch THREAD.md 里 TO B 的新消息（协议 §3 通道）
+            # 1b. watch THREAD.md 里 TO C 的新消息（协议 §3 通道）
+            #      [C 接手 2026-09-28] B 已退役，改盯 TO C（不再盯 TO B）。
             ht = file_hash(THREAD)
             if ht and ht != st.get("thread_hash"):
                 st["thread_hash"] = ht
@@ -210,13 +210,13 @@ def main():
                     with open(THREAD, encoding="utf-8") as f:
                         thread_text = f.read()
                     msgs = [m for m in thread_text.split("\n### ")
-                            if " TO B " in m.splitlines()[0]]  # 只看标题行，防正文误命中
+                            if " TO C " in m.splitlines()[0]]  # 只看标题行，防正文误命中
                     seen_t = set(st.get("thread_msgs", []))
                     for m in msgs:
                         mh = hashlib.sha256(m.encode()).hexdigest()[:16]
                         if mh not in seen_t:
                             seen_t.add(mh)
-                            inbox(f"THREAD TO B 新消息: {m.splitlines()[0].strip()}")
+                            inbox(f"THREAD TO C 新消息: {m.splitlines()[0].strip()}")
                     st["thread_msgs"] = sorted(seen_t)
                 except OSError:
                     pass
