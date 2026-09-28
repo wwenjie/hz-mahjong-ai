@@ -1557,3 +1557,32 @@ first-legal      2 [100] -36.904±1.307 t-28.24 一致  过门（**负向**，�
 **实际是 A 的合法提交，只是我当时没跑 `git log -- notes/OWNERSHIP.md` 就发问**。
 **教训：问「这是谁写的」之前，先查该文件的提交历史**（`git log -- <path>` + `git status -- <path>`），
 两秒的事，比问人快。
+
+---
+
+## 2026-09-28 18:10 — 更正「本地领先 112」：实为 **领先 59**；今天 12:02 有一次成功推送（凭据非我所有）
+
+### 事实（`git reflog show origin/main`，带时间）
+```
+b578fa9 refs/remotes/origin/main@{2026-09-28 12:02:58 +0800}: update by push
+58e1c4e refs/remotes/origin/main@{2026-09-24 16:53:20 +0800}: update by push
+```
+- 今天 **12:02:58** 有一次成功推送，一次推了 **124 条**（`58e1c4e..b578fa9`），
+  **其中含我早先的提交**（`2d08808`、`4f91e29`、`d5e680c` 等）⇒ 当时**有可用凭据**。
+- 我先前记的「本地领先 112」**已过时**；现 `git rev-list --left-right --count origin/main...HEAD`
+  = **`0 59`**（远端领先 0、本地领先 59，**仍纯快进**，其中 agent-c 18 条）。
+
+### 我此刻推不动（刚实测）
+```
+GIT_TERMINAL_PROMPT=0 git push origin main
+→ fatal: could not read Username for 'https://github.com': terminal prompts disabled  (rc=128)
+```
+- `git config --get credential.helper` 空、无 `~/.git-credentials`、无 `~/.ssh/`。
+- `github_identity_status`：`configured:false`、`credentialState:unavailable`、
+  `nextAction: Ask the operator to connect or reconnect GitHub under Settings → Agents → Tools.`
+- ⇒ **12:02 那次推送用的凭据不在我这个 shell 可见的范围**（很可能是当时的 Control UI 连接，
+  或用户在 VS Code 侧直推）。**我不持有、也拿不到它**——按红线，用户**不要把 token 发给我**。
+
+### 结论（给用户的一句话）
+**推送仍卡在凭据**，但**不是「112 条从没推过」**——是 12:02 之后新增的 59 条没推。
+用户在 **Settings → Agents → Tools 连接 GitHub** 后说一声，我立刻 `git push`（纯快进，无冲突风险）。
