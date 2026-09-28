@@ -83,10 +83,15 @@ def scan(payload: dict, tally: dict, counters: collections.Counter) -> None:
     mine = ids.index(OUR_UID)
     for state, events in replay.iter_rounds(payload):
         ordinal = [0] * SEATS
+        first_meld: list[int | None] = [None] * SEATS
         counters["局数"] += 1
         for event in events:
-            if str(event.get("type")) == "tile_discarded":
-                seat = event.get("seat")
+            seat = event.get("seat")
+            kind = str(event.get("type"))
+            if kind in ("chi", "peng", "gang") and isinstance(seat, int) and 0 <= seat < SEATS:
+                if first_meld[seat] is None:
+                    first_meld[seat] = ordinal[seat]
+            elif kind == "tile_discarded":
                 tile = replay._tile_of(event.get("tile"))  # noqa: SLF001
                 # **序号只数自由决策点**：抓打圈强制的出牌不算一步（与到听率同口径），
                 # 否则同一批数据会因为「谁被抓打圈」而落到不同序号格。
@@ -119,6 +124,12 @@ def scan(payload: dict, tally: dict, counters: collections.Counter) -> None:
                         if value == 0:
                             cell[1] += 1
             replay.apply_event(state, event)
+        # **首次副露发生在第几手**：层内对比还差一个混淆——同为「1 组副露」，
+        # 在第 3 手动和第 9 手动，可利用的巡数完全不同。这条量它。
+        for seat, index in enumerate(first_meld):
+            if index is not None:
+                counters[f"{US if seat == mine else THEM} 首次副露序号"] += index
+                counters[f"{US if seat == mine else THEM} 首次副露次数"] += 1
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -151,16 +162,51 @@ def main(argv: list[str] | None = None) -> int:
     print("== 按出牌序号的到听率（序号相同 = 机会相同）==")
     for layer in ("0副露", "有副露"):
         print(f"\n-- {layer} 层 --")
-        print(f"{'序号':>4s} {'我们 n':>8s} {'我们%':>7s} {'对手 n':>8s} {'对手%':>7s} {'差':>7s}")
-        for k in range(1, MAX_ORDINAL + 1):
-            ours, theirs = tally[(US, layer, k)], tally[(THEM, layer, k)]
-            if ours[0] < 30 or theirs[0] < 90:  # 样本不足不报数，避免把噪声当趋势
-                continue
-            label = f"{k}" if k < MAX_ORDINAL else f"{k}+"
-            pa, pb = 100 * ours[1] / ours[0], 100 * theirs[1] / theirs[0]
-            print(f"{label:>4s} {ours[0]:>8d} {pa:>7.1f} {theirs[0]:>8d} {pb:>7.1f} {pa - pb:>+7.1f}")
+    print(f"{'序号':>4s} {'我们 n':>8s} {'我们%':>7s} {'对手 n':>8s} {'对手%':>7s} {'差':>7s}")
+    for k in range(1, MAX_ORDINAL + 1):
+        ours, theirs = tally[(US, layer, k)], tally[(THEM, layer, k)]
+        if ours[0] < 30 or theirs[0] < 90:  # 样本不足不报数，避免把噪声当趋势
+            continue
+        label = f"{k}" if k < MAX_ORDINAL else f"{k}+"
+        pa, pb = 100 * ours[1] / ours[0], 100 * theirs[1] / theirs[0]
+        print(f"{label:>4s} {ours[0]:>8d} {pa:>7.1f} {theirs[0]:>8d} {pb:>7.1f} {pa - pb:>+7.1f}")
+
+    print("\n== 差距的构成分解（副露「份额效应」vs「层内水平效应」）==")
+    print("口径：令 p = **0 副露层占比**，则到听率 = p×r0 + (1−p)×r1。以我们为参照拆「我们 − 对手」：")
+    print("  份额效应 = (p_我们 − p_对手) × (r0_我们 − r1_我们)")
+    print("  水平效应 = p_对手 × (r0_我们 − r0_对手) + (1−p_对手) × (r1_我们 − r1_对手)")
+    print("  交叉项为余数。**份额效应大 ⇒ 是「他们副露更多」的构成问题；水平效应大 ⇒ 是层内打法差异。**")
+    print(f"{'序号':>4s} {'我们0副露占比':>13s} {'对手0副露占比':>13s} {'总差':>7s} "
+          f"{'份额':>7s} {'水平':>7s} {'交叉':>7s}")
+    for k in range(2, MAX_ORDINAL + 1):
+        cells = {}
+        ok = True
+        for who in (US, THEM):
+            a, b = tally[(who, "0副露", k)], tally[(who, "有副露", k)]
+            if a[0] + b[0] < 120 or a[0] < 25 or b[0] < 25:
+                ok = False
+                break
+            cells[who] = (a[0] / (a[0] + b[0]), a[1] / a[0], b[1] / b[0])
+        if not ok:
+            continue
+        pu, r0u, r1u = cells[US]
+        pt, r0t, r1t = cells[THEM]
+        total = (pu * r0u + (1 - pu) * r1u) - (pt * r0t + (1 - pt) * r1t)
+        share_eff = (pu - pt) * (r0u - r1u)
+        rate_eff = pt * (r0u - r0t) + (1 - pt) * (r1u - r1t)
+        label = str(k) if k < MAX_ORDINAL else f"{k}+"
+        print(f"{label:>4s} {pu:>13.1%} {pt:>13.1%} "
+              f"{100 * total:>+7.1f} {100 * share_eff:>+7.1f} {100 * rate_eff:>+7.1f} "
+              f"{100 * (total - share_eff - rate_eff):>+7.1f}")
     print("\n读法：前几序号打平、中段开始落后 ⇒ 中段（向听 2~1）是缺口所在；"
           "\n全程落后 ⇒ 起手/早期就有结构问题。")
+    print("\n== 首次副露发生在第几手（层内混淆的补量）==")
+    for group in (US, THEM):
+        n = counters[f"{group} 首次副露次数"]
+        if n:
+            print(f"  {group}: 均值 **{counters[f'{group} 首次副露序号'] / n:.2f}** 手（n={n}）")
+    print("  同为「1 组副露」，早副露可利用的巡数更多 ⇒ 若我们明显更晚，"
+          "「有副露层」的水平差就有一部分是**时机**而非打法。")
     print("⚠ 混淆：出牌序号不是完美的机会度量——副露多的一方不出牌也在推进，"
           "而对手副露是我们的 1.85 倍。引用时必须写明这条。")
     return 0
