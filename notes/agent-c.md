@@ -1885,3 +1885,18 @@ PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True)), S
 ### 自记
 我 19:11 刚在 THREAD 里向 A 问「是否你有意搁置」——**答案在同一棵树的 openspec 里，先查再问**。
 （与今天前面三次同类：先查已有记录，再发言。）
+
+---
+
+## 2026-09-28 19:12 — 我发给 agent-d 的 `search@v3` 配方**已实测可构造**（不是纸上建议）
+
+只实例化、不跑对局（零算力占用）：
+```python
+from majiang.strategy.search import SearchDecider, SearchConfig
+from majiang.strategy.policy import HeuristicDecider, PolicyConfig, Mode
+s_v2 = SearchDecider(HeuristicDecider(PolicyConfig.for_mode(Mode.QUALIFIER)), SearchConfig(samples=6, top_k=2))
+cfg  = PolicyConfig.for_mode(Mode.QUALIFIER, tiebreak="exact-ukeire", wait_aware_tenpai=True)
+s_v3 = SearchDecider(HeuristicDecider(cfg), SearchConfig(samples=6, top_k=2))
+```
+输出：`v2 底 wait_aware_tenpai = False` / `v3 底 wait_aware_tenpai = True` ⇒ **两者唯一差别即 v3 的听牌修正**，
+配方成立。agent-d 可把它注册为 `CUSTOM["search-v3"]`，`--baseline v3` 直接跑。
