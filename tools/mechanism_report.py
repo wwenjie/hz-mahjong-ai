@@ -65,6 +65,11 @@ class Arm:
     # 中段机制量：`ukeire-early` 这类「前中期也看进张」的改动，指望的是**到听更快**，
     # 所以判据应当是「到听率」与「进入各向听时的进张数」，而不是总得分。
     tenpai_rounds: int = 0
+    # **到听的先后要比「有没有到听」敏感得多**：`ukeire-early` 这类改动的目标是「更快到听」，
+    # 而「是否曾到听」在 68% 上下早就饱和了——拿它做判据会看不出任何差别（实测也正是如此：
+    # 67.97% vs 67.58%）。所以额外记「本局第几张摸牌后首次到听」。
+    tenpai_turn_total: int = 0
+    tenpai_turn_n: int = 0
     ukeire_kinds: dict[int, int] = field(default_factory=lambda: {1: 0, 2: 0})
     ukeire_copies: dict[int, int] = field(default_factory=lambda: {1: 0, 2: 0})
     ukeire_n: dict[int, int] = field(default_factory=lambda: {1: 0, 2: 0})
@@ -78,6 +83,8 @@ class Arm:
         self.god_at_win += other.god_at_win
         self.fan_total += other.fan_total
         self.tenpai_rounds += other.tenpai_rounds
+        self.tenpai_turn_total += other.tenpai_turn_total
+        self.tenpai_turn_n += other.tenpai_turn_n
         self.shanten_failed += other.shanten_failed
         for level in (1, 2):
             self.ukeire_kinds[level] += other.ukeire_kinds[level]
@@ -87,6 +94,11 @@ class Arm:
     @property
     def tenpai_rate(self) -> float:
         return self.tenpai_rounds / self.rounds if self.rounds else 0.0
+
+    @property
+    def tenpai_turn_mean(self) -> float:
+        """首次到听时的摸牌序号均值（越小越早）。未到听的局不进这个均值。"""
+        return self.tenpai_turn_total / self.tenpai_turn_n if self.tenpai_turn_n else 0.0
 
     def ukeire_mean(self, level: int, *, kinds: bool = True) -> float:
         n = self.ukeire_n[level]
@@ -125,6 +137,7 @@ class _ArrivalProbe:
         self.arm = arm
         self.seat = seat
         self.arrived: set[int] = set()
+        self.draws = 0  # 本座本局第几次摸牌
 
     @property
     def name(self) -> str:
@@ -141,7 +154,10 @@ class _ArrivalProbe:
     def choose(self, situation, actions, *, budget_ms: int = 0):  # noqa: ANN001, ANN201
         from majiang.rules import shanten as shanten_module  # noqa: PLC0415
         from majiang.rules.action import DISCARD  # noqa: PLC0415
+        from majiang.rules.situation import PHASE_DRAW  # noqa: PLC0415
 
+        if situation.phase == PHASE_DRAW and situation.drawn_tile is not None:
+            self.draws += 1
         choice = self.inner.choose(situation, actions, budget_ms=budget_ms)  # type: ignore[attr-defined]
         if situation.seat != self.seat or choice is None or choice.kind != DISCARD:
             return choice
@@ -157,6 +173,8 @@ class _ArrivalProbe:
         if value == 0 and 0 not in self.arrived:
             self.arrived.add(0)
             self.arm.tenpai_rounds += 1
+            self.arm.tenpai_turn_total += self.draws
+            self.arm.tenpai_turn_n += 1
         for level in (1, 2):
             if value == level and level not in self.arrived:
                 self.arrived.add(level)
@@ -237,6 +255,7 @@ def main(argv: list[str] | None = None) -> int:
                 f"  {arm_name:14s} 座{seat}  局{part.rounds:5d}  胡{part.wins:4d}"
                 f"  爆头{part.baotou:3d}  爆头/胡 {part.baotou_of_wins:6.1%}"
                 f"  均番 {part.mean_fan:5.2f}  到听 {part.tenpai_rate:6.2%}"
+                f"（第{part.tenpai_turn_mean:4.1f}摸）"
                 f"  进2向听 {part.ukeire_mean(2):5.2f}  进1向听 {part.ukeire_mean(1):5.2f}",
                 flush=True,
             )
@@ -247,7 +266,7 @@ def main(argv: list[str] | None = None) -> int:
           f"另三座={args.field}，用时 {elapsed:.0f}s）===")
     print(f"{'档位':14s} {'局数':>6s} {'流局':>6s} {'胡率':>7s} {'爆头/胡':>8s}"
           f" {'爆头/局':>8s} {'均番':>6s} {'胜时财神':>8s} {'到听率':>7s}"
-          f" {'进2向听':>8s} {'进1向听':>8s}")
+          f" {'到听摸序':>8s} {'进2向听':>8s} {'进1向听':>8s}")
     for arm_name in arms:
         arm = table[arm_name]
         print(
@@ -255,7 +274,7 @@ def main(argv: list[str] | None = None) -> int:
             f" {arm.win_rate:7.2%} {arm.baotou_of_wins:8.1%}"
             f" {arm.baotou / arm.rounds:8.1%} {arm.mean_fan:6.2f}"
             f" {arm.god_at_win_mean:8.2f} {arm.tenpai_rate:7.2%}"
-            f" {arm.ukeire_mean(2):8.2f} {arm.ukeire_mean(1):8.2f}"
+            f" {arm.tenpai_turn_mean:8.2f} {arm.ukeire_mean(2):8.2f} {arm.ukeire_mean(1):8.2f}"
         )
     print("\n读法：① 均番差要落在「爆头/胡」这一列上才算打中 B 定位的那条轴；"
           "若只有「胜时财神」动而「爆头/胡」不动，说明财神只是留着、没变成爆头。"
