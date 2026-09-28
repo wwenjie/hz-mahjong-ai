@@ -1,26 +1,46 @@
 {
  "snapshot": {
-  "files": 1129,
-  "files_finished": 1120,
+  "files": 2896,
+  "files_finished": 2887,
   "files_abandoned": 9,
-  "files_without_game_ended": 9,
-  "rounds": 8969
+  "files_without_game_ended": 10,
+  "rounds": 23105
  },
  "stats": {
-  "draws_total": 296941,
+  "draws_total": 761727,
   "draws_max_per_round": 63,
-  "chi": 17553,
-  "peng": 15855,
-  "gang_ming": 960,
-  "gang_bu": 547,
-  "gang_an": 357,
+  "chi": 45539,
+  "peng": 41401,
+  "gang_ming": 2354,
+  "gang_bu": 1529,
+  "gang_an": 904,
   "files_with_seq_gaps": 0,
   "seq_gaps": 0,
-  "summary_rule_全收": 994,
-  "summary_rule_只收非流局": 110,
-  "summary_rule_非流局+末位": 16
+  "summary_rule_全收": 2573,
+  "summary_rule_只收非流局": 268,
+  "summary_rule_非流局+末位": 45
  },
- "violations_by_kind": {},
+ "violations_by_kind": {
+  "round_ended_count": 1,
+  "rounds_len_mismatch": 1,
+  "rounds_entry_mismatch": 1
+ },
  "fail_violations": 0,
- "violations_detail": []
+ "violations_detail": [
+  {
+   "kind": "round_ended_count",
+   "where": "a_68ef6410af87_r1_b0_t0.json#r8",
+   "detail": "count=0"
+  },
+  {
+   "kind": "rounds_len_mismatch",
+   "where": "a_68ef6410af87_r1_b0_t0.json",
+   "detail": "rounds[]=8 非流局=7 流局=0"
+  },
+  {
+   "kind": "rounds_entry_mismatch",
+   "where": "a_68ef6410af87_r1_b0_t0.json",
+   "detail": "summary={\"dealer\": 1, \"is_draw\": 0, \"multiplier\": 1, \"round_no\": 8, \"scores\": [-1, -8, 10, -1], \"winner\": 2} events=[]"
+  }
+ ]
 }

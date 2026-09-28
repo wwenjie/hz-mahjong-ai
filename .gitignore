@@ -28,3 +28,14 @@ notes/manifest-pre-cut.txt
 notes/manifest-post-cut.txt
 data/experiments/logs/
 notes/.thread_seen_a
+
+# B 的 verify 产物：运行时状态与大体积可再生成文件忽略；证据类小文件（seedcheck 日志、
+# *-latest.json、win_rate_table.json、spotcheck 文本）保留入库
+verify/out/watch.pid
+verify/out/watch_supervisor.pid
+verify/out/watch.state.json
+verify/out/watch.status
+verify/out/watch.log
+verify/out/inbox.log
+verify/out/clone_samples.npz
+verify/out/clone_model.pkl
