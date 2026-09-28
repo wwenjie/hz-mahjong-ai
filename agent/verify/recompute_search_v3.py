@@ -5,28 +5,31 @@
 `run_ab.py` 只落**聚合值**（mean/se/t/n），不落逐场明细。但 agent-d 的 `paired_ab`
 保证：**每场只由 `(names, index, rounds, base_score, seed)` 完全确定**，
 对局种子 = `seed * 100003 + index`，`start_dealer = index % SEATS`。
-⇒ 我可以**用自己的实现重跑同一批对局**，与它的聚合读数逐位对照——这正是独立复算。
+⇒ 我用自己的实现重跑同一批对局，与它的聚合读数对照——这就是独立复算。
 
 本脚本只读主仓（`src/majiang/**`），完全**不 import** `nnrl.*`。
-臂构造按 agent-d 的 `nnrl/v3arms.py` 配方（等价于主仓 `search` 但内层换 v3）：
-  search-v3      = SearchDecider(versions.build("v3", QUALIFIER), SearchConfig(samples=6,  top_k=2))
-  search-deep-v3 = SearchDecider(versions.build("v3", QUALIFIER), SearchConfig(samples=16, top_k=3))
-  baseline v3    = versions.build("v3", QUALIFIER)
+臂构造按 agent-d 的 `nnrl/v3arms.py` 配方（等价于主仓 `search` 但内层换 v3）。
 
-同时验证 agent-d 点名的两点：
-  ⓐ `_rank_discards` 对 w/wo `wait_aware_tenpai` 逐点相同（空干预的直接检验）；
-  ⓑ `search-deep-v3` 各段与 `search-v3` 同向（此处复算每一段的 5 项指标）。
+用法::
 
-用法（链退出、负载降下后再跑）：
-  nice -n 19 PYTHONPATH=src .venv/bin/python agent/verify/recompute_search_v3.py
+    # 仪表自检（小样本）
+    nice -n 10 .venv/bin/python agent/verify/recompute_search_v3.py \
+        --arms search-v3 --seeds 20260928 --matches 2 --workers 4
+
+    # 正式复算（等链与 RL 对拍跑完、核空闲时）
+    nice -n 10 .venv/bin/python agent/verify/recompute_search_v3.py \
+        --arms search-v3,search-deep-v3 --seeds 20260928,771014 --matches 40 --workers 12
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import math
+import multiprocessing as mp
 import random
 import sys
+import time
 from pathlib import Path
 
 REPO = Path("/home/wuwenjie01/majiang_ai")
@@ -49,10 +52,8 @@ def make(name: str):
         return SearchDecider(build_version("v3", Mode.QUALIFIER), SearchConfig(samples=6, top_k=2))
     if name == "search-deep-v3":
         return SearchDecider(build_version("v3", Mode.QUALIFIER), SearchConfig(samples=16, top_k=3))
-    if name == "v3":
-        return build_version("v3", Mode.QUALIFIER)
-    if name == "v2":
-        return build_version("v2", Mode.QUALIFIER)
+    if name in ("v1", "v2", "v3"):
+        return build_version(name, Mode.QUALIFIER)
     if name in DECIDERS:
         from majiang.cli import make_decider
 
@@ -60,15 +61,16 @@ def make(name: str):
     raise SystemExit(f"未知臂 {name!r}")
 
 
-def play(names: list[str], index: int, *, rounds: int, base_score: int, seed: int):
-    """复刻 eeval._play：同种子同起庄，返回四座 5 元组。"""
+def _play_task(task: tuple) -> tuple:
+    """worker 入口（模块级，fork 传参）：跑一场，返回四座 5 元组。"""
+    names, index, rounds, base_score, seed = task
     deciders = [make(n) for n in names]
     result = run_match(
         deciders,
         rounds=rounds,
         base_score=base_score,
         seed=seed * LAMBDA + index,
-        labels=names,
+        labels=list(names),
         start_dealer=index % SEATS,
     )
     return tuple(
@@ -76,30 +78,37 @@ def play(names: list[str], index: int, *, rounds: int, base_score: int, seed: in
     )
 
 
-def paired_ab(treatment: str, baseline: str, *, matches: int, rounds: int, base_score: int, seed: int):
-    """复刻 eeval.paired_ab 的配对逻辑（默认场地=baseline）。"""
-    field_list = [baseline] * 3
+def _names_for(rotation: int, seat_name: str, baseline: str) -> list[str]:
+    row = [""] * SEATS
+    row[rotation] = seat_name
+    for seat, nm in zip([s for s in range(SEATS) if s != rotation], [baseline] * 3):
+        row[seat] = nm
+    return row
 
-    def names_for(rotation: int, seat_name: str) -> list[str]:
-        row = [""] * SEATS
-        row[rotation] = seat_name
-        for seat, nm in zip([s for s in range(SEATS) if s != rotation], field_list):
-            row[seat] = nm
-        return row
 
-    base_runs = [play([baseline] * SEATS, i, rounds=rounds, base_score=base_score, seed=seed)
-                 for i in range(matches)]
+def paired_ab_par(pool, treatment: str, baseline: str, *, matches: int, rounds: int,
+                  base_score: int, seed: int):
+    """复刻 nnrl.eval.paired_ab 的配对逻辑（默认场地=baseline），多进程执行。"""
+    base_tasks = [(tuple([baseline] * SEATS), i, rounds, base_score, seed) for i in range(matches)]
+    base_res = pool.map(_play_task, base_tasks, chunksize=1)
+
+    treat_tasks, keys = [], []
+    for rotation in range(SEATS):
+        names = tuple(_names_for(rotation, treatment, baseline))
+        for i in range(matches):
+            treat_tasks.append((names, i, rounds, base_score, seed))
+            keys.append((rotation, i))
+    treat_res = pool.map(_play_task, treat_tasks, chunksize=1)
+
     diffs: dict[str, list[float]] = {lab: [] for lab in LABELS}
     t_score = b_score = 0
-    for rotation in range(SEATS):
-        names = names_for(rotation, treatment)
-        for i in range(matches):
-            mine = play(names, i, rounds=rounds, base_score=base_score, seed=seed)[rotation]
-            theirs = base_runs[i][rotation]
-            for lab, a, b in zip(LABELS, mine, theirs):
-                diffs[lab].append(a - b)
-            t_score += mine[0]
-            b_score += theirs[0]
+    for (rotation, i), mine in zip(keys, treat_res):
+        theirs = base_res[i][rotation]
+        m = mine[rotation]
+        for lab, a, b in zip(LABELS, m, theirs):
+            diffs[lab].append(a - b)
+        t_score += m[0]
+        b_score += theirs[0]
     return diffs, t_score, b_score
 
 
@@ -111,7 +120,7 @@ def stat(vals: list[float]):
     return mean, se, (mean / se if se else 0.0), n
 
 
-def check_rank_discards_identity(samples: int = 4000, want: int = 21) -> None:
+def check_rank_discards_identity(want: int = 21) -> None:
     """ⓐ `_rank_discards` 对 w/wo `wait_aware_tenpai` 是否逐点相同（听牌局面）。"""
     from majiang.rules import shanten as shanten_module
     from majiang.rules.action import legal_actions
@@ -123,14 +132,13 @@ def check_rank_discards_identity(samples: int = 4000, want: int = 21) -> None:
     d2 = SearchDecider(HeuristicDecider(c2), SearchConfig(samples=6, top_k=2))
     d3 = SearchDecider(HeuristicDecider(c3), SearchConfig(samples=6, top_k=2))
     rng = random.Random(31415926)
-    found = checked = diff = 0
+    found = diff = 0
     while found < want:
         st = round_module.deal(rng, dealer=rng.randrange(4))
         seat = st.turn
         round_module._draw(st, seat)  # noqa: SLF001
         sit = round_module.situation_for(st, seat, PHASE_DRAW)
-        hand = sit.hand.counts
-        mc = sit.hand.meld_count
+        hand, mc = sit.hand.counts, sit.hand.meld_count
         best = 99
         for t in range(34):
             if hand[t] <= 0:
@@ -145,56 +153,64 @@ def check_rank_discards_identity(samples: int = 4000, want: int = 21) -> None:
             continue
         found += 1
         actions = legal_actions(sit)
-        r2 = [(x.tile, x.total) for x in d2._rank_discards(sit, actions)]
-        r3 = [(x.tile, x.total) for x in d3._rank_discards(sit, actions)]
-        checked += 1
-        if r2 != r3:
+        if [(x.tile, x.total) for x in d2._rank_discards(sit, actions)] != \
+           [(x.tile, x.total) for x in d3._rank_discards(sit, actions)]:
             diff += 1
-    print(f"ⓐ `_rank_discards` 听牌局面 n={checked}  w/wo wait_aware 有差异: {diff}")
+    print(f"ⓐ `_rank_discards` 听牌局面 n={found}  w/wo wait_aware 有差异: {diff}")
 
 
 def main() -> int:
-    seeds = [20260928, 771014]
-    matches, rounds, base_score = 40, 8, 1
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--arms", default="search-v3,search-deep-v3")
+    ap.add_argument("--seeds", default="20260928,771014")
+    ap.add_argument("--matches", type=int, default=40)
+    ap.add_argument("--rounds", type=int, default=8)
+    ap.add_argument("--workers", type=int, default=0, help="0=核数-4")
+    ap.add_argument("--out", default=str(REPO / "agent" / "out" / "recompute-search-v3.json"))
+    ap.add_argument("--identity", action="store_true", help="先做 ⓐ 同一性检验")
+    args = ap.parse_args()
+
+    arms = [a for a in args.arms.split(",") if a.strip()]
+    seeds = [int(s) for s in args.seeds.split(",") if s.strip()]
+    workers = args.workers or max(1, (mp.cpu_count() or 4) - 4)
 
     print("=" * 74)
-    print("独立复算（不 import nnrl.eval；主仓只读）")
+    print(f"独立复算（不 import nnrl.eval；主仓只读）arms={arms} seeds={seeds} "
+          f"matches={args.matches} workers={workers}")
     print("=" * 74)
-    check_rank_discards_identity()
 
-    results = {}
-    # 读 agent-d 已落盘的聚合值（若有）供对照
     ref_path = Path("/home/wuwenjie01/majiang_rl/records/ab-search-v3-vs-v3.json")
     ref = json.loads(ref_path.read_text()) if ref_path.exists() else None
-    if ref:
-        print(f"[对照] 已读取 agent-d 落盘 {ref_path.name}")
-    else:
-        print("[对照] agent-d 的 ab-search-v3-vs-v3.json 尚未落盘——仅出我方复算值")
 
-    for arm in ("search-v3", "search-deep-v3"):
-        for seed in seeds:
-            diffs, ts, bs = paired_ab(arm, "v3", matches=matches, rounds=rounds,
-                                      base_score=base_score, seed=seed)
-            row = {}
-            print(f"\n[{arm} seed={seed}] n={matches * SEATS}/指标（treatment − baseline=v3）")
-            for lab in LABELS:
-                m, se, t, n = stat(diffs[lab])
-                row[lab] = {"mean": m, "se": se, "t": t, "n": n}
-                refm = ""
-                if ref:
-                    try:
-                        r = ref["arms"][arm][str(seed)][lab]
-                        refm = f"   | agent-d: {r['mean']:+.3f} (t{r['t']:+.2f})"
-                    except Exception:  # noqa: BLE001
-                        refm = ""
-                print(f"   {lab:8s} {m:+8.3f} ±{se:5.3f}  t {t:+6.2f}  n={n}{refm}")
-            row["_scores"] = {"treatment": ts, "baseline": bs}
-            results[f"{arm}@{seed}"] = row
+    results: dict = {}
+    t0 = time.time()
+    with mp.get_context("fork").Pool(processes=workers) as pool:
+        if args.identity:
+            check_rank_discards_identity()
+        for arm in arms:
+            for seed in seeds:
+                diffs, ts, bs = paired_ab_par(pool, arm, "v3", matches=args.matches,
+                                              rounds=args.rounds, base_score=1, seed=seed)
+                row = {}
+                print(f"\n[{arm} seed={seed}] n={args.matches * SEATS}（treatment − baseline=v3）")
+                for lab in LABELS:
+                    m, se, t, n = stat(diffs[lab])
+                    row[lab] = {"mean": m, "se": se, "t": t, "n": n}
+                    refm = ""
+                    if ref:
+                        try:
+                            r = ref["arms"][arm][str(seed)][lab]
+                            refm = f"   | agent-d: {r['mean']:+.3f} (t{r['t']:+.2f})"
+                        except Exception:  # noqa: BLE001
+                            refm = ""
+                    print(f"   {lab:8s} {m:+8.3f} ±{se:5.3f}  t {t:+6.2f}  n={n}{refm}")
+                row["_scores"] = {"treatment": ts, "baseline": bs}
+                results[f"{arm}@{seed}"] = row
 
-    out = REPO / "agent" / "out" / "recompute-search-v3.json"
+    out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"\n复算结果写入 {out}")
+    print(f"\n复算结果写入 {out}  用时 {time.time() - t0:.0f}s")
     return 0
 
 
