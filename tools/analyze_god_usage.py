@@ -37,6 +37,9 @@ DISCARDED = "tile_discarded"
 US = "我们"
 THEM = "对手"
 MILESTONE = 4  # 在第几次摸牌上取状态
+# **口径警告**：本工具统计的是「手留白板」（第 4 摸时手牌里的白板数），
+# 与官方 `god_count`（配牌全手 + 每次墙摸含杠上摸）**不是同一个定义**，也
+# **不可经事件流复算**（指南 09-02）。官方值只能直读 ranking 的 god_count。
 
 
 def bucket(gods: int) -> str:
