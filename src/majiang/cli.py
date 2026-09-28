@@ -278,6 +278,18 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
                               shape_value=True, feed_weight=1.0)
     ),
+    # **副露闸门的重测**（带一个今晚才成立的理由）：当年 `meld-equal` 三个配置一致为负，
+    # 但那时**副露手的候选并列最严重**（1 组 89.2%、2 组 93.5%）⇒ 副露之后的出牌近乎随机，
+    # 于是「多副露」看起来只有代价、没有收益。修好形质项后这条混淆才被拆掉。
+    # 而对手侧指纹显示副露是**最大的行为差异**：强 bot 1.20~1.30 副露/局 vs 我们 0.62。
+    "shape-meld-equal": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, meld_tolerance="equal")
+    ),
+    "shape-meld-early": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, meld_tolerance="equal-early")
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 

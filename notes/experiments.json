@@ -3513,11 +3513,34 @@
    "seeds": [
     20260927
    ],
-   "status": "running",
+   "status": "held",
    "hypothesis": "**形质修好之后才谈得上降喂牌权重**。实测：形质项退化时「全量 total」的 argmax 与「只看喂牌」前 1 一致率 **97.7%**（中段实际上就是「先打字牌、再打边张、留中张」这张写死的牌种表在决策）；打开 shape 后降到 **92.3%**（3×feed 差幅最大 1.8 > 形质分辨率 <1）。所以 `feed-low` 当年测平（+0.19/+0.33 不可辨）是可解释的：**没有东西可让位**。本条＝修好形质 + 把喂牌权重 3.0 降到 1.0。基线取 v3，测的是叠在冠军之上的增量。",
    "kill_criteria": "机制量（到听摸序/到听率）不向强 bot 画像移动 ⇒ 不采纳；另：先看 `shape-vs-v3` 的结果——若 shape 单独就已经把机制推到位，本条可能重复，先不排。",
-   "started_at": "2026-09-29T00:41:04+08:00",
-   "claimed_by": 2021563
+   "result": {
+    "status": "failed",
+    "detail": "ab_test 退出码 143: ",
+    "commands": [
+     [
+      "nice",
+      "-n",
+      "15",
+      "uv",
+      "run",
+      "python",
+      "tools/ab_test.py",
+      "--treatment",
+      "shape-feed-low",
+      "--baseline",
+      "tenpai-wait",
+      "--matches",
+      "120",
+      "--seed",
+      "20260927"
+     ]
+    ]
+   },
+   "ended_at": "2026-09-29T00:42:14+08:00",
+   "note_held": "**暂缓（我自己叫停的）**：按「先看 shape 单独结果」的顺序，在 shape 的机制门与 A/B 出结论前不并行占算力。队列 6 worker 把它一起拉起来后出现 4 个重 job 并行，与 RL 线争用过度。"
   },
   {
    "id": "shape-feed-low-vs-v3-s771014",
@@ -3527,11 +3550,86 @@
    "seeds": [
     771014
    ],
-   "status": "running",
+   "status": "held",
    "hypothesis": "**形质修好之后才谈得上降喂牌权重**。实测：形质项退化时「全量 total」的 argmax 与「只看喂牌」前 1 一致率 **97.7%**（中段实际上就是「先打字牌、再打边张、留中张」这张写死的牌种表在决策）；打开 shape 后降到 **92.3%**（3×feed 差幅最大 1.8 > 形质分辨率 <1）。所以 `feed-low` 当年测平（+0.19/+0.33 不可辨）是可解释的：**没有东西可让位**。本条＝修好形质 + 把喂牌权重 3.0 降到 1.0。基线取 v3，测的是叠在冠军之上的增量。",
    "kill_criteria": "机制量（到听摸序/到听率）不向强 bot 画像移动 ⇒ 不采纳；另：先看 `shape-vs-v3` 的结果——若 shape 单独就已经把机制推到位，本条可能重复，先不排。",
-   "started_at": "2026-09-29T00:41:04+08:00",
-   "claimed_by": 2021563
+   "result": {
+    "status": "failed",
+    "detail": "ab_test 退出码 143: ",
+    "commands": [
+     [
+      "nice",
+      "-n",
+      "15",
+      "uv",
+      "run",
+      "python",
+      "tools/ab_test.py",
+      "--treatment",
+      "shape-feed-low",
+      "--baseline",
+      "tenpai-wait",
+      "--matches",
+      "120",
+      "--seed",
+      "771014"
+     ]
+    ]
+   },
+   "ended_at": "2026-09-29T00:42:14+08:00",
+   "note_held": "**暂缓（我自己叫停的）**：按「先看 shape 单独结果」的顺序，在 shape 的机制门与 A/B 出结论前不并行占算力。队列 6 worker 把它一起拉起来后出现 4 个重 job 并行，与 RL 线争用过度。"
+  },
+  {
+   "id": "shape-meld-equal-vs-v3-s20260927",
+   "treatment": "shape-meld-equal",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    20260927
+   ],
+   "status": "held",
+   "note_held": "在 `shape-vs-v3` 的机制门与 A/B 出结论前不启动（避免并行占算力）。",
+   "hypothesis": "**副露闸门重测**：当年 `meld-equal*` 三个配置一致为负，但那时副露手的候选并列最严重（1 组 89.2%、2 组 93.5%）⇒ **副露后的出牌近乎随机**，于是「多副露」只显得有代价。形质项修好后这条混淆才被拆掉。而对手侧指纹显示副露是**最大的行为差异**（强 bot 1.20~1.30/局 vs 我们 0.62），且他们首次到听摸序比我们早约 1 摸。基线取 v3。",
+   "kill_criteria": "机制量（到听摸序 / 到听率 / 爆头率）不向强 bot 画像移动 ⇒ 不采纳；两种子 A/B 不同向 ⇒ 不采纳。"
+  },
+  {
+   "id": "shape-meld-equal-vs-v3-s771014",
+   "treatment": "shape-meld-equal",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    771014
+   ],
+   "status": "held",
+   "note_held": "在 `shape-vs-v3` 的机制门与 A/B 出结论前不启动（避免并行占算力）。",
+   "hypothesis": "**副露闸门重测**：当年 `meld-equal*` 三个配置一致为负，但那时副露手的候选并列最严重（1 组 89.2%、2 组 93.5%）⇒ **副露后的出牌近乎随机**，于是「多副露」只显得有代价。形质项修好后这条混淆才被拆掉。而对手侧指纹显示副露是**最大的行为差异**（强 bot 1.20~1.30/局 vs 我们 0.62），且他们首次到听摸序比我们早约 1 摸。基线取 v3。",
+   "kill_criteria": "机制量（到听摸序 / 到听率 / 爆头率）不向强 bot 画像移动 ⇒ 不采纳；两种子 A/B 不同向 ⇒ 不采纳。"
+  },
+  {
+   "id": "shape-meld-early-vs-v3-s20260927",
+   "treatment": "shape-meld-early",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    20260927
+   ],
+   "status": "held",
+   "note_held": "在 `shape-vs-v3` 的机制门与 A/B 出结论前不启动（避免并行占算力）。",
+   "hypothesis": "**副露闸门重测**：当年 `meld-equal*` 三个配置一致为负，但那时副露手的候选并列最严重（1 组 89.2%、2 组 93.5%）⇒ **副露后的出牌近乎随机**，于是「多副露」只显得有代价。形质项修好后这条混淆才被拆掉。而对手侧指纹显示副露是**最大的行为差异**（强 bot 1.20~1.30/局 vs 我们 0.62），且他们首次到听摸序比我们早约 1 摸。基线取 v3。",
+   "kill_criteria": "机制量（到听摸序 / 到听率 / 爆头率）不向强 bot 画像移动 ⇒ 不采纳；两种子 A/B 不同向 ⇒ 不采纳。"
+  },
+  {
+   "id": "shape-meld-early-vs-v3-s771014",
+   "treatment": "shape-meld-early",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    771014
+   ],
+   "status": "held",
+   "note_held": "在 `shape-vs-v3` 的机制门与 A/B 出结论前不启动（避免并行占算力）。",
+   "hypothesis": "**副露闸门重测**：当年 `meld-equal*` 三个配置一致为负，但那时副露手的候选并列最严重（1 组 89.2%、2 组 93.5%）⇒ **副露后的出牌近乎随机**，于是「多副露」只显得有代价。形质项修好后这条混淆才被拆掉。而对手侧指纹显示副露是**最大的行为差异**（强 bot 1.20~1.30/局 vs 我们 0.62），且他们首次到听摸序比我们早约 1 摸。基线取 v3。",
+   "kill_criteria": "机制量（到听摸序 / 到听率 / 爆头率）不向强 bot 画像移动 ⇒ 不采纳；两种子 A/B 不同向 ⇒ 不采纳。"
   }
  ]
 }
