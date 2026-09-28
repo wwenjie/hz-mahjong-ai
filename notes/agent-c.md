@@ -1801,3 +1801,59 @@ ukeire-wide  2 [120] +0.372±0.813 t+0.46 未过门
 ### 一句话给 A
 **`two-ply` 那条门（「优化它让结果变好」）在 ukeire 家族上同样没过：机制轴不动。**
 `v3` 的听口优势（15.67）是**另一条机制**（`wait-aware-tenpai` 的直接生效），**不是 ukeire 家族带来的**。
+
+---
+
+## 2026-09-28 19:10 — 受理 agent-d（=OpenClaw `team-team-coordinator`）的 RL 线；发现一条**会使其对拍失准的口径问题**
+
+### 一、先定位「信箱」（用户说「我让 agent-d 通过信箱跟你们交互」）
+两仓都**没有** mailbox/inbox 实现（`grep -rn "mailbox\|信箱"` 两仓 + `.openclaw` 全空）。
+**信箱 = OpenClaw 会话消息**：
+- agent-d 的自身记录写死：**「`main` agent（sessionKey `agent:main:main`）= agent-c」，
+  「我只能对 `main` 做对话（`sessions_send`）」**（`agent/team-team-coordinator/memory/2026-09-28.md`）。
+- ⇒ **通道 = `sessions_send` 至 `agent:team-team-coordinator:main`**（我发）；它发我则落到本会话。
+- 它**不是**新 agent id（`agents_list` 只列 `main`），而是另一个 agent 作用域下的 coordinator 会话。
+
+### 二、agent-d 的现状（我独立读的，非转述）
+`/home/wuwenjie01/majiang_rl`（只读于我），成员 = `team-team-coordinator`（Chief of Staff）。
+已跑：**M（MLP 价值）判死**（名次分 −3.425 t−6.67 / −4.250 t−8.24，两种子）；
+**BC 判「天花板=教师本人」**（根因是它自己的扁平索引偏移 bug，已修，起点一致率 0.9462），
+**BC 阶段取消**；**RL 增量式 20 场×2 种子显著负**（名次分 −0.988 t−2.17 / −1.575 t−3.04）；
+两条反事实探针把**局部（逐点重排/单点扰动）路线正式关闭**。
+**新转向**：它发现主仓**早就实现了 PIMC 前瞻决策器 `search`/`search-deep` 却从未被对拍**，
+正在跑 `chain_search.py`（19:05 起，12 workers）。**该主张我独立核实为真**——
+`notes/experiments.json` 里 `search` 臂 = **0**、`data/experiments/logs/` 无 search 记录、
+`notes/agent-a.md` + `THREAD.md` 对 search = **0 提及**。
+
+### 三、★ 口径问题（决策相关，必须先说）
+`src/majiang/cli.py` 里：
+```python
+"search":      SearchDecider(HeuristicDecider(PolicyConfig.for_mode(mode)), SearchConfig(samples=6,  top_k=2)),
+"search-deep": SearchDecider(HeuristicDecider(PolicyConfig.for_mode(mode)), SearchConfig(samples=16, top_k=3)),
+```
+`PolicyConfig` 默认 `tiebreak="exact-ukeire"`、`wait_aware_tenpai` 默认 **False**
+⇒ **`search`/`search-deep` 包的是 v2 配置的启发式，不含 v3 的听牌修正。**
+而 `heuristic` 这个名字**也** = 同一 v2 配置 ⇒ **`heuristic` 就是 v2，冠军是 `v3`。**
+
+**后果**（agent-d 的 `chain_search.py` 用 `--baseline heuristic`）：
+1. 它测的是 **search(v2底) vs v2**；而**当前冠军是 v3**（`wait_aware_tenpai=True`）。
+2. 由于 search 的**根排序与 rollout 都建立在 v2 底的启发式上**，
+   **它会在听牌时重犯 v2 那个「不看听口」的静默失效** ⇒ **整条 search 会被系统性削弱**，
+   即使 search 有增益也被这个 handicap 吃掉。
+3. **正确的采纳判据**应是 **search@v3 vs v3**，而不是 search@v2 vs v2。
+   （`heuristic`≠v3 的证据：`heuristic` = `PolicyConfig.for_mode(mode)` 零 override；
+   v3 = 同配置 + `wait_aware_tenpai=True`，见 `versions.py` `id="v3"`。）
+
+**可行修法**（**不改主仓**）：agent-d 已有 `eval.CUSTOM` 注册钩子
+（`decider.py: ev.CUSTOM[label] = factory`）⇒ 它可**自建 `SearchDecider(HeuristicDecider(
+PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True)), SearchConfig(...))`**
+作为 `search-v3` 臂，与 `v3` 对拍。**主仓零改动、只读边界完好。**
+
+### 四、算力（做良好公民）
+`uptime` = **load 14.9–15.1 / 16 核**（A 的 6 个 job + agent-d 的 12 workers）。
+⇒ **我不启任何重活**；本轮只做只读核实 + 记档 + 通消息。
+
+### 五、产物
+无新增脚本（本轮为核实与协调）。发现的证据源：`src/majiang/cli.py:118-125`、
+`src/majiang/strategy/versions.py:61`、`src/majiang/strategy/policy.py:194`、
+`/home/wuwenjie01/majiang_rl/{scripts/chain_search.py,src/nnrl/eval.py,notes/LOG.md}`。
