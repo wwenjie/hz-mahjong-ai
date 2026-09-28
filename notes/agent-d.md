@@ -44,3 +44,32 @@
 - ⏳ 三臂 vs 冠军 v3 队列（等链退出）。
 - ⏳ `field=search-deep-v3` 对照场（抗偏置，非判据）。
 - ⏳ 用户点名的「对比水平」结论 = 上述队列落盘后给出。
+
+---
+
+## 2026-09-28 21:36 — 口径补记：三臂内层=v2 底；"三臂 vs v3" 该怎样归因
+
+### 事实（逐一核实，非推断）
+本线三条模型臂的**内层启发式都建在 v2 底**（`PolicyConfig.for_mode(mode)` 零 override）：
+
+| 臂 | 内层构造 | 出处 |
+|---|---|---|
+| `policy-bc` | `HeuristicDecider(PolicyConfig.for_mode(Mode.QUALIFIER))` | `policy_decider.py:25` |
+| `rl` | `HeuristicDecider(PolicyConfig.for_mode(Mode.QUALIFIER))` | `rl_play.py:27` |
+| `mlp-value` | `HeuristicDecider(PolicyConfig.for_mode(...))` | `decider.py:85` |
+
+`nnrl/` 全仓**零引用** `wait_aware_tenpai`（仅 `v3arms.py` 自建臂的 docstring）。
+
+### 归因（结构上与搜索同源 ⇒ 内层基座差异是空干预）
+三个臂都**只重排「出牌」**（：网络在候选面内重选），而非出牌动作（胡/杠/弃）仍委托内层。
+而 `wait_aware_tenpai` 只落在 `_choose_discard → _break_ties_by_ukeire`（**仅出牌**分支），
+候选特征又来自不读该开关的 `_score_discard`。
+⇒ **与 C 已实证的 `search-v3 ≡ search` 同一条机制**：把这三臂的内层从 v2 换 v3 也是**空干预**。
+
+**推论**：`arm(v2内层) vs v3` 干净地测**臂自身贡献**，不混入"v2 handicap"。
+（与搜索不同的一点：搜索**丢弃**内层选的牌、只用其候选；三臂同理，故口径一致。）
+
+**未独立实证**（诚实标注）：以上是结构推断，**我没有**对三臂重跑 `v3 内层` 的逐位等价探针
+（C 对 RL 的 `rl_base_equivalence_probe.py` 已证 `rl@v3 ≡ rl@v2`，覆盖 `rl`；
+`policy-bc`/`mlp-value` 未单独探针，但 `candidate_features`/`_score_discard` 同源）。
+若需硬结论，后补一次探针即可（成本低，需安静窗口）。
