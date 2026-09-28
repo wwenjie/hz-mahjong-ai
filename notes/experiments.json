@@ -9,8 +9,10 @@
    "seeds": [
     20260927
    ],
-   "status": "pending",
-   "hypothesis": "把精确进张的适用向听从 1 放宽到 3 —— **前中期也按进张选牌**。现状：shanten>=2 的出牌完全由「骨架厚度 + 喂牌代价」决定，而实测我们第 4 摸均向听就落后对手 0.16（同财神数下亦然），那段差距正由前中期出牌决定。这是**从未测过的结构性缺口**——ukeire-wide 只改了候选数、没改适用向听，所以它测的不是这件事。"
+   "status": "running",
+   "hypothesis": "把精确进张的适用向听从 1 放宽到 3 —— **前中期也按进张选牌**。现状：shanten>=2 的出牌完全由「骨架厚度 + 喂牌代价」决定，而实测我们第 4 摸均向听就落后对手 0.16（同财神数下亦然），那段差距正由前中期出牌决定。这是**从未测过的结构性缺口**——ukeire-wide 只改了候选数、没改适用向听，所以它测的不是这件事。",
+   "started_at": "2026-09-28T10:37:21+08:00",
+   "claimed_by": 2021563
   },
   {
    "id": "ukeire-early-s771014",
@@ -20,14 +22,16 @@
    "seeds": [
     771014
    ],
-   "status": "pending",
-   "hypothesis": "把精确进张的适用向听从 1 放宽到 3 —— **前中期也按进张选牌**。现状：shanten>=2 的出牌完全由「骨架厚度 + 喂牌代价」决定，而实测我们第 4 摸均向听就落后对手 0.16（同财神数下亦然），那段差距正由前中期出牌决定。这是**从未测过的结构性缺口**——ukeire-wide 只改了候选数、没改适用向听，所以它测的不是这件事。"
+   "status": "running",
+   "hypothesis": "把精确进张的适用向听从 1 放宽到 3 —— **前中期也按进张选牌**。现状：shanten>=2 的出牌完全由「骨架厚度 + 喂牌代价」决定，而实测我们第 4 摸均向听就落后对手 0.16（同财神数下亦然），那段差距正由前中期出牌决定。这是**从未测过的结构性缺口**——ukeire-wide 只改了候选数、没改适用向听，所以它测的不是这件事。",
+   "started_at": "2026-09-28T10:38:38+08:00",
+   "claimed_by": 2021563
   },
   {
    "id": "ukeire-g2-s20260927",
    "treatment": "ukeire-g2",
    "baseline": "heuristic",
-   "matches": 120,
+   "matches": 40,
    "seeds": [
     20260927
    ],
@@ -38,7 +42,7 @@
    "id": "ukeire-g2-s771014",
    "treatment": "ukeire-g2",
    "baseline": "heuristic",
-   "matches": 120,
+   "matches": 40,
    "seeds": [
     771014
    ],
@@ -49,7 +53,7 @@
    "id": "ukeire-g5-s20260927",
    "treatment": "ukeire-g5",
    "baseline": "heuristic",
-   "matches": 120,
+   "matches": 40,
    "seeds": [
     20260927
    ],
@@ -60,7 +64,7 @@
    "id": "ukeire-g5-s771014",
    "treatment": "ukeire-g5",
    "baseline": "heuristic",
-   "matches": 120,
+   "matches": 40,
    "seeds": [
     771014
    ],
@@ -71,7 +75,7 @@
    "id": "ukeire-hand-s20260927",
    "treatment": "ukeire-hand",
    "baseline": "heuristic",
-   "matches": 120,
+   "matches": 40,
    "seeds": [
     20260927
    ],
@@ -82,7 +86,7 @@
    "id": "ukeire-hand-s771014",
    "treatment": "ukeire-hand",
    "baseline": "heuristic",
-   "matches": 120,
+   "matches": 40,
    "seeds": [
     771014
    ],
@@ -228,6 +232,160 @@
    "ended_at": "2026-09-28T00:40:40+08:00"
   },
   {
+   "id": "ukeire-wide-s20260927",
+   "matches": 120,
+   "seeds": [
+    20260927
+   ],
+   "status": "done",
+   "treatment": "ukeire-wide",
+   "baseline": "heuristic",
+   "hypothesis": "精确进张候选面 2 -> 6。我们听口窄于对手 13.6%，机制是候选按 total 排序、同向听时被喂牌代价主导，好听的牌被提前截掉。",
+   "started_at": "2026-09-27T19:26:43+08:00",
+   "result": {
+    "status": "done",
+    "seeds": [
+     20260927
+    ],
+    "matches": 120,
+    "commands": [
+     [
+      "nice",
+      "-n",
+      "15",
+      "uv",
+      "run",
+      "python",
+      "tools/ab_test.py",
+      "--treatment",
+      "ukeire-wide",
+      "--baseline",
+      "heuristic",
+      "--matches",
+      "120",
+      "--seed",
+      "20260927"
+     ]
+    ],
+    "metrics": {
+     "总得分": {
+      "mean": 0.4,
+      "se": 1.271,
+      "t": 0.31471282454760036
+     },
+     "名次分": {
+      "mean": 0.237,
+      "se": 0.129,
+      "t": 1.8372093023255813
+     },
+     "白板数": {
+      "mean": -0.002,
+      "se": 0.035,
+      "t": -0.05714285714285714
+     },
+     "胡次数": {
+      "mean": 0.077,
+      "se": 0.037,
+      "t": 2.081081081081081
+     },
+     "番数总和": {
+      "mean": 0.083,
+      "se": 0.059000000000000004,
+      "t": 1.4067796610169492
+     }
+    }
+   },
+   "ended_at": "2026-09-27T21:24:17+08:00"
+  },
+  {
+   "id": "ukeire-wide-s771014",
+   "matches": 120,
+   "seeds": [
+    771014
+   ],
+   "status": "done",
+   "treatment": "ukeire-wide",
+   "baseline": "heuristic",
+   "hypothesis": "精确进张候选面 2 -> 6。我们听口窄于对手 13.6%，机制是候选按 total 排序、同向听时被喂牌代价主导，好听的牌被提前截掉。",
+   "started_at": "2026-09-27T19:26:43+08:00",
+   "result": {
+    "status": "done",
+    "seeds": [
+     771014
+    ],
+    "matches": 120,
+    "commands": [
+     [
+      "nice",
+      "-n",
+      "15",
+      "uv",
+      "run",
+      "python",
+      "tools/ab_test.py",
+      "--treatment",
+      "ukeire-wide",
+      "--baseline",
+      "heuristic",
+      "--matches",
+      "120",
+      "--seed",
+      "771014"
+     ]
+    ],
+    "metrics": {
+     "总得分": {
+      "mean": 0.352,
+      "se": 1.057,
+      "t": 0.33301797540208133
+     },
+     "名次分": {
+      "mean": -0.004,
+      "se": 0.123,
+      "t": -0.032520325203252036
+     },
+     "白板数": {
+      "mean": -0.013,
+      "se": 0.034,
+      "t": -0.38235294117647056
+     },
+     "胡次数": {
+      "mean": 0.0,
+      "se": 0.035,
+      "t": 0.0
+     },
+     "番数总和": {
+      "mean": 0.044,
+      "se": 0.055,
+      "t": 0.7999999999999999
+     }
+    }
+   },
+   "ended_at": "2026-09-27T21:20:18+08:00"
+  },
+  {
+   "id": "ukeire-early40-s20260927",
+   "treatment": "ukeire-early",
+   "baseline": "heuristic",
+   "matches": 40,
+   "seeds": [
+    20260927
+   ],
+   "status": "pending",
+   "hypothesis": "同 ukeire-early，但只跑 40 场以保证在 4 小时上限内跑完（放宽适用向听使单场成本升到约 3~5 倍）。"
+  },
+  {
+   "id": "ukeire-early40-s771014",
+   "treatment": "ukeire-early",
+   "baseline": "heuristic",
+   "matches": 40,
+   "seeds": [
+    771014
+   ],
+   "status": "pending",
+   "hypothesis": "同 ukeire-early，但只跑 40 场以保证在 4 小时上限内跑完（放宽适用向听使单场成本升到约 3~5 倍）。"
+  },
+  {
    "id": "meld-equal-early-in-field-s20260927",
    "treatment": "meld-equal-early",
    "baseline": "heuristic",
@@ -263,10 +421,63 @@
    "seeds": [
     20260927
    ],
-   "status": "running",
+   "status": "done",
    "hypothesis": "追番阈值缩到 0.5（当前默认 1.0，final 档 0.85）。依据 agent B 的 P2 定量：追番翻倍只要输掉概率 <51% 就净赚，而我们弃胡自补率实测 88.7%，远在盈亏线上方。**判据：总得分**（重尾目标下这才是决赛的键），名次分作参考。",
    "started_at": "2026-09-28T01:31:54+08:00",
-   "claimed_by": 2021563
+   "result": {
+    "status": "done",
+    "seeds": [
+     20260927
+    ],
+    "matches": 120,
+    "commands": [
+     [
+      "nice",
+      "-n",
+      "15",
+      "uv",
+      "run",
+      "python",
+      "tools/ab_test.py",
+      "--treatment",
+      "chase-more",
+      "--baseline",
+      "heuristic",
+      "--matches",
+      "120",
+      "--seed",
+      "20260927"
+     ]
+    ],
+    "metrics": {
+     "总得分": {
+      "mean": 0.117,
+      "se": 0.3,
+      "t": 0.39
+     },
+     "名次分": {
+      "mean": -0.054,
+      "se": 0.039,
+      "t": -1.3846153846153846
+     },
+     "白板数": {
+      "mean": 0.006,
+      "se": 0.004,
+      "t": 1.5
+     },
+     "胡次数": {
+      "mean": -0.019,
+      "se": 0.012,
+      "t": -1.5833333333333333
+     },
+     "番数总和": {
+      "mean": 0.023,
+      "se": 0.019,
+      "t": 1.2105263157894737
+     }
+    }
+   },
+   "ended_at": "2026-09-28T10:38:38+08:00"
   },
   {
    "id": "chase-more-s771014",
@@ -276,10 +487,63 @@
    "seeds": [
     771014
    ],
-   "status": "running",
+   "status": "done",
    "hypothesis": "追番阈值缩到 0.5（当前默认 1.0，final 档 0.85）。依据 agent B 的 P2 定量：追番翻倍只要输掉概率 <51% 就净赚，而我们弃胡自补率实测 88.7%，远在盈亏线上方。**判据：总得分**（重尾目标下这才是决赛的键），名次分作参考。",
    "started_at": "2026-09-28T01:33:39+08:00",
-   "claimed_by": 2021563
+   "result": {
+    "status": "done",
+    "seeds": [
+     771014
+    ],
+    "matches": 120,
+    "commands": [
+     [
+      "nice",
+      "-n",
+      "15",
+      "uv",
+      "run",
+      "python",
+      "tools/ab_test.py",
+      "--treatment",
+      "chase-more",
+      "--baseline",
+      "heuristic",
+      "--matches",
+      "120",
+      "--seed",
+      "771014"
+     ]
+    ],
+    "metrics": {
+     "总得分": {
+      "mean": 0.596,
+      "se": 0.259,
+      "t": 2.301158301158301
+     },
+     "名次分": {
+      "mean": -0.027,
+      "se": 0.017,
+      "t": -1.588235294117647
+     },
+     "白板数": {
+      "mean": 0.002,
+      "se": 0.002,
+      "t": 1.0
+     },
+     "胡次数": {
+      "mean": -0.008,
+      "se": 0.005,
+      "t": -1.6
+     },
+     "番数总和": {
+      "mean": 0.035,
+      "se": 0.017,
+      "t": 2.058823529411765
+     }
+    }
+   },
+   "ended_at": "2026-09-28T10:37:21+08:00"
   },
   {
    "id": "feed-low-s20260927",
@@ -808,138 +1072,6 @@
     }
    },
    "ended_at": "2026-09-27T21:04:09+08:00"
-  },
-  {
-   "id": "ukeire-wide-s20260927",
-   "matches": 120,
-   "seeds": [
-    20260927
-   ],
-   "status": "done",
-   "treatment": "ukeire-wide",
-   "baseline": "heuristic",
-   "hypothesis": "精确进张候选面 2 -> 6。我们听口窄于对手 13.6%，机制是候选按 total 排序、同向听时被喂牌代价主导，好听的牌被提前截掉。",
-   "started_at": "2026-09-27T19:26:43+08:00",
-   "result": {
-    "status": "done",
-    "seeds": [
-     20260927
-    ],
-    "matches": 120,
-    "commands": [
-     [
-      "nice",
-      "-n",
-      "15",
-      "uv",
-      "run",
-      "python",
-      "tools/ab_test.py",
-      "--treatment",
-      "ukeire-wide",
-      "--baseline",
-      "heuristic",
-      "--matches",
-      "120",
-      "--seed",
-      "20260927"
-     ]
-    ],
-    "metrics": {
-     "总得分": {
-      "mean": 0.4,
-      "se": 1.271,
-      "t": 0.31471282454760036
-     },
-     "名次分": {
-      "mean": 0.237,
-      "se": 0.129,
-      "t": 1.8372093023255813
-     },
-     "白板数": {
-      "mean": -0.002,
-      "se": 0.035,
-      "t": -0.05714285714285714
-     },
-     "胡次数": {
-      "mean": 0.077,
-      "se": 0.037,
-      "t": 2.081081081081081
-     },
-     "番数总和": {
-      "mean": 0.083,
-      "se": 0.059000000000000004,
-      "t": 1.4067796610169492
-     }
-    }
-   },
-   "ended_at": "2026-09-27T21:24:17+08:00"
-  },
-  {
-   "id": "ukeire-wide-s771014",
-   "matches": 120,
-   "seeds": [
-    771014
-   ],
-   "status": "done",
-   "treatment": "ukeire-wide",
-   "baseline": "heuristic",
-   "hypothesis": "精确进张候选面 2 -> 6。我们听口窄于对手 13.6%，机制是候选按 total 排序、同向听时被喂牌代价主导，好听的牌被提前截掉。",
-   "started_at": "2026-09-27T19:26:43+08:00",
-   "result": {
-    "status": "done",
-    "seeds": [
-     771014
-    ],
-    "matches": 120,
-    "commands": [
-     [
-      "nice",
-      "-n",
-      "15",
-      "uv",
-      "run",
-      "python",
-      "tools/ab_test.py",
-      "--treatment",
-      "ukeire-wide",
-      "--baseline",
-      "heuristic",
-      "--matches",
-      "120",
-      "--seed",
-      "771014"
-     ]
-    ],
-    "metrics": {
-     "总得分": {
-      "mean": 0.352,
-      "se": 1.057,
-      "t": 0.33301797540208133
-     },
-     "名次分": {
-      "mean": -0.004,
-      "se": 0.123,
-      "t": -0.032520325203252036
-     },
-     "白板数": {
-      "mean": -0.013,
-      "se": 0.034,
-      "t": -0.38235294117647056
-     },
-     "胡次数": {
-      "mean": 0.0,
-      "se": 0.035,
-      "t": 0.0
-     },
-     "番数总和": {
-      "mean": 0.044,
-      "se": 0.055,
-      "t": 0.7999999999999999
-     }
-    }
-   },
-   "ended_at": "2026-09-27T21:20:18+08:00"
   },
   {
    "id": "meld-equal-field-s20260927",
