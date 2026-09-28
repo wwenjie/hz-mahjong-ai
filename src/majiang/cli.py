@@ -205,6 +205,12 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
     "ukeire-g5": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", ukeire_max_shanten=5)
     ),
+    # 候选面**按手牌质量排序后再截断**（默认按 total 排，而同向听时 total 被喂牌代价主导）。
+    # 与 ukeire-wide 互补：那个改的是「取几张」，这个改的是「按什么顺序取」。
+    "ukeire-hand": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", ukeire_order="blocks",
+                              ukeire_max_shanten=3)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 

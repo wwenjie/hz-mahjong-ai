@@ -42,6 +42,7 @@ VARIANT_FIELDS = (
     "tiebreak",
     "ukeire_candidates",
     "ukeire_max_shanten",
+    "ukeire_order",
     "dealer_feed_scale",
     "chase_baotou",
     "route_aware",
@@ -137,6 +138,11 @@ class PolicyConfig:
     # 而实测我们在第 4 摸时均向听就落后对手 0.16（同财神数下亦然，
     # `tools/analyze_god_usage.py`）——那段差距正是由前中期出牌决定的。
     ukeire_max_shanten: int = EXACT_UKEIRE_MAX_SHANTEN
+    # 并列候选**按什么排序后再截断**。默认 `total`，而同向听时 total 被喂牌代价主导
+    # （-3*feed 可达 9 分），于是「听口明显更好但喂牌稍多」的那张会在进入精确比较前
+    # 就被截掉。改成 `blocks`（骨架厚度，微秒级）可让候选面**按手牌质量**取，
+    # 再看进张——零成本地换掉那个被喂牌污染的入口顺序。
+    ukeire_order: str = "total"
     # 同向听候选项之间的次排序键。**默认 "exact-ukeire"**。
     #
     # 历史：原默认是 "blocks"（骨架厚度）。5.4 曾试过 "ukeire" 并记为「无增益」，
@@ -630,6 +636,8 @@ class HeuristicDecider:
         if exact and top_shanten > self.config.ukeire_max_shanten:
             return None
         if exact:
+            if self.config.ukeire_order == "blocks":
+                tied = sorted(tied, key=lambda item: -item.blocks)
             tied = tied[: max(1, self.config.ukeire_candidates)]
         visible = shanten_module.visible_counts(
             situation.hand.counts,
