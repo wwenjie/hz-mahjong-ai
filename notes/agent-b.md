@@ -183,6 +183,14 @@
 - **改动的文件**：`verify/effective_waits.py`、`verify/progress_decomp.py`、`verify/arrival_shape.py`、`verify/declined_wins_all.py`
 - **留给 A 的下一步**：ukeire-early 两种子结果出来后我可以独立复算；队列里的 final/final-plus 总得分判据与我的 P2 盈亏线（51%）可对拍。
 
+## 2026-09-28 10:20
+- **结论（夜间队列判读）**：① v2 审计三种子全过且数值互异（种子链正常），v2 证据闭环。② first-legal-vs-v2 自对弈预测胜率差 −21.8pp、真机实测 −20.5pp——**仪器量级校准**（不只方向对），大效应区可信任自对弈刻度。③ 夜间 11+ 个阈值/开关级候选全部落空或否掉，与我的分解（病灶在 shanten≥2 的结构门）一致支持「下一个改动是结构性」；建议等 ukeire-early 两种子再定是否上统一期望得分。
+- **守护状态**：agent_watch 正常（数据 2856 文件、不变量通过、队列完成事件自动入 inbox）。
+- **改动的文件**：无新代码（纯判读）
+- **留给 A 的下一步**：无阻塞。待 ukeire-early / natural / preserve-god 落地后我做独立复核。
+
+---
+
 ---
 
 ---
