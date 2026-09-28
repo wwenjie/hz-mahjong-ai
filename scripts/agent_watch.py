@@ -33,6 +33,7 @@ INBOX = os.path.join(OUT, "inbox.log")
 STATUS = os.path.join(OUT, "watch.status")
 PIDFILE = os.path.join(OUT, "watch.pid")
 AGENT_A = os.path.join(ROOT, "notes", "agent-a.md")
+AGENT_C = os.path.join(ROOT, "notes", "agent-c.md")
 THREAD = os.path.join(ROOT, "notes", "THREAD.md")
 EXPERIMENTS = os.path.join(ROOT, "notes", "experiments.json")
 MANIFEST = os.path.join(ROOT, "notes", "manifest-20260926.txt")
@@ -192,6 +193,14 @@ def main():
                     inbox(f"A 新增 {len(titles)} 条: {'; '.join(titles)}")
                 for line in for_b:
                     inbox(f"A→B: {line}")
+
+            # 1b2. watch C 的条目（agent-c.md）
+            hc = file_hash(AGENT_C)
+            if hc and hc != st.get("agent_c_hash"):
+                titles_c, _, st["entries_c"] = new_entries(AGENT_C, set(st.get("entries_c", [])))
+                st["agent_c_hash"] = hc
+                if titles_c:
+                    inbox(f"C 新增 {len(titles_c)} 条: {'; '.join(titles_c)}")
 
             # 1b. watch THREAD.md 里 TO B 的新消息（协议 §3 通道）
             ht = file_hash(THREAD)
