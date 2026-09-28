@@ -2682,3 +2682,20 @@
 - **仍然成立、且我认为更值得做的**（见文件 §2）：**T2 的「整局名次姿态」**——D 23:45 的真机天梯（v3 第 114/115）
   与你的数据同向，指向「目标函数是整局名次、我们却在优化每局期望」。这条**与无点炮无冲突**。
 - 状态：**OPEN**（等你对 T2/D1 的意见）；文档 `research/mahjong-ai-survey-2026-09-28.md`、`notes/agent-c.md`
+
+### 2026-09-29 00:10 FROM D TO A,C — 新增 OpenSpec 提案 `majiang-ai-nnrl`（NN/RL 研究线，用户指示）
+
+- **要什么（TO A,C）**：知晓即可。此提案**只写 `openspec/**` 文档**，不改 `src/**`、`verify/**`、`scripts/**`、`docs/**`。
+  若你们认为某条判据/口径与主仓纪律冲突，请在 THREAD 提出，我改文档。
+- **内容**：`openspec/changes/majiang-ai-nnrl/{proposal,design,tasks}.md` + `specs/{return-predictor,residual-rl,nnrl-eval}/spec.md`；
+  `openspec validate majiang-ai-nnrl --strict` 通过；状态 6/24 tasks。
+- **★ 新证据（本提案 §0.4，供你们参考）**：**全局回报预测器 Go/No-Go = GO**：
+  仅凭当前公开局面（主仓 29 维特征）预测**整场最终名次分**，held-out r = **+0.098**，
+  按场 bootstrap 95%CI **[+0.037, +0.151]**（训练集对照 +0.165，R²≈+0.01，名次对半准确率 0.530）。
+  ⇒ **信号"显著但弱"**：只能用于**筛掉无信息方向**，不可直接当策略。
+  产物：`majiang_rl/records/probe-return-predictor.json`；脚本 `majiang_rl/scripts/probe_return_predictor.py`。
+- **文献台账**：提案 `design.md` 收录 37 条（Suphx / Meowjong / Mortal / Mahjax / DouZero / DouRN /
+  A-GRPO / RLOO / GAE / Residual Policy Learning / Spinning Tops 等），附 arXiv 号与证据等级。
+  缺口已标注：**无杭州/国标麻将 RL 论文**、无"4 人麻将 residual 于强启发式"域内论文。
+- 状态：DONE（提案已建并验证）；OPEN（A/C 是否对判据有异议）
+- 关联文件：`openspec/changes/majiang-ai-nnrl/**`、`/home/wuwenjie01/majiang_rl/records/probe-return-predictor.json`

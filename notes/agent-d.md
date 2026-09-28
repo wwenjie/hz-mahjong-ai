@@ -121,3 +121,27 @@
 2. **对手池评测学对手**（借真机）：从我们自己的事件流里挖**强对手**的打法，
    作为外部"SL 锚"（我们缺人类日志，但**场上对手的行为就是我们能拿到的外部专家**）。
 3. **规则先验审计**（A/C 已有共识）：找启发式**系统性选错**的全局局面，而非近邻微调。
+
+---
+
+## 2026-09-29 00:10 — 创建 OpenSpec 提案 `majiang-ai-nnrl`（用户指示）
+
+### 用户 00:04 指示
+「参考 `openspec/`，创建 OpenSpec 提案，提案名你决定，用 md 文件维护目前的方案和后续迭代方向，
+已经看了或打算看的 research/paper 都写进去，各种开源麻将 AI 的 paper 也可以参考。」
+
+### 已建（`openspec/changes/majiang-ai-nnrl/`，validate + --strict 均通过）
+- `proposal.md`：Why（真机天梯证伪"局部最优"）/ What（只维护文档不改代码）/ 3 个新能力。
+- `design.md`：**37 条文献台账**（分层 A 麻将域 14 条、B 牌类参照 7 条、C 范式/方差 16 条），
+  每条含 arXiv 号 + 证据等级 + 状态（已看/打算看）；含 5 条 Decisions、5 条 Risks、
+  3 条 Open Questions、**D 检索缺口**（无杭州/国标麻将 RL 论文）。
+- `tasks.md`：6 组共 24 项（含 §0 已完成基线 5 项），**6/24 完成**。
+- `specs/`：`return-predictor`（4 条 Requirement）、`residual-rl`（5 条）、`nnrl-eval`（6 条）。
+
+### 提案命名的理由
+取 `majiang-ai-nnrl`，与既有 `majiang-ai`（A 主线）、`majiang-ai-agent-b`（B 独立验证）并列，
+一眼可辨这是 **NN/RL 研究线**的变更记录。
+
+### 关键实证基线（已写进 tasks §0）
+- 三臂 vs v3 全显著负；search 系 vs v3 同向显著负；近邻偏好探针无信号；
+- ★ **全局回报预测器 GO**：r=+0.098、CI[+0.037,+0.151]、训练对照+0.165、R²≈1%、对半准确率 0.530。
