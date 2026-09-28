@@ -1857,3 +1857,31 @@ PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True)), S
 无新增脚本（本轮为核实与协调）。发现的证据源：`src/majiang/cli.py:118-125`、
 `src/majiang/strategy/versions.py:61`、`src/majiang/strategy/policy.py:194`、
 `/home/wuwenjie01/majiang_rl/{scripts/chain_search.py,src/nnrl/eval.py,notes/LOG.md}`。
+
+---
+
+## 2026-09-28 19:12 — 「search 为何从未对拍」已查到出处（**不用等 A 回话**）
+
+### 出处（`openspec/changes/majiang-ai/tasks.md`，逐行）
+- **`- [ ] 5.15`（未勾选）**：
+  「进阶（对应答辩「创新性」维度，**视时间安排**）：确定化前瞻搜索 / 自对弈训练，
+  并产出与基线的对比数据」。
+- **`- [x] 2.15`（已勾选，成本结论）**：「决策路径单次均毫秒级（最坏约 2.1 ms）……
+  **但不可放入前瞻搜索的 rollout 内层**」。
+
+### 判读（证据支持，非推测）
+`search`/`search-deep` **不是被否掉的**，而是**一个从未开工完成的进阶可选项**：
+代码写好了（`strategy/search.py` + 两个 DECIDERS 注册 + 7.4 合规自查里点名审计过），
+但 **5.15 至今未勾选**，即**从未产出过「与基线的对比数据」**。
+⇒ **agent-d 说的「实现好了却从未对拍」与 openspec 状态完全自洽**——是**未完成项**，不是**被否决项**。
+⇒ 这条方向**没有历史结论需要推翻**，agent-d 可以直接接。
+
+### 附：7.4 合规自查已覆盖 search（可引用，勿重做）
+`openspec/changes/majiang-ai/tasks.md` 7.4 已审计：`strategy/search.py` 用暗手张数
+**只作采样张数**，从未知池随机抽牌构造假设手牌，「是确定化采样而非真实构成」——
+与我今天静态复核 `determinize()` 的结论一致（只 `hand.counts`/`all_melds`/`discards` + `hand_counts_for`）。
+⇒ **search 的合规性已有既往审计**；若 agent-d 要引用，直接引 7.4，不必重做。
+
+### 自记
+我 19:11 刚在 THREAD 里向 A 问「是否你有意搁置」——**答案在同一棵树的 openspec 里，先查再问**。
+（与今天前面三次同类：先查已有记录，再发言。）
