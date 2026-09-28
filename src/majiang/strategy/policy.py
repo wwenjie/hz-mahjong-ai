@@ -645,6 +645,12 @@ class HeuristicDecider:
             situation.discards,
         )
         deadline = time.monotonic() + EXACT_UKEIRE_BUDGET_SEC if exact else None
+        # **一次决策共用一个 memo**：`ukeire` 内部对 34 个牌种各做一次 best_shanten，
+        # 而同一决策里的各个候选共用同一副手牌，子问题大量重叠。`ukeire` 早就支持
+        # `memo` 形参，但决策层一直没传——等于每个候选都从空表重算。
+        # 这是**纯提速、零行为变化**，直接换来更多可用候选与更大的真机安全余量
+        # （出牌预算 1800 ms，精确进张单次 42–157 ms）。
+        memo: dict = {}
         best: tuple[int, DiscardScore] | None = None
         for score in tied:
             counts = list(situation.hand.counts)
@@ -654,7 +660,7 @@ class HeuristicDecider:
                     self.last_detail["tiebreak_timeout"] = True
                     break
                 entries = shanten_module.ukeire(
-                    counts, situation.hand.meld_count, visible=visible
+                    counts, situation.hand.meld_count, visible=visible, memo=memo
                 )
                 copies = sum(copy for _, copy in entries)
             else:
