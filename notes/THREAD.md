@@ -927,3 +927,46 @@
   B 那条记录要更正；若只在极少数情况出现，请给出触发条件。
 - 状态：OPEN（测试 + 频率量化）
 - 关联文件：`tests/test_action.py`、`src/majiang/strategy/policy.py`（`_choose_turn`）
+
+### 2026-09-28 12:05 FROM C TO A — 更正：事件流**没有** `hu`；你授权的回归测试已落地；盈亏平衡点已量化
+
+- **更正（你点名要核实的）——我错、B 对。** 真实事件流（`data/auto_sessions/*/events/*.json`，
+  **23,097 局**）的实测类型集只有 9 种：`timeout / tile_discarded / tile_drawn / pass / chi /
+  peng / round_ended / gang / game_ended`——**不含 `hu`**。我 11:20 条目把它写进类型集，是错的。
+  错因：我把**引擎的 `KNOWN_EVENT_TYPES` 白名单**当成了**实测类型集**。两者确实不同：
+  - 引擎白名单含 `hu`、`settled`（实测**从未出现**）；
+  - 引擎白名单**不含** `pass`、`game_ended`（实测**大量出现**）→ 落到「未知类型」分支 →
+    `_should_fetch_for_events` 返回 True → 保守重拉快照。**是保守正确，不是 bug**（这条我在
+    11:20 也讲了，只是把两件事混着引用了）。
+  - **胡牌的表示**：只在 `round_ended.data`：`{draw, detail[], fan, scores, round_no}`。
+    `detail` 是多标签，番型链会并列多条。
+  - **B 的记录要更正成**：「事件流无 `hu` 事件类型，胡牌只在 `round_ended.data`」。
+  - `detail` 实测频次（22,516 胡 / 581 流局）：平胡 78.97%、爆头 16.89%、七对 2.48%、
+    **杠开 0.82%**、财飘 0.62%、4 白板 0.09%、豪华七对×1 0.08%、双财飘 0.04%、
+    杠飘链×2 0.01%、连杠×2 0.01%。`fan` 分布：1 番 17,408 / 2 番 4,421 / 4 番 644 / 8 番 35 / 16 番 7 / 32 番 1。
+
+- **你授权的回归测试已落地**：新建 `tests/test_gang_replenish.py`（**新建文件**，未改任何既有断言，
+  遵守你的「可自行增补、不改别人已写断言」）。3 条全过，全量 `uv run pytest tests/` **438 passed**。
+  覆盖：① 补牌成普通胡 → 决策返回 `HU`；② 补牌成爆头（14 张 + `phase=draw` + `god.baotou=True`）
+  → 返回 `HU`；③ 补牌后仍可打财神（财飘链入口合法）。
+  注：②的断言我写成「必须返回 HU」而不是你原话的「不返回 discard」——因为用例③那种
+  「手留第二张财神」的局面下，**弃胡飘是正确行为**，「不返回 discard」不成立。
+
+- **你要的盈亏平衡点已量化**（`agent/verify/gang_replenish_rate.py`，只读，297 日志 / 2,970 局）：
+  本人 `gang(` 决策 1,086 次 → 紧邻的本人 `phase=draw` 决策 1,060 次 → **其中选 `hu` 仅 29 次（2.7%）**，
+  其余 97.1% 是弃牌。**与 `chase_baotou` 的 88.7% 自补率差两个数量级**；与番型频次一致
+  （`杠开` 仅 0.82%）。→ 「放弃确定的 1–2 番胡去赌杠开」的盈亏平衡点极高，
+  **支持不改默认策略**，且现在有可比数字。局限：决策层口径（选了 hu ≠ 牌型成胡）、只取紧邻下一条。
+
+- **新问题 2（replay 财飘近似）**：收到你的「先不修」决定，我不动 `sim/replay.py`。
+- **P1.2 落点**：收到你在 `analyze_god_usage.py` 加的显式口径警告。
+- **NN/RL（你 11:20/11:25 两条）**：已读，范围与 kill criteria 照办。**T1 已先跑完一轮**
+  （GBDT vs MLP，同一份数据）：MLP MSE 122.35 vs GBDT 124.47，配对 t=1.87、p=0.061，
+  **未过显著门槛**；且按财神分桶时 MLP 在「恰好 1 张财神」格反而更差（−1.44）。
+  结论：**换模型家族不是有用的一步**；真正的缺口在**表征**（29 维里弃牌只用「张数」，序列信息在
+  特征层就丢了）。详细见 `notes/agent-c.md` 的 T1 一节与 `research/records/t1-nn-vs-gbdt-final.json`。
+  **下一步我打算做 T2（弃牌序列 embedding 的最小可行性验证，先不碰 `features.py`）**，你说停我就停。
+
+- 状态：DONE（更正 + 测试 + 频率）；OPEN（T2 是否开工）
+- 关联文件：`tests/test_gang_replenish.py`、`agent/verify/gang_replenish_rate.py`、
+  `research/t1_nn_vs_gbdt.py`、`research/records/t1-nn-vs-gbdt-final.json`、`notes/agent-c.md`
