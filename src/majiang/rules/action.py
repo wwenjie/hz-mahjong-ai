@@ -106,8 +106,17 @@ def chi_combinations(hand_counts: Sequence[int], offered_tile: int) -> tuple[tup
 
 
 def concealed_gang_options(situation: Situation) -> tuple[Action, ...]:
-    """暗杠与补杠选项。杠需要从牌墙补牌，故受可杠判据约束。"""
-    if not situation.table.can_gang or situation.is_restricted:
+    """暗杠与补杠选项。杠需要从牌墙补牌，故受可杠判据约束。
+
+    **抓打圈内只放开暗杠、仍禁补杠。** 平台规则 §1.1 原文是「不能吃、碰、明杠
+    （**仅暗杠与自摸胡**）」——括号内是**允许**的动作。原实现两道闸门
+    （本函数 + `_turn_actions`）都按「受限则无杠」处理，把暗杠一起禁掉了，
+    等于**丢了一类合法动作**。
+
+    暗杠在本平台价值极高：链 +1、自带补牌、不经过对手回合，且**不暴露任何信息**。
+    这是规则合规 bug、不是策略调参，修复不需要 A/B 或样本量（agent C 复核指出）。
+    """
+    if not situation.table.can_gang:
         return ()
     hand = situation.hand
     peng_tiles = {meld.tiles[0] for meld in hand.melds if meld.is_peng}
@@ -117,7 +126,9 @@ def concealed_gang_options(situation: Situation) -> tuple[Action, ...]:
             continue
         if amount >= tiles.COPIES_PER_KIND:
             options.append(Action(GANG, tile=tile, gang_kind=ANGANG))
-        elif amount >= 1 and tile in peng_tiles:
+        elif not situation.is_restricted and amount >= 1 and tile in peng_tiles:
+            # 补杠在抓打圈内仍禁：规则只放行「暗杠与自摸胡」，补杠会经对手回合、
+            # 且要打出手上的牌（圈内只能打刚摸到的那张）。
             options.append(Action(GANG, tile=tile, gang_kind=BUGANG))
     return tuple(options)
 
@@ -138,8 +149,9 @@ def _turn_actions(situation: Situation) -> tuple[Action, ...]:
         if situation.is_restricted and tile != drawn:
             continue
         actions.append(Action(DISCARD, tile=tile))
-    if not situation.is_restricted:
-        actions.extend(concealed_gang_options(situation))
+    # **受限时也要给出杠选项**：`concealed_gang_options` 自己区分暗杠/补杠
+    # （圈内只放行暗杠）。原先这里再挡一道，把暗杠一并禁掉。
+    actions.extend(concealed_gang_options(situation))
     return tuple(actions)
 
 

@@ -353,3 +353,65 @@ def test_situation_helper_properties() -> None:
     assert window.in_response_window and not window.is_my_turn
     observer = make_situation("1w2w3w4w5w6w7w8w9w1b2b3b5b6b", seat=-1)
     assert observer.is_observer and not observer.is_restricted
+
+def _restricted_situation(codes, melds=(), catch=True):
+    from majiang.rules.god import GodState
+    from majiang.rules.hand import Hand
+    from majiang.rules.situation import PHASE_DRAW, Situation
+    from majiang.rules.table import TableState
+    from majiang.rules import tiles as tile_module
+
+    counts = [0] * tile_module.TILE_KINDS
+    for code in codes:
+        counts[tile_module.parse(code)] += 1
+    return Situation.from_parts(
+        seat=0,
+        phase=PHASE_DRAW,
+        turn=0,
+        hand=Hand.from_counts(counts, tuple(melds)),
+        god=GodState(
+            hand_gods=0,
+            catch_play=catch,
+            god_discarder_seat=(3 if catch else -1),
+        ),
+        table=TableState(wall_remaining=40, dealer_seat=0, round_no=1),
+        drawn_tile=tile_module.parse("5b"),
+    )
+
+
+def test_restricted_player_may_declare_angang() -> None:
+    """**抓打圈内暗杠必须放行**（agent C 复核发现的规则 bug）。
+
+    平台规则 §1.1 原文是「不能吃、碰、明杠（**仅暗杠与自摸胡**）」——括号内是**允许**的
+    动作。原实现两道闸门（`concealed_gang_options` + `_turn_actions`）都按「受限则无杠」
+    处理，把暗杠一并禁掉，等于丢了一类合法动作。暗杠在本平台价值极高：
+    链 +1、自带补牌、不经对手回合、且不暴露任何信息。
+    """
+    situation = _restricted_situation(
+        ["9t", "9t", "9t", "9t", "1w", "2w", "3w", "4w", "5w", "6w", "7w", "8w", "1b", "5b"]
+    )
+    assert situation.is_restricted is True
+    kinds = {(action.kind, action.gang_kind) for action in action_module.legal_actions(situation)}
+    assert (GANG, ANGANG) in kinds, f"圈内应可行暗杠，实际 {sorted(kinds)}"
+
+
+def test_restricted_player_may_not_declare_bugang() -> None:
+    """圈内**仍不可补杠**：规则只放行「暗杠与自摸胡」。
+
+    补杠要经对手回合、且必须打出手上的牌，而圈内只能打刚摸到的那一张。
+    """
+    from majiang.rules.melds import Meld
+
+    melds = [Meld(kind="peng", tiles=(tiles.parse("9t"),) * 3)]
+    situation = _restricted_situation(
+        ["9t", "1w", "2w", "3w", "4w", "5w", "6w", "7w", "8w", "1b", "5b"], melds
+    )
+    kinds = {(action.kind, action.gang_kind) for action in action_module.legal_actions(situation)}
+    assert (GANG, BUGANG) not in kinds, f"圈内不应可补杠，实际 {sorted(kinds)}"
+    # 反向确认：不受限时可以补杠（否则上一条可能因构造错误而假通过）
+    free = _restricted_situation(
+        ["9t", "1w", "2w", "3w", "4w", "5w", "6w", "7w", "8w", "1b", "5b"], melds, catch=False
+    )
+    free_kinds = {(action.kind, action.gang_kind) for action in action_module.legal_actions(free)}
+    assert (GANG, BUGANG) in free_kinds, f"不受限时应可补杠，实际 {sorted(free_kinds)}"
+
