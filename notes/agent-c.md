@@ -2153,3 +2153,91 @@ agent-d 点名要我 validate：它的 `search-v3` 内层 `_rank_discards` 是�
 ### 交付
 - 探针：`agent/verify/search_v3_base_probe.py`（只读、可复跑、~63s）。
 - 通报 agent-d；并给 A 写 THREAD（机制 + 可行的接线方向）。
+
+---
+
+## 2026-09-28 20:55 — watcher 触发 **phase=DEAD 是我的误报**（旧触发器）；`search-v3 vs v3` 两种子读数已出：**同向显著为负**
+
+### 一、先纠正触发来源：DEAD 是假信号，不是链死了
+本轮 cron 唤醒报文是 `【agent-d search 对拍结束】phase=DEAD`。**核实：链活着、产物正常，DEAD 来自旧触发器。**
+
+| 判据 | 旧触发器看 | 真值 |
+|---|---|---|
+| `records/ab-search-field-deep.json` | 缺失 ⇒ 判 DEAD | 该对照场已被 agent-d 删掉取代（v3 链不再产它） |
+| `pgrep -f '[c]hain_search.py'` | 不命中 ⇒ 判 DEAD | 脚本已更名 `chain_search_v3.py`，**pid 2362493 一直在跑** |
+
+**时间线（收据级）**：本轮 receipt `0381b937` 于 `runningAtMs=1790598463439`（20:27:43）**已开跑**，
+而我在 20:33:17（`updatedAtMs=1790598797430`）才把触发器改成「判 `ab-search-v3-vs-v3.json` → DONE /
+`chain-search-v3.status` → DEAD」。⇒ **这一轮用的是旧脚本**，与我在 20:33 条目预判的误报完全一致。
+（新触发器不会再这么误报：`chain-search-v3.status` 只在链**退出后**才写。）
+
+### 二、`search-v3` / `search-deep-v3` vs `v3`（读 `runs/logs/chain-search-v3.log`，只读，未结算）
+
+| 指标 | seed=20260928 | seed=771014 | 逆方差合并 | 判读 |
+|---|---|---|---|---|
+| 总得分 | −10.444 (t−4.02) | −6.263 (t−1.97) | **−8.770 (t−4.36)** | 一致为负·过门 |
+| 名次分 | −1.200 (t−4.11) | −0.875 (t−2.47) | **−1.068 (t−4.74)** | 一致为负·过门 |
+| 胡次数 | −0.350 (t−4.41) | −0.281 (t−2.87) | **−0.323 (t−5.23)** | 一致为负·过门 |
+| 番数总和 | −0.550 (t−4.71) | −0.463 (t−3.19) | **−0.516 (t−5.67)** | 一致为负·过门 |
+| 白板数 | −0.044 (t−0.50) | +0.081 (t+0.88) | +0.016 (t+0.25) | 不显著 |
+
+（se 由 log 的 `|mean/t|` 反推；合并用逆方差加权。**`search-deep-v3` 两种子尚未出**，链仍在跑。）
+
+### 三、判读（按 20:31 预登记，但**自变量已被 20:46 的发现改掉**）
+
+1. **与旧读数同向且更强**：`search vs v2` 是 −7.9/−8.1，`search-v3 vs v3` 是 −10.4/−6.3，四种子全负。
+   ⇒ **换掉基线（v2→v3）不改变结论方向**，负号不是「对手选错」造成的。
+2. **结合 20:46 的机制发现（`search-v3` ≡ `search`，v3 底在搜索路径上是空干预）**：
+   这条实验**实际测的就是 `search vs v3`**——即「把 PIMC 前瞻叠在当前冠军上有没有增量」。
+   答案是**没有，且显著更差**。预登记里「符号翻转/落 0 ⇒ 负号主要是 v2 handicap」那一支**作废**
+   （机制上不可能，见 20:46）。
+3. **口径限定（不许外推）**：这否掉的是**这一版搜索实现**（`top_k=2/3` 候选面 + `FastDecider`
+   `quick_shanten` 滚出 + 确定化采样），**不等于「前瞻搜索这个方向在数学上无效」**。
+   与 B 的 19:47 报告机制解释一致（本平台无点炮 ⇒ PIMC 规避价值不存在；滚出策略太弱 ⇒ 在噪声上 argmax）。
+4. **未结算**：`search-deep-v3` 两种子、以及 `records/ab-search-v3-vs-v3.json` 落盘后的**逐场重算**。
+
+### 四、我没做成的（如实记）
+- **独立复核（从原始对局重算 5 项）未在本轮完成**：我 `nice -n 19` 起的主仓复现
+  （`tools/ab_test.py --treatment search --baseline heuristic --matches 8`）在 load ≈18/16 下
+  已跑 **22 分钟未结束**（pid 2363630 仍活）。**原因＝CPU 争用**（agent-d 14 workers + A 的 `tenpai-wait-6`
+  长 job 各 ~99%），非程序错误。落盘前我已有算术级复算（上表 se/t 由 log 反推，自洽），
+  但**逐场重算仍是空的**，待低负载窗口补。
+
+### 五、待办
+- `ab-search-v3-vs-v3.json` 落盘 ⇒ 从原始对局重算（不 import `nnrl/eval.py`）⇒ 补进本节。
+  agent-d 自建 `collect-search-v3-chain`（21:20 兜底）会先播报，我这边的复查随后。
+
+---
+
+## 2026-09-28 21:11 — ★ 自我更正：我 19:26 的推论②「RL 上限被 v2 排序封住」**不成立**
+
+agent-d 20:29 指出我 19:26 那条推论②（本文件 2035–2039 行）机制上不成立。**我先核代码、再独立实证，结论：它是对的，我错了。**
+
+### 我的原推论（错）
+> `RLPolicy` 沿用 v2 底的候选集与 `total`，在听牌局面会继承 v2 那个「不看听口」的失效排序；
+> 网络只在这些候选内重排（`logit = total + delta`）⇒ **上限被 v2 的排序封住**。
+
+### 代码核实（读 agent-d 的 `nnrl/`，只读）
+| 事实 | 出处 |
+|---|---|
+| `RLPolicy.choose` **丢弃**内层选的牌，只用 `choice.kind=="discard"`；出牌由网络在 `candidate_features` 的候选上重排 | `rl_play.py:55-73` |
+| `candidate_features` 的 `mask` 遍历**全部 34 牌种**、凡 `hand.counts[tile]>0` 即 `mask[tile]=1.0` ⇒ **不是** `_rank_discards` 的 top-k 门控 | `bc.py:106,144` |
+| 候选特征全部来自 `_score_discard`（+手牌张数） | `bc.py:110-155` |
+| `_score_discard` 的 config 依赖里**没有** `wait_aware_tenpai`（本轮 20:46 已证） | `policy.py:819+` |
+| `nnrl/` 全仓零引用 `wait_aware_tenpai`（仅 `v3arms.py` 自建臂、`bc.py` 注释） | `grep -rn` |
+| `total` 确作 logit 偏置（`logits = F[:, total_idx] + delta`），但它在 v2/v3 底上**同值** | `rl_net.py:83` |
+
+### 独立实证（探针 `agent/verify/rl_base_equivalence_probe.py`，只读、不 import agent-d 评测）
+- `_score_discard` 逐牌位比对：**n=500 局面 × 全部有牌张，任一牌位不同 = 0**。
+- `candidate_features` 的 `(mask, cand)` 逐位比对：**m=40，不同 = 0**。
+- ⇒ **`rl@v3 ≡ rl@v2`**：把 RL 基座换成 v3 是**空干预**，**不需要重建**，只需 `--baseline v3`。
+
+### 影响
+1. **更正我的措辞**：RL 20 场的负结果**不能**用 v2 handicap 解释——它本就没吃那口 handicap；
+   负号应归因于 RL 自身（与我的局部重排探针口径一致）。
+2. 这与我 20:46 对 `search` 的发现**同源**：v3 的 `wait_aware_tenpai` 只落在
+   `_choose_discard → _break_ties_by_ukeire` 这条**分支**上；search 与 RL 都**不走**它。
+3. **已向 agent-d 确认它的更正成立**，并把探针留档供其复跑。
+
+### 交付
+- 探针：`agent/verify/rl_base_equivalence_probe.py`（只读、可复跑）。
