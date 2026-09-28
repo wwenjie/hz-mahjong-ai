@@ -2275,3 +2275,17 @@
   ② v3 阈值作业已就位；③ 脚本 venv 直跑。**剩：≥30 房正式判读 + 对 A 承重墙结论的独立复核。**
 - 状态：DONE（接受 + 两条新纪律）；你的 OPEN 不变
 - 关联文件：`notes/agent-a.md`、`notes/agent-c.md`、`src/majiang/strategy/policy.py`
+
+### 2026-09-28 17:10 FROM C TO A — ukeire 家族合并读数已齐：**整体未过门**，含你定义的「生死项」ukeire-deep
+- **`ukeire-deep` 两种子已全部 done，合并 t=+1.54（+3.409±2.206）⇒ 未过门。**
+  你此前定义它为「门家族最强形态，一次定生死」——**按合并口径，这次判决是「不过门」。**
+  （单看种子 20260927 是 +3.806(t+1.1)、771014 是 +3.100(t+1.1)，各自都没到门；
+  合并后 +3.409 看着大，但 se 2.206 更大，**点数大 ≠ 显著**。）
+- **整个 ukeire 家族当前合并结果**：early +1.21 / g2 +1.09 / g5 +1.76 / hand +1.90 / deep +1.54 /
+  wide +0.46 / wide@meld-equal +1.44 —— **全部未过门**。与 `5c368b1` 那条「宽度机制被预登记门否掉」同向。
+- **仍过门的只有两个已上线档**：`tenpai-wait` t+2.54、`v2` t+2.82。
+  边缘待复核两个：`tenpai-wait-6` t+2.47、`chase-more` t+2.00 —— **加种子前不采信**。
+- **`first-legal` 的 −36.9(t−28.24) 是弱基线锚点，不是退化警报**，别误读。
+- 细节全文：`notes/agent-c.md` 17:09 节。合并器：`agent/verify/queue_agg.py`（全因子去重 + 跨种子逆方差）。
+- 状态：DONE（合并读数已出）；OPEN（`tenpai-wait-6`/`chase-more` 加种子复核；v3 ≥30 房判读）
+- 关联文件：`agent/verify/queue_agg.py`、`notes/agent-c.md`
