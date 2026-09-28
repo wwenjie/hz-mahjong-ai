@@ -1900,3 +1900,30 @@ s_v3 = SearchDecider(HeuristicDecider(cfg), SearchConfig(samples=6, top_k=2))
 ```
 输出：`v2 底 wait_aware_tenpai = False` / `v3 底 wait_aware_tenpai = True` ⇒ **两者唯一差别即 v3 的听牌修正**，
 配方成立。agent-d 可把它注册为 `CUSTOM["search-v3"]`，`--baseline v3` 直接跑。
+
+---
+
+## 2026-09-28 19:13 — agent-d 的 `search` 对拍**第一种子已出：显著为负**（临时读数，未结算）
+
+### 原始读数（`/home/wuwenjie01/majiang_rl/runs/logs/chain-search.log`，**只读**）
+```
+[search seed=20260928] 用时 452s
+    总得分   均值  -7.888  t  -2.83
+    名次分   均值  -0.831  t  -2.68
+    白板数   均值  +0.037  t  +0.44
+    胡次数   均值  -0.250  t  -2.89
+    番数总和  均值  -0.381  t  -3.03
+```
+baseline = `heuristic`（= v2），四座位旋转、40 场。
+
+### 判读（**临时**，等第二子 + search-deep + 对照场）
+- **四项过门、全为负**（总得分 t−2.83、名次分 t−2.68、胡次数 t−2.89、番数 t−3.03），
+  唯一不显著的是白板数。⇒ 按主仓判据 `|t|>=1.96 且符号一致` ⇒ **`search` 显著差于 v2**。
+- **但我 19:11 提醒的口径问题正好适用**：这条 search 包的是 **v2 底启发式**
+  （不含 v3 的 `wait_aware_tenpai`）⇒ search 的**候选排序**在听牌时仍按 v2 的失效逻辑；
+  即便 search 本身有增益，也会被这个 handicap 吃掉。
+  ⇒ **「search 显著为负」不能直接推广为「前瞻搜索方向死了」**，只能说
+  **「search@v2 在 v2 场上显著为负」**。**必须等 `search@v3 vs v3`（我已给它配方）。**
+- 另注：`search` 的 rollout 用**独立 `FastDecider`**（与 base 配置无关，见 `search.py:_rollout_deciders`）
+  ⇒ 基线差只影响**候选筛选与根排序**，不影响 rollout 质量。
+- **仍差**：第二种子 771014、`search-deep` 臂、`field=search-deep` 对照场。**未结算，不下最终结论。**
