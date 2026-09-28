@@ -45,13 +45,33 @@ def main() -> int:
     doc = json.loads(EXPERIMENTS.read_text(encoding="utf-8"))
     jobs = doc.get("jobs") or []
 
-    groups = collections.defaultdict(lambda: collections.defaultdict(list))
-    matches_by_group = collections.defaultdict(set)
-    seeds_by_group = collections.defaultdict(set)
+    # 去嵌套子样本：同一 (treatment, field, seed) 下若有多个 matches，只保留**最大**的那个。
+    # 依据 A 14:05：`run_match` 随机源 = seed*100003 + index → 同种子的 40 场是 120 场的
+    # **严格子集**，不能当独立复现累加（否则虚高功效与 t 值）。
+    # key 必须含 `field`：`--field meld-equal` 与不带 field 是**不同实验**，不可合并。
+    def _label(j):
+        f = j.get("field")
+        return f"{j.get('treatment')}@{f}" if f else str(j.get("treatment"))
+
+    best = {}
     for j in jobs:
         if j.get("status") != "done":
             continue
-        t = j.get("treatment")
+        seeds = tuple((j.get("result") or {}).get("seeds") or j.get("seeds") or ())
+        key = (_label(j), seeds)
+        cur = best.get(key)
+        if cur is None or (j.get("matches") or 0) > (cur.get("matches") or 0):
+            best[key] = j
+    kept = list(best.values())
+    dropped = [j["id"] for j in jobs
+               if j.get("status") == "done" and j not in kept
+               and j.get("treatment")]
+
+    groups = collections.defaultdict(lambda: collections.defaultdict(list))
+    matches_by_group = collections.defaultdict(set)
+    seeds_by_group = collections.defaultdict(set)
+    for j in kept:
+        t = _label(j)
         m = (j.get("result") or {}).get("metrics") or {}
         if not m:
             continue
@@ -63,9 +83,12 @@ def main() -> int:
             if k in m and isinstance(m[k], dict):
                 groups[t][k].append((m[k].get("mean"), m[k].get("se")))
 
+    if dropped:
+        print(f"[去嵌套] 丢弃 {len(dropped)} 个同 (treatment,field,seed) 的较小规模 job：{', '.join(sorted(dropped))}")
+
     print(f"[背景] 真机两臂差胜率 SD（B 实测）= {args.noise_floor:.2f}% —— **胜率尺度**，仅参考")
     print("判据：|t|>=1.96 且符号一致 → 过门（t 为跨种子逆方差合并，**总得分=分数尺度**）")
-    print(f"{'treatment':22s} {'种子':>5} {'matches':>9} {'总得分(合并)':>20} {'t':>7} {'符号':>5} 判读")
+    print(f"{'treatment@field':22s} {'种子':>5} {'matches':>9} {'总得分(合并)':>20} {'t':>7} {'符号':>5} 判读")
     print("-" * 88)
     rows = []
     for t, md in groups.items():
