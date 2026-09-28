@@ -43,7 +43,7 @@ majiang --token-env MAJIANG_TOKEN --auto-match   # 自由匹配（全局令牌�
 
 ```bash
 bash scripts/verify_clean_env.sh   # 干净 venv：安装→CLI→模型求值→本地模拟 8 局
-python3 -m pytest tests/           # 全量测试（当前 427 项）
+python3 -m pytest tests/           # 全量测试（当前 438 项）
 ```
 
 `verify_clean_env.sh` 在全新虚拟环境中验证：零依赖安装成功、CLI 可用、
