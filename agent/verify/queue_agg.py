@@ -50,8 +50,18 @@ def main() -> int:
     # **严格子集**，不能当独立复现累加（否则虚高功效与 t 值）。
     # key 必须含 `field`：`--field meld-equal` 与不带 field 是**不同实验**，不可合并。
     def _label(j):
+        # 键必须含 field（`--field meld-equal` 与不带 field 是不同实验）；
+        # 也必须含 **非 heuristic 的 baseline**：`tenpai-wait-6` vs `tenpai-wait`（增量对打）
+        # 与 `tenpai-wait-6` vs `heuristic`（绝对对打）是**不同实验**，同种子下会被
+        # 去嵌套逻辑误当「子样本」丢掉。heuristic 是默认基线，不入键以保持既有输出不变。
         f = j.get("field")
-        return f"{j.get('treatment')}@{f}" if f else str(j.get("treatment"))
+        b = j.get("baseline")
+        t = str(j.get("treatment"))
+        if f:
+            t = f"{t}@{f}"
+        if b and b != "heuristic":
+            t = f"{t}⊕{b}"
+        return t
 
     best = {}
     for j in jobs:
