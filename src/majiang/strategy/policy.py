@@ -43,7 +43,7 @@ VARIANT_FIELDS = (
     "ukeire_candidates",
     "ukeire_max_shanten",
     "ukeire_order",
-    "tenpai_all_candidates",
+    "wait_aware_tenpai",
     "dealer_feed_scale",
     "chase_baotou",
     "route_aware",
@@ -144,19 +144,22 @@ class PolicyConfig:
     # 就被截掉。改成 `blocks`（骨架厚度，微秒级）可让候选面**按手牌质量**取，
     # 再看进张——零成本地换掉那个被喂牌污染的入口顺序。
     ukeire_order: str = "total"
-    # 听牌（向听 0）时**不截断候选面**，让所有「打完仍听牌」的候选都参与进张比较。
+    # 听牌（向听 0）时改用**可见听口张数**比较候选，并且**不截断候选面**。
     #
-    # 依据（`tools/analyze_wait_ceiling.py`，150 文件 / 1211 个我们的听牌出牌点）：
-    # 我们的听口可见张数离「同一手牌能达到的上限」平均差 **0.94 张（6.5%）**、
-    # 分位 24.9%；而对手只差 **0.23 张（1.3%）**、分位 5.8%。听牌后唯一还能选的
-    # 就是「留哪个听口」，而 `ukeire_candidates=2` 会把 `total` 前 2 名之外的候选
-    # （听牌时候选均只有 2.8 张）直接截掉——**最宽的那张常常不在前 2 名里**，
-    # 因为同向听时 `total` 由骨架厚度与喂牌决定、根本不看听口。
+    # **为什么需要它（这是一个静默退化的 bug 级发现）**：`shanten.ukeire` 在
+    # `current == 0` 时**直接返回空元组**（向听不能再降，`shanten.py:296`）。而调用方
+    # `_break_ties_by_ukeire` 把「每个候选 copies 都是 0」当成平局，于是
+    # `best` 停在 `total` 排序的第一名上——**听牌时那个「精确进张次排序」什么都没做**，
+    # 出牌完全由 `total = -10×向听 + 骨架厚度 - 3×喂牌 - 财神罚` 决定，**根本不看听口**。
+    # 这也解释了为什么 `ukeire-wide`（候选面 2→6）测出来是平的：候选数在听牌时无关紧要。
     #
-    # 成本有界：听牌时候选本来就少（均 2.8 张），且仍在 0.6 秒墙钟上限内。
-    # 只对 shanten 0 生效，前中期行为完全不变——这是刻意的小切口，
-    # 因为「路径窄」（约 3/4 的听口缺口）是另一个问题，不该混在这条改动里。
-    tenpai_all_candidates: bool = False
+    # 实测依据（`tools/analyze_wait_ceiling.py`，v2 时代 150 文件 / 1298 个听牌出牌点）：
+    # 我们的听口可见张数离同一手牌的上限平均差 **0.96 张（6.7%，分位 27.6%）**，
+    # 而对手只差 **0.20 张（1.1%，分位 5.2%）**——对手几乎总选最宽的听口。
+    #
+    # 只在 shanten 0 生效；向听 1 以上仍走 `ukeire`（那里它是有效的）。默认关闭，
+    # 因为打开它就是改冠军档（v2 的行为必须逐位可复现）。
+    wait_aware_tenpai: bool = False
     # 同向听候选项之间的次排序键。**默认 "exact-ukeire"**。
     #
     # 历史：原默认是 "blocks"（骨架厚度）。5.4 曾试过 "ukeire" 并记为「无增益」，
@@ -282,6 +285,34 @@ def cheap_ukeire(
             copies += remaining
         work[tile] -= 1
     return kinds, copies
+
+
+def _wait_copies(
+    counts: Sequence[int], meld_count: int, visible: Sequence[int], discarded: int
+) -> int | None:
+    """打完 ``discarded`` 之后，**还剩几张可见的牌能直接完成胡牌**。
+
+    这是听牌时唯一正确的候选比较口径。不能用 `shanten.ukeire`：它在 `current == 0`
+    时返回空元组（向听不能再降），老调用方把「全是 0」当平局，于是听牌时的次排序
+    静默失效、出牌退化成按 `total`（骨架厚度 + 喂牌）选——**完全不看听口**。
+
+    ``visible`` 是按**打出前**的 14 张手牌算的，所以这里要减掉即将打出的那一张，
+    否则该牌种会被少算一张可摸牌。
+
+    张数不符时返回 ``None``（调用方会跳过该候选并计数），**不返回 0**——
+    返回 0 等于把「算不出来」伪装成「这个候选的听口是空的」，那正是本项目里
+    反复出现过的「非法输入变成看起来合理的结论」那一类错误。
+    """
+    try:
+        waits = win.winning_draws(counts, meld_count)
+    except ValueError:
+        return None
+    if not waits:
+        return 0
+    remaining = list(visible)
+    if 0 <= discarded < len(remaining):
+        remaining[discarded] = max(0, remaining[discarded] - 1)
+    return sum(max(0, tiles.COPIES_PER_KIND - remaining[wait]) for wait in waits)
 
 
 def _cheap_best_shanten(counts: list[int]) -> int:
@@ -649,11 +680,14 @@ class HeuristicDecider:
         exact = self.config.tiebreak == "exact-ukeire"
         if exact and top_shanten > self.config.ukeire_max_shanten:
             return None
+        # 听牌档：改比**可见听口张数**，并且不截断候选面。
+        # 判据见 `PolicyConfig.wait_aware_tenpai`——`ukeire` 在向听 0 时返回空元组，
+        # 老代码把「全是 0」当平局，于是听牌时的次排序其实什么都没做。
+        wait_aware = exact and top_shanten == 0 and self.config.wait_aware_tenpai
         if exact:
             if self.config.ukeire_order == "blocks":
                 tied = sorted(tied, key=lambda item: -item.blocks)
-            # 听牌时不截断：见 `PolicyConfig.tenpai_all_candidates` 的实测依据。
-            if not (self.config.tenpai_all_candidates and top_shanten == 0):
+            if not wait_aware:
                 tied = tied[: max(1, self.config.ukeire_candidates)]
         visible = shanten_module.visible_counts(
             situation.hand.counts,
@@ -671,7 +705,15 @@ class HeuristicDecider:
         for score in tied:
             counts = list(situation.hand.counts)
             counts[score.tile] -= 1
-            if exact:
+            if wait_aware:
+                copies = _wait_copies(counts, situation.hand.meld_count, visible, score.tile)
+                if copies is None:
+                    # 算不出来就跳过该候选并留痕——不能当成 0 参与比较
+                    self.last_detail["wait_copies_failed"] = (
+                        self.last_detail.get("wait_copies_failed", 0) + 1
+                    )
+                    continue
+            elif exact:
                 if deadline is not None and time.monotonic() > deadline and best is not None:
                     self.last_detail["tiebreak_timeout"] = True
                     break
@@ -684,9 +726,9 @@ class HeuristicDecider:
             if best is None or copies > best[0]:
                 best = (copies, score)
         if best is not None:
+            metric = "可见听口" if wait_aware else ("精确" if exact else "廉价") + "进张"
             self.last_detail["tiebreak"] = (
-                f"向听 {top_shanten} 并列 {len(tied)} 张，"
-                f"{'精确' if exact else '廉价'}进张 {best[0]} 张"
+                f"向听 {top_shanten} 并列 {len(tied)} 张，{metric} {best[0]} 张"
             )
         return None if best is None else best[1]
 

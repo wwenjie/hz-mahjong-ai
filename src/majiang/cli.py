@@ -228,19 +228,20 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", ukeire_max_shanten=5,
                               ukeire_order="blocks", ukeire_candidates=4)
     ),
-    # 听牌时不截断候选面：所有「打完仍听牌」的候选都参与进张比较。
-    # 依据是 `tools/analyze_wait_ceiling.py` 的实测——我们的听口可见张数离同一手牌的
-    # 上限平均差 0.94 张（6.5%，分位 24.9%），对手只差 0.23 张（1.3%，分位 5.8%）；
-    # 而同向听时 `total` 由骨架厚度与喂牌决定、**根本不看听口**，所以 `total` 前 2 名
-    # 之外的候选（听牌时一共才 2.8 张）里常常就有最宽的那张，被截掉了。
-    # 成本有界（听牌候选本就少 + 0.6 秒墙钟上限），且只动 shanten 0，不碰前中期。
+    # 听牌后按**可见听口张数**选牌（并放开候选面）。**这是一个 bug 级发现的修补**：
+    # `shanten.ukeire` 在向听 0 时返回空元组，而 `_break_ties_by_ukeire` 把「各候选都是 0」
+    # 当平局，于是**听牌时的精确进张次排序其实什么都没做**，出牌完全按
+    # `total = -10×向听 + 骨架厚度 - 3×喂牌 - 财神罚` 决定，**根本不看听口**。
+    # 这也解释了为什么 `ukeire-wide`（候选面 2→6）测出来是平的：听牌时候选数无关紧要。
+    # 实测（`tools/analyze_wait_ceiling.py`，v2 时代 150 文件 / 1298 个听牌点）：
+    # 我们的听口可见张数离上限平均差 0.96 张（6.7%，分位 27.6%），对手只差 0.20 张（1.1%）。
     "tenpai-wait": lambda mode: HeuristicDecider(
-        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", tenpai_all_candidates=True)
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True)
     ),
-    # 对照：**同一条改动 + 放开管径**（候选面 6）。用来分离「不截断」与「算得更多」
-    # 两个因子——若只有它有效，说明有效的是算得更多、而不是不截断。
+    # 对照：同一条改动 + **同时放开向听 1 的候选面**（2 → 6）。用于分离
+    # 「听牌口径修正」与「向听 1 算得更多」两个因子。
     "tenpai-wait-6": lambda mode: HeuristicDecider(
-        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", tenpai_all_candidates=True,
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
                               ukeire_candidates=6)
     ),
     "first-legal": lambda _mode: FirstLegalDecider(),
