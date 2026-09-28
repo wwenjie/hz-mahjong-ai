@@ -44,6 +44,7 @@ VARIANT_FIELDS = (
     "ukeire_max_shanten",
     "ukeire_order",
     "wait_aware_tenpai",
+    "two_ply_shanten1",
     "dealer_feed_scale",
     "chase_baotou",
     "route_aware",
@@ -159,7 +160,26 @@ class PolicyConfig:
     #
     # 只在 shanten 0 生效；向听 1 以上仍走 `ukeire`（那里它是有效的）。默认关闭，
     # 因为打开它就是改冠军档（v2 的行为必须逐位可复现）。
+    #
+    # 成本实测：`winning_draws` **8.8 ms/次**，听牌时并列候选约 2.8 张 ⇒ 整次决策
+    # 15.5 → 23.9 ms（+8.4 ms）。对比出牌预算 1800 ms、平台 DiscardTimeoutSec=3 s，
+    # 余量充裕，所以这条路**不需要**墙钟上限（`ukeire` 那条 0.1–0.2 s/次才需要）。
     wait_aware_tenpai: bool = False
+    # 向听 1 时改用**两拍值**排序（见 `_two_ply_value`）。
+    #
+    # **与 `wait_aware_tenpai` 是同一条思路的两层**：那个修的是「听牌那一刻选哪个听口」
+    # （实测 regret 6.7% → 0，已由 v3 上线）；这个想修的是**它的上游**——
+    # 向听 1 选哪张牌，决定了你以后能拿到多宽的听口。
+    #
+    # 实测依据（真机 1 向听出牌点）：**39.2% 的局面我们的选择不是两拍最优，
+    # 相对 regret 均值 11.6%**（n=74）。注意这个量**有预测力**：按两拍值分三分位，
+    # 本局胡牌率 14.3% / 45.0% / 68.4%，后续实际听口宽度 8.14 / 7.80 / 12.08。
+    #
+    # 成本实测约 **150 ms/候选**（共享 memo；`ukeire` 热跑 33.6 ms、冷跑 120 ms），
+    # 向听 1 并列候选均约 3 张 ⇒ 约 450 ms/决策，仍在 1800 ms 预算内但会顶到 0.6 秒墙钟上限。
+    # **默认关闭**：11.6% 落在「10–25% 灰区」，所以先做成档位，
+    # 用一个**非循环论证**的机制量（自对弈里实际拿到的听口宽度）判它该不该进 A/B。
+    two_ply_shanten1: bool = False
     # 同向听候选项之间的次排序键。**默认 "exact-ukeire"**。
     #
     # 历史：原默认是 "blocks"（骨架厚度）。5.4 曾试过 "ukeire" 并记为「无增益」，
@@ -285,6 +305,57 @@ def cheap_ukeire(
             copies += remaining
         work[tile] -= 1
     return kinds, copies
+
+
+def _two_ply_value(
+    counts: Sequence[int],
+    meld_count: int,
+    visible: Sequence[int],
+    memo: dict,
+) -> float:
+    """两拍值：``Σ(每个进张的剩余张数) × (摸到它之后、打完一张能拿到的最宽听口)``。
+
+    **为什么是它**：向听 1 的决策只用一拍（``ukeire``能到听牌的张数），而``到的听口有多宽``
+    要到下一拍才知道。实测这个量**有预测力**（真机 74 个向听 1 点按两拍值分三分位：
+    本局胡牌率 14.3% / 45.0% / 68.4%，后续实际听口宽度 8.14 / 7.80 / 12.08）。
+    而我们**同位置内的 regret 是 11.6%**（39.2% 的局面不是两拍最优）——
+    这就是 `total` 在向听 1 那一层留下的可兑现空间。
+
+    **成本**（决定它能不能上真机）：实测 **约 150 ms/候选**（共享 memo 下 `ukeire` 热跑 33.6 ms，
+    冷跑 120 ms；memo 加速 3.6 倍）。向听 1 的并列候选平均约 3 张 ⇒ **约 450 ms/决策**，
+    在出牌预算 1800 ms 内，但会顶到 0.6 秒墙钟上限——所以调用方**必须**保留超时回退。
+
+    ``visible`` 是**按打出前**算的，摸到 ``tile`` 之后要把它自己也记为已见，否则会高估一张。
+    """
+    base = list(visible)
+    total = 0.0
+    for tile, left in shanten_module.ukeire(counts, meld_count, memo=memo):
+        if left <= 0:
+            continue
+        drawn = list(counts)
+        drawn[tile] += 1
+        seen = list(base)
+        seen[tile] += 1
+        widest = 0
+        for drop in range(tiles.TILE_KINDS):
+            if drawn[drop] <= 0:
+                continue
+            after = list(drawn)
+            after[drop] -= 1
+            try:
+                if shanten_module.shanten_any(after, meld_count, memo=memo) != 0:
+                    continue
+            except shanten_module.ShantenError:
+                continue  # 张数不符的候选跳过，不当成 0 参与比较
+            waits = win.winning_draws(after, meld_count)
+            if not waits:
+                continue
+            widest = max(
+                widest,
+                sum(max(0, tiles.COPIES_PER_KIND - seen[wait]) for wait in waits),
+            )
+        total += left * widest
+    return total
 
 
 def _wait_copies(
@@ -684,10 +755,13 @@ class HeuristicDecider:
         # 判据见 `PolicyConfig.wait_aware_tenpai`——`ukeire` 在向听 0 时返回空元组，
         # 老代码把「全是 0」当平局，于是听牌时的次排序其实什么都没做。
         wait_aware = exact and top_shanten == 0 and self.config.wait_aware_tenpai
+        # 两拍只用在向听 1：向听 0 已有 `wait_aware`（那一层用的是同一条思路的终点），
+        # 向听 ≥2 时**连一拍都还没走稳**，两拍的噪声会压过信号（且成本翻倍）。
+        two_ply = exact and top_shanten == 1 and self.config.two_ply_shanten1
         if exact:
             if self.config.ukeire_order == "blocks":
                 tied = sorted(tied, key=lambda item: -item.blocks)
-            if not wait_aware:
+            if not wait_aware and not two_ply:
                 tied = tied[: max(1, self.config.ukeire_candidates)]
         visible = shanten_module.visible_counts(
             situation.hand.counts,
@@ -713,6 +787,13 @@ class HeuristicDecider:
                         self.last_detail.get("wait_copies_failed", 0) + 1
                     )
                     continue
+            elif two_ply:
+                # 两拍值只在**超时回退之外**算：deadline 已到就停在当前最优上，
+                # 绝不为了算完而拖过墙钟上限（出牌预算 1800 ms / 平台 3 s）。
+                if deadline is not None and time.monotonic() > deadline and best is not None:
+                    self.last_detail["tiebreak_timeout"] = True
+                    break
+                copies = int(_two_ply_value(counts, situation.hand.meld_count, visible, memo))
             elif exact:
                 if deadline is not None and time.monotonic() > deadline and best is not None:
                     self.last_detail["tiebreak_timeout"] = True
@@ -726,7 +807,10 @@ class HeuristicDecider:
             if best is None or copies > best[0]:
                 best = (copies, score)
         if best is not None:
-            metric = "可见听口" if wait_aware else ("精确" if exact else "廉价") + "进张"
+            metric = (
+                "可见听口" if wait_aware
+                else ("两拍值" if two_ply else ("精确" if exact else "廉价") + "进张")
+            )
             self.last_detail["tiebreak"] = (
                 f"向听 {top_shanten} 并列 {len(tied)} 张，{metric} {best[0]} 张"
             )

@@ -244,6 +244,18 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
                               ukeire_candidates=6)
     ),
+    # 向听 1 按两拍值排序（**叠在 v3 之上**，所以这条臂直接与冠军档对比）。
+    # 实测依据：真机 1 向听出牌点里 **39.2% 的局面我们的选择不是两拍最优、相对 regret 11.6%**
+    # （n=74）；而两拍值有预测力（三分位 → 本局胡牌率 14.3%/45.0%/68.4%，
+    # 后续实际听口宽度 8.14/7.80/12.08）。成本约 150 ms/候选 ⇒ 约 450 ms/决策。
+    "two-ply": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire",
+                              wait_aware_tenpai=True, two_ply_shanten1=True)
+    ),
+    # 对照：只开两拍、不开听牌口径修正（用来把两层分开归因）。
+    "two-ply-only": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", two_ply_shanten1=True)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 
