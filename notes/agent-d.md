@@ -145,3 +145,27 @@
 ### 关键实证基线（已写进 tasks §0）
 - 三臂 vs v3 全显著负；search 系 vs v3 同向显著负；近邻偏好探针无信号；
 - ★ **全局回报预测器 GO**：r=+0.098、CI[+0.037,+0.151]、训练对照+0.165、R²≈1%、对半准确率 0.530。
+
+---
+
+## 2026-09-29 00:08 — 自主窗口开始（用户授权 10 小时，10:07 汇报）
+
+### 环境事实（先记，避免踩坑）
+- **真机在跑**：`tools/auto_session.py --decider v3,first-legal`（A 的采集，pid 2426203）+ `iterate_loop.py`。
+- **C 在跑**：`agent/verify/recompute_search_v3.py`（8 worker ~95% CPU）。
+- **load ≈11.4 / 16 核 ⇒ 余量有限**。
+- **纪律**：本线所有实验 `nice -n 15`、**低并发（≤6）**、**串行**；绝不满载，保护真机的轮询。
+- 汇报自动化 `autonomous-10h-report` 已建（10:07 announce 到本会话）。
+
+### ★ 发现（影响"回报预测器"的解读，也是独立的事实）
+**决策时拿不到当前累计得分/排名**：
+- `HeuristicDecider.configure(tournament)` 只注入 `base_score` 与 `you_cai_bi_kao`（`policy.py:422`）；
+- `Situation` 无累计字段（`rules/situation.py:45`）；
+- `features.extract` **刻意**排除累计得分——注释原文："快照里的 `scores` 是本局记分板，局中恒为 0，
+  平台把跨局累计放在 `ranking` 而非快照里"（`strategy/features.py:76`）；
+- 引擎虽在 `tournament.status` 拉取 `ranking`（`engine.py:537`），但**只写日志、不传给决策器**。
+
+⇒ 含义：我的回报预测器**只能**从"局面本身"预测名次，**拿不到**"当前领先/落后"这个对名次贡献最大的变量。
+这既解释了探针为何只有弱相关（r≈0.10），也**本身就是一条可行动线索**：
+若把累计/排名接入决策（合规？需确认平台是否公开提供），预测质量与策略可能大幅改善。
+**待办**：查平台 API 是否在决策路径暴露排名（`tournament()` 已返回，问题只在"是否传给决策器"）。
