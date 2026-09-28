@@ -3630,6 +3630,32 @@
    "note_held": "在 `shape-vs-v3` 的机制门与 A/B 出结论前不启动（避免并行占算力）。",
    "hypothesis": "**副露闸门重测**：当年 `meld-equal*` 三个配置一致为负，但那时副露手的候选并列最严重（1 组 89.2%、2 组 93.5%）⇒ **副露后的出牌近乎随机**，于是「多副露」只显得有代价。形质项修好后这条混淆才被拆掉。而对手侧指纹显示副露是**最大的行为差异**（强 bot 1.20~1.30/局 vs 我们 0.62），且他们首次到听摸序比我们早约 1 摸。基线取 v3。",
    "kill_criteria": "机制量（到听摸序 / 到听率 / 爆头率）不向强 bot 画像移动 ⇒ 不采纳；两种子 A/B 不同向 ⇒ 不采纳。"
+  },
+  {
+   "id": "risk-v3-vs-v3-s20260927",
+   "treatment": "risk-v3",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    20260927
+   ],
+   "status": "held",
+   "note_held": "等 shape A/B 出结论后再释放（避免并行占算力）。",
+   "hypothesis": "**换用训练过的对手模型**（`models/opponent_model.json`，挂在 `risk` 臂上，**从未被对拍过**——与当年 `search` 同样的疏忽）。同批位置标定（n=3907）：手写 `HeuristicReadyModel` 高估实测 **2.6 倍**（34.2% vs 13.2%），GBDT 只高估 **1.6 倍**（21.3%）。而 `threat = Σready` 决定喂牌项权重（中段 97.7% 由喂牌决定）⇒ 换模型 = 把喂牌惩罚从 2.6× 校到 1.6×。本臂 = v3 + GBDT ready（新增 decider `risk-v3`）。",
+   "kill_criteria": "机制量不向强 bot 画像移动 ⇒ 不采纳；两种子 A/B 不同向 ⇒ 不采纳。"
+  },
+  {
+   "id": "risk-v3-vs-v3-s771014",
+   "treatment": "risk-v3",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    771014
+   ],
+   "status": "held",
+   "note_held": "等 shape A/B 出结论后再释放（避免并行占算力）。",
+   "hypothesis": "**换用训练过的对手模型**（`models/opponent_model.json`，挂在 `risk` 臂上，**从未被对拍过**——与当年 `search` 同样的疏忽）。同批位置标定（n=3907）：手写 `HeuristicReadyModel` 高估实测 **2.6 倍**（34.2% vs 13.2%），GBDT 只高估 **1.6 倍**（21.3%）。而 `threat = Σready` 决定喂牌项权重（中段 97.7% 由喂牌决定）⇒ 换模型 = 把喂牌惩罚从 2.6× 校到 1.6×。本臂 = v3 + GBDT ready（新增 decider `risk-v3`）。",
+   "kill_criteria": "机制量不向强 bot 画像移动 ⇒ 不采纳；两种子 A/B 不同向 ⇒ 不采纳。"
   }
  ]
 }

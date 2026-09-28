@@ -290,6 +290,15 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
                               shape_value=True, meld_tolerance="equal-early")
     ),
+    # v3 + **训练过的**对手模型（`models/opponent_model.json`）。存在理由有两条：
+    # ① 该模型挂在 `risk` 臂上**从未被对拍过**（与当年 `search` 同样的疏忽）；
+    # ② 同批位置标定（n=3907）显示它比手写模型准得多：
+    #    手写 `HeuristicReadyModel` 高估实测 **2.6 倍**（34.2% vs 13.2%），GBDT 只高估 **1.6 倍**（21.3%）。
+    #    而 `threat = Σ ready_probability` 决定喂牌项的权重（真机实测中段 **97.7%** 由喂牌决定）。
+    "risk-v3": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, wait_aware_tenpai=True),
+        risk_model=load_or_none(OPPONENT_MODEL_PATH),
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 

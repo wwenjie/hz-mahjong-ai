@@ -66,10 +66,34 @@ def predict(melds: int, discards: int, draws: int) -> float:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="threat 层标定")
     parser.add_argument("--limit", type=int, default=40)
+    parser.add_argument(
+        "--model",
+        default="both",
+        choices=("heuristic", "gbdt", "both"),
+        help=(
+            "标定哪个 ready 模型。**默认两个都标**——因为默认档用的是手写的 "
+            "`HeuristicReadyModel`，而 `models/opponent_model.json`（GBDT）只挂在 `risk` 实验臂上、"
+            "**从未被对拍过**。两者在**同一批位置**上比才有意义。"
+        ),
+    )
+    parser.add_argument("--gbdt-path", default="models/opponent_model.json")
     args = parser.parse_args(argv)
 
+    gbdt = None
+    if args.model in ("gbdt", "both"):
+        try:
+            from majiang.strategy.opponent import load_or_none
+
+            gbdt = load_or_none(args.gbdt_path)
+            if not getattr(gbdt, "using_model", False):
+                print("⚠ GBDT 模型不可用（回退手写），只标手写", file=__import__("sys").stderr)
+                gbdt = None
+        except Exception as exc:  # noqa: BLE001
+            print(f"⚠ 加载 GBDT 失败：{type(exc).__name__}", file=__import__("sys").stderr)
+            gbdt = None
+
     files = sorted(glob.glob("data/auto_sessions/*/events/*.json"))[: args.limit]
-    rows: dict[tuple[int, int], list[tuple[float, int]]] = collections.defaultdict(list)
+    rows: dict[tuple[int, int], list[tuple[float, float | None, int]]] = collections.defaultdict(list)
     for path in files:
         try:
             doc = json.loads(Path(path).read_text(encoding="utf-8"))
@@ -81,7 +105,7 @@ def main(argv: list[str] | None = None) -> int:
         mine = ids.index(OUR)
         others = [s for s in range(4) if s != mine]
         for state, events in replay.iter_rounds(doc):
-            pending: dict[int, tuple[float, int, int]] = {}
+            pending: dict[int, tuple[float, int, int, float | None]] = {}
             for e in events:
                 seat = e.get("seat")
                 if (
@@ -93,10 +117,18 @@ def main(argv: list[str] | None = None) -> int:
                     for opp in others:
                         st = state.seats[opp]
                         key = (min(len(st.melds), 3), min(len(st.discards), 12))
+                        gbdt_ready = None
+                        if gbdt is not None:
+                            try:
+                                situation = state.situation_for(mine)
+                                gbdt_ready = float(gbdt.model.ready_probability(situation, opp))
+                            except Exception:  # noqa: BLE001
+                                gbdt_ready = None
                         pending[opp] = (
                             predict(len(st.melds), len(st.discards), state.draws),
                             key[0],
                             key[1],
+                            gbdt_ready,
                         )
                 elif e.get("type") == "tile_discarded" and seat in others and state.opened:
                     info = pending.pop(seat, None)
@@ -110,24 +142,35 @@ def main(argv: list[str] | None = None) -> int:
                         except Exception:  # noqa: BLE001
                             value = -1
                         if value >= 0:
-                            rows[(info[1], info[2])].append((info[0], 1 if value == 0 else 0))
+                            rows[(info[1], info[2])].append(
+                                (info[0], info[3], 1 if value == 0 else 0)
+                            )
                 replay.apply_event(state, e)
 
-    print(f"{'副露':>4s} {'弃牌':>4s} {'n':>6s} {'模型预测':>9s} {'实测听牌率':>11s} {'差':>8s}")
-    tp = te = 0.0
-    tn = 0
+    print(f"{'副露':>4s} {'弃牌':>4s} {'n':>6s} {'手写预测':>9s} {'GBDT预测':>9s} "
+          f"{'实测听牌率':>11s} {'手写差':>8s} {'GBDT差':>8s}")
+    tp = te = tn = 0.0
+    gp = gn = 0.0
     for key in sorted(rows):
         data = rows[key]
         if len(data) < 120:  # 样本下限：少于此不报数
             continue
-        pred = sum(p for p, _ in data) / len(data)
-        emp = sum(l for _, l in data) / len(data)
-        tp += sum(p for p, _ in data)
-        te += sum(l for _, l in data)
+        pred = sum(p for p, _, _ in data) / len(data)
+        emp = sum(l for _, _, l in data) / len(data)
+        gvals = [g for _, g, _ in data if g is not None]
+        gpred = sum(gvals) / len(gvals) if gvals else float("nan")
+        tp += sum(p for p, _, _ in data)
+        te += sum(l for _, _, l in data)
         tn += len(data)
-        print(f"{key[0]:>4d} {key[1]:>4d} {len(data):>6d} {pred:>9.1%} {emp:>11.1%} {pred - emp:>+8.1%}")
+        if gvals:
+            gp += sum(gvals)
+            gn += len(gvals)
+        print(f"{key[0]:>4d} {key[1]:>4d} {len(data):>6d} {pred:>9.1%} {gpred:>9.1%} "
+              f"{emp:>11.1%} {pred - emp:>+8.1%} {gpred - emp:>+8.1%}")
     if tn:
-        print(f"\n合计 n={tn}  模型 {tp / tn:.1%} vs 实测 {te / tn:.1%}  差 {tp / tn - te / tn:+.1%}")
+        print(f"\n手写模型合计 n={int(tn)}：{tp / tn:.1%} vs 实测 {te / tn:.1%}  差 {tp / tn - te / tn:+.1%}")
+    if gn:
+        print(f"GBDT 模型合计 n={int(gn)}：{gp / gn:.1%} vs 实测 {te / tn:.1%}  差 {gp / gn - te / tn:+.1%}")
     print("\n判据：系统性高估 ⇒ 喂牌项被放大、feed_weight 应下调；低估则相反。")
     return 0
 
