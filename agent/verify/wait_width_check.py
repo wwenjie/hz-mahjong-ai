@@ -104,13 +104,67 @@ def replay_wait_widths(start_hands, events, our):
     return out
 
 
+def room_of(path: str) -> str:
+    return Path(path).parts[-3]
+
+
+def decider_by_room() -> dict:
+    """房间 → 当时跑的策略名（读 `sessions.jsonl` 台账）。
+
+    **为什么必须过滤**：09-27 默认档从 v1（`tiebreak=blocks`，完全不看进张）切到 v2，
+    09-28 又新增 v3 并上线真机。整份清单上的「我们」是多个策略的**混合**，
+    既不代表 v1 也不代表 v2/v3。同一条警告适用于任何「我们 vs 对手」对照。
+    我自己实现（不 import A 的 `tools/`），保持独立。
+    """
+    ledger = ROOT / "data" / "auto_sessions" / "sessions.jsonl"
+    mapping = {}
+    if not ledger.exists():
+        return mapping
+    for line in ledger.read_text(errors="replace").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            e = json.loads(line)
+        except Exception:
+            continue
+        if e.get("room_id"):
+            mapping[e["room_id"]] = e.get("decider")
+    return mapping
+
+
+def filter_era(paths, eras):
+    if not eras:
+        return paths, 0
+    mapping = decider_by_room()
+    kept, unknown = [], 0
+    for p in paths:
+        d = mapping.get(room_of(p))
+        if d is None:
+            unknown += 1
+            continue
+        if any(d.startswith(x) for x in eras):
+            kept.append(p)
+    return kept, unknown
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--era", default="",
+                    help="逗号分隔的档位前缀（如 v2 / v3）；不给则不过滤（会跨时代混口径）")
     args = ap.parse_args()
     paths = sorted(glob.glob(str(ROOT / "data" / "auto_sessions" / "*" / "events" / "*.json")))
     if args.limit:
         paths = paths[:args.limit]
+    eras = [x.strip() for x in args.era.split(",") if x.strip()]
+    if eras:
+        paths, unknown = filter_era(paths, eras)
+        if unknown:
+            print(f"  （{unknown} 个文件房间不在台账里，已剔除）")
+        print(f"era 过滤 {eras} → {len(paths)} 个文件")
+    else:
+        print("⚠ 未做 era 过滤：整份清单是多个策略时代的混合，数字只代表「历史平均」")
     print(f"扫描 {len(paths)} 个文件（每文件 8 局）")
 
     bucket = {0: [], 1: [], 2: []}  # god -> [可见张数]
