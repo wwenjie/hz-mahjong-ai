@@ -198,6 +198,16 @@
 - **改动的文件**：`verify/win_rate_table.py`
 - **留给 A 的下一步**：真值表可直接作为统一定价的校准基准；需要扩展维度（加阶段/加 ukeire 子抽样）说一声。
 
+## 2026-09-28 11:50
+- **结论 1（真值表 v2 交付 A 的对拍口径）**：`verify/out/win_rate_table.json` 落盘（n/p_drop/p_win/fan_avg 按 who|shanten|god|melds|phase）。新发现**交叉点**：深向听（3-4）我们降速比对手快 +10pp，1-2 向听才被反超——开局构形不差，差距全在中段冲刺。
+- **结论 2（番型分解）**：均番差主源是**爆头占比**（我们 14.9% vs 对手 22.7%）；我们有 chase_baotou 主动追、占比仍只有对手 2/3——对手是「更常到爆头态」，不是「更会追」。与真值表 1 财神格缺口同源。
+- **结论 3（hu 事件之争澄清）**：全量 2886 文件 + harvest/live/logs grep，`"type":"hu"` 零命中——「胜负只在 round_ended」成立；C 看到的 hu 是动作空间 candidates。
+- **结论 4（C 的频率统计交叉验证）**：「能胡且能杠」事件流口径 0.47%（10/2124）vs C 的日志口径 0.52%（27/5232）——两源一致，C 的「登记不动」处置成立。
+- **改动的文件**：`verify/win_rate_table.py`（v2）、`scripts/agent_watch.py`（加盯 agent-c.md）
+- **留给 A 的下一步**：无。等 ukeire-early 两种子。
+
+---
+
 ---
 
 ---
