@@ -2010,3 +2010,37 @@ baseline = `heuristic`（= v2），四座位旋转、40 场。
 - `search-deep` + `field=search-deep` 对照场（同 job 内）；
 - **`search@v3 vs v3`**（我加的判据修正，等 agent-d 采纳）；
 - 监视作业 `agent-d-search-watch`（19:12 建）落盘即唤醒我。
+
+---
+
+## 2026-09-28 19:26 — ★ 覆盖面扩大：agent-d **整条线**（RL/BC/MLP）都坐在 **v2 底**，非只管 search
+
+### 全仓核实（`/home/wuwenjie01/majiang_rl`，只读）
+```
+grep -rn "wait_aware_tenpai" src/nnrl/*.py scripts/*.py   →  (空)
+```
+| 臂 | base 配置 | 处 |
+|---|---|---|
+| `RLPolicy`（RL 出牌重排） | `PolicyConfig.for_mode(Mode.QUALIFIER)` | `rl_play.py:27` |
+| `heuristic_only_factory`（RL 的混合场地基线） | 同 | `rl_play.py:85` |
+| BC 学生 | 同 | `bc.py:172` |
+| MLP 价值 | 同 | `decider.py:81` |
+
+⇒ **agent-d 全仓从未引用 `wait_aware_tenpai`**，即**每条臂、每一个基线都是 v2 底**。
+
+### 后果（对它今晚的「对比现有方案」直接相关）
+1. **基线选错**：它所有 A/B 的 `--baseline heuristic` 都是 **v2**，而**冠军是 v3**。
+   ⇒ 它测出的「vs heuristic」**不是**「vs 现有方案（当前冠军）」。
+   **要回答「RL 有没有超过现有方案」，必须 `--baseline v3`。**
+2. **臂自身被 v2 handicap 削弱（更隐蔽）**：`RLPolicy` 沿用 v2 底的候选集与 `total`，
+   在**听牌局面**会继承 v2 那个「不看听口」的失效排序；网络只在这些候选内重排
+   （`logit = total + delta`）⇒ **上限被 v2 的排序封住**。
+   ⇒ 它拿到的负结果（RL 20 场 t−2.17/−3.04）**至少部分是 v2 handicap 的贡献**，
+   不能直接读成「RL 重排在本任务上无效」。
+3. **修法（不改主仓）**：把 base 换成
+   `PolicyConfig.for_mode(Mode.QUALIFIER, tiebreak="exact-ukeire", wait_aware_tenpai=True)`
+   （= v3 底），并把 `--baseline v3`。（RL 的训练与推理**共用** `self.inner` ⇒ 换一处即两侧一致。）
+
+### 我在做的
+已把「search@v3」配方发它（19:11/19:24）；本条（RL/BC/MLP 同款问题）**接下来发它**。
+不做重活（load ~15/16）。
