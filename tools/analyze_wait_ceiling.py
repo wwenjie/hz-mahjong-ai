@@ -170,6 +170,10 @@ def ceiling(
         "best": best,
         "regret": best - mine,
         "percentile": better / (len(options) - 1),
+        # **风险度量**：这版改动会不会为了宽听口而把财神打出去？财神是唯一的链货币，
+        # 也是「4 白板 ×2」的那一环；若 regret 降了但打财神变多，就是拿一条轴的收益
+        # 换另一条轴的损失，必须同时看。
+        "chosen_is_god": chosen == tiles.GOD,
     }
 
 
@@ -290,7 +294,8 @@ def report(rows: list[dict], label: str) -> None:
     pct = sum(r["percentile"] for r in rows) / n
     print(f"  {label:8s} n={n:6d}  候选均 {sum(r['n_options'] for r in rows) / n:4.2f} 张"
           f"  实际可见 {mine:6.2f}  上限 {best:6.2f}"
-          f"  regret {regret:5.2f}（{regret / mine:6.1%}）  分位 {pct:5.1%}")
+          f"  regret {regret:5.2f}（{regret / mine:6.1%}）  分位 {pct:5.1%}"
+          f"  打财神 {sum(r['chosen_is_god'] for r in rows) / n:5.1%}")
 
 
 def main(argv: list[str] | None = None) -> int:

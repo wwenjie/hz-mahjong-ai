@@ -62,6 +62,13 @@ class Arm:
     baotou: int = 0
     god_at_win: int = 0
     fan_total: int = 0
+    # 中段机制量：`ukeire-early` 这类「前中期也看进张」的改动，指望的是**到听更快**，
+    # 所以判据应当是「到听率」与「进入各向听时的进张数」，而不是总得分。
+    tenpai_rounds: int = 0
+    ukeire_kinds: dict[int, int] = field(default_factory=lambda: {1: 0, 2: 0})
+    ukeire_copies: dict[int, int] = field(default_factory=lambda: {1: 0, 2: 0})
+    ukeire_n: dict[int, int] = field(default_factory=lambda: {1: 0, 2: 0})
+    shanten_failed: int = 0
 
     def merge(self, other: Arm) -> None:
         self.rounds += other.rounds
@@ -70,6 +77,22 @@ class Arm:
         self.baotou += other.baotou
         self.god_at_win += other.god_at_win
         self.fan_total += other.fan_total
+        self.tenpai_rounds += other.tenpai_rounds
+        self.shanten_failed += other.shanten_failed
+        for level in (1, 2):
+            self.ukeire_kinds[level] += other.ukeire_kinds[level]
+            self.ukeire_copies[level] += other.ukeire_copies[level]
+            self.ukeire_n[level] += other.ukeire_n[level]
+
+    @property
+    def tenpai_rate(self) -> float:
+        return self.tenpai_rounds / self.rounds if self.rounds else 0.0
+
+    def ukeire_mean(self, level: int, *, kinds: bool = True) -> float:
+        n = self.ukeire_n[level]
+        if not n:
+            return 0.0
+        return (self.ukeire_kinds[level] if kinds else self.ukeire_copies[level]) / n
 
     @property
     def win_rate(self) -> float:
@@ -88,6 +111,65 @@ class Arm:
         return self.god_at_win / self.wins if self.wins else 0.0
 
 
+class _ArrivalProbe:
+    """包一层 decider，量「本人打完后是否到听」与「首次进入各向听时的进张」。
+
+    口径与 agent B 的 `verify/arrival_shape.py` **故意对齐**（那里量的是真机
+    对手 6.05 vs 我们 6.70 的进入 1 向听进张数），这样自对弈里的机制数值与真机
+    可以直接比。**必须每次进向听只记一次**（与 arrival_shape 一致），否则反复进出
+    同向听的手牌会稀释均值。
+    """
+
+    def __init__(self, inner: object, arm: Arm, seat: int) -> None:
+        self.inner = inner
+        self.arm = arm
+        self.seat = seat
+        self.arrived: set[int] = set()
+
+    @property
+    def name(self) -> str:
+        return getattr(self.inner, "name", "probe")
+
+    def configure(self, *args, **kwargs):  # noqa: ANN002, ANN003 —— 透传真机注入
+        return self.inner.configure(*args, **kwargs)  # type: ignore[attr-defined]
+
+    def observe_state(self, *args, **kwargs):  # noqa: ANN002, ANN003
+        handler = getattr(self.inner, "observe_state", None)
+        if handler is not None:
+            handler(*args, **kwargs)
+
+    def choose(self, situation, actions, *, budget_ms: int = 0):  # noqa: ANN001, ANN201
+        from majiang.rules import shanten as shanten_module  # noqa: PLC0415
+        from majiang.rules.action import DISCARD  # noqa: PLC0415
+
+        choice = self.inner.choose(situation, actions, budget_ms=budget_ms)  # type: ignore[attr-defined]
+        if situation.seat != self.seat or choice is None or choice.kind != DISCARD:
+            return choice
+        if choice.tile is None:
+            return choice
+        counts = list(situation.hand.counts)
+        counts[choice.tile] -= 1
+        try:
+            value = shanten_module.shanten_any(counts, situation.hand.meld_count)
+        except Exception:  # noqa: BLE001 —— 算不出来就计入并跳过，不猜
+            self.arm.shanten_failed += 1
+            return choice
+        if value == 0 and 0 not in self.arrived:
+            self.arrived.add(0)
+            self.arm.tenpai_rounds += 1
+        for level in (1, 2):
+            if value == level and level not in self.arrived:
+                self.arrived.add(level)
+                try:
+                    entries = shanten_module.ukeire(counts, situation.hand.meld_count)
+                except Exception:  # noqa: BLE001
+                    continue
+                self.arm.ukeire_kinds[level] += len(entries)
+                self.arm.ukeire_copies[level] += sum(copy for _, copy in entries)
+                self.arm.ukeire_n[level] += 1
+        return choice
+
+
 def measure(
     arm_name: str,
     field: str,
@@ -103,11 +185,14 @@ def measure(
     labels = [field] * SEATS
     labels[seat] = arm_name
     for index in range(matches):
-        deciders = [build(name) for name in labels]
-        # 与 ``sim.batch.run_match`` 的种子链一致，保证同 index 的场次拿到同一副牌
+        # **每局重建决策器**：探针要按局持有 `arrived`（首次进入各向听只记一次），
+        # 跨局复用会把「每局第一次」错算成「整场第一次」。决策器本身无状态、构造不消耗
+        # 随机源，故重建不改变行为（只有 `last_detail` 这类诊断字段被重置）。
         rng = random.Random(seed * 100003 + index)
         dealer = index % SEATS
         for round_no in range(1, rounds + 1):
+            deciders = [build(name) for name in labels]
+            deciders[seat] = _ArrivalProbe(deciders[seat], total, seat)
             outcome = run_round(
                 deciders, dealer=dealer, round_no=round_no, base_score=base_score, rng=rng
             )
@@ -151,7 +236,8 @@ def main(argv: list[str] | None = None) -> int:
             print(
                 f"  {arm_name:14s} 座{seat}  局{part.rounds:5d}  胡{part.wins:4d}"
                 f"  爆头{part.baotou:3d}  爆头/胡 {part.baotou_of_wins:6.1%}"
-                f"  均番 {part.mean_fan:5.2f}",
+                f"  均番 {part.mean_fan:5.2f}  到听 {part.tenpai_rate:6.2%}"
+                f"  进2向听 {part.ukeire_mean(2):5.2f}  进1向听 {part.ukeire_mean(1):5.2f}",
                 flush=True,
             )
         table[arm_name] = merged
@@ -160,17 +246,25 @@ def main(argv: list[str] | None = None) -> int:
     print(f"\n=== 汇总（每档 {SEATS} 旋转 × {args.matches} 场 × {args.rounds} 局，"
           f"另三座={args.field}，用时 {elapsed:.0f}s）===")
     print(f"{'档位':14s} {'局数':>6s} {'流局':>6s} {'胡率':>7s} {'爆头/胡':>8s}"
-          f" {'爆头/局':>8s} {'均番':>6s} {'胜时财神':>8s}")
+          f" {'爆头/局':>8s} {'均番':>6s} {'胜时财神':>8s} {'到听率':>7s}"
+          f" {'进2向听':>8s} {'进1向听':>8s}")
     for arm_name in arms:
         arm = table[arm_name]
         print(
             f"{arm_name:14s} {arm.rounds:6d} {arm.flows / arm.rounds:6.1%}"
             f" {arm.win_rate:7.2%} {arm.baotou_of_wins:8.1%}"
             f" {arm.baotou / arm.rounds:8.1%} {arm.mean_fan:6.2f}"
-            f" {arm.god_at_win_mean:8.2f}"
+            f" {arm.god_at_win_mean:8.2f} {arm.tenpai_rate:7.2%}"
+            f" {arm.ukeire_mean(2):8.2f} {arm.ukeire_mean(1):8.2f}"
         )
-    print("\n读法：均番差要落在「爆头/胡」这一列上才算打中 B 定位的那条轴；"
-          "若只有「胜时财神」动而「爆头/胡」不动，说明财神只是留着、没变成爆头。")
+    print("\n读法：① 均番差要落在「爆头/胡」这一列上才算打中 B 定位的那条轴；"
+          "若只有「胜时财神」动而「爆头/胡」不动，说明财神只是留着、没变成爆头。"
+          "\n② 「到听率 / 进2向听 / 进1向听」是中段改动的靶子（`ukeire-early` 这类"
+          "「前中期也看进张」指望的就是这三列变好）；后两列与 agent B 的"
+          " `verify/arrival_shape.py` **同口径**（真机实测：进 2 向听 我们 9.90 / 对手 10.14，"
+          "进 1 向听 我们 6.05 / 对手 6.70），所以自对弈的数可以直接和真机比。"
+          "\n③ 空干预判据：若某档位与 heuristic **逐列完全相同**，它就是空干预"
+          "（`preserve-god` 就是这么被查出来的），别拿它的 A/B 结果当证据。")
     return 0
 
 
