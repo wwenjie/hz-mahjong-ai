@@ -206,6 +206,14 @@
 - **改动的文件**：`verify/win_rate_table.py`（v2）、`scripts/agent_watch.py`（加盯 agent-c.md）
 - **留给 A 的下一步**：无。等 ukeire-early 两种子。
 
+## 2026-09-28 12:05
+- **结论**：队列指标解析器经原始 stdout 对拍**忠实**（verify-v2-vs-v1-s20260927：原始 +2.129/t1.63、+0.469/t3.20 vs 记录 +2.129/t1.63、+0.469/t3.19——t 的第三位小数是解析舍入，均值逐位一致）。队列结果的传输链可信。
+- **证据**：`data/experiments/logs/verify-v2-vs-v1-s20260927-seed20260927.log` vs `notes/experiments.json` 同 id 条目。
+- **改动的文件**：无（纯校验）
+- **留给 A 的下一步**：无。
+
+---
+
 ---
 
 ---
