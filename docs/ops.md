@@ -139,6 +139,8 @@ tail -20 logs/supervisor.log                      # 守护视角：有没有反�
 - [ ] 干净环境验收通过：`git clone` → `uv sync` → 启动 → 到位
 - [ ] 平台指南版本自检无告警
 - [ ] 日志目录可写、磁盘充足
+- [ ] **启动档位已确认为当前冠军版本**（`--decider v3`，见第九节；不写则跑默认档，
+      而默认档与冠军版本**可能不是同一个**——v2/v3 这种已冻结的版本必须显式指名）
 - [ ] 赛前完成**出席确认**（每轮都要）
 - [ ] 开赛后 5 分钟内检查 `game.settled` 在增长（证明真的在打）
 
@@ -165,3 +167,53 @@ uv run python -m majiang --env-prefix MAJIANG_TOKEN_ --reopen-test-room
 ```
 
 **正式赛事绝不要打开此开关。**
+
+---
+
+## 九、冠军档位与重部署（先读这一节的「为什么」）
+
+### 为什么这件事需要单独一节
+
+1. **默认档 ≠ 冠军档**。`DECIDERS` 里的 `heuristic` 是**新建决策器时的默认配置**，
+   而冠军是**冻结在 `src/majiang/strategy/versions.py` 里的具名版本**（v1/v2/v3…）。
+   切冠军**不修改默认值**——一改默认，已冻结版本的「逐位可复现」就没了
+   （v1 的 `tiebreak=blocks` 当年就是这么丢的，只能拿近似档位当替身补救）。
+2. **采集进程的档位是在启动时固定的**（`MAJIANG_COLLECT_DECIDERS`），
+   所以换冠军**必须重启采集进程**，而重启需要令牌环境变量 → 这一步只能在
+   有令牌的 shell 里做，不能让程序自己去读。
+3. **重启会把真机数据切成两个时代**。任何跨时代的分析都必须显式过滤
+   （`analyze_wait_ceiling.py --era v3` 之类；口径见 `notes/agent-a.md`），
+   否则算出来的是两代策略的平均。
+
+### 切换步骤
+
+```bash
+# 1. 先停旧守护（它会转发 SIGTERM 给 auto_session，打完当前会话再退）
+pkill -f collector_supervisor.sh
+
+# 2. 用**当前冠军版本号**重启（令牌只从 .env 读，绝不写在命令行上）
+set -a; . ./.env; set +a
+MAJIANG_COLLECT_DECIDERS=v3,first-legal \
+MAJIANG_COLLECT_ARM_LIMIT=first-legal=8 \
+  nohup setsid tools/collector_supervisor.sh >> /tmp/autoloop.log 2>&1 < /dev/null &
+
+# 3. 核对台账：新会话的 decider 字段应是 v3
+tail -3 data/auto_sessions/sessions.jsonl
+```
+
+`first-legal` 是**对照臂**，用 `--arm-limit` 限量跑（跑到量自动停用）。
+它的唯一用途是「自对弈预测的刻度校准」（历史实测：自对弈预测 −21.8pp
+vs 真机交错实测 −20.5pp，误差 <1.3pp），不是候选策略。
+
+### 新增冠军的纪律
+
+```bash
+uv run python -c "from majiang.strategy.versions import describe; print(describe())"
+```
+
+新版本必须**同时**满足三条，否则不要切：
+① 在 `versions.py` 里新增快照并写清日期、依据、被替换的开关；
+② 有**机制级证据**（比率型机制量或上限诊断），不能只有总得分——自对弈总得分对
+中段改动的功效不足，且已知存在场地偏移（见 `notes/agent-a.md` 的 `feed-high` 检定）；
+③ 全量测试与干净环境验收通过（`uv run pytest tests/` + `scripts/verify_clean_env.sh`）。
+
