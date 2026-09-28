@@ -109,29 +109,47 @@ def main(argv: list[str] | None = None) -> int:
         "--field",
         default="",
         help=(
-            "另三座坐谁（默认＝baseline，即原来的行为）。**这是评估「副露」类假设的必要条件**："
+            "另三座坐谁（默认＝baseline，即原来的行为）。可以给 1 个名字（三座相同）"
+            "或 **3 个名字（按座位升序分配给非旋转座）**。**这是评估「副露」类假设的必要条件**："
             "真机对手副露 1.093/局，而我们自己的策略只 0.591/局——所以「默认 field=baseline」"
             "等于让我们对着三个几乎不副露的复制品打分，结构上测不出副露的价值。"
+            "给 3 个不同名字还有一个独立用处：**异质场地**能打散「三个自己的复制品可被"
+            "同一套偏离方式利用」这个偏差——实测 16 个单旋钮档位里多数总得分小幅为正"
+            "（合并均值约 +0.40），怀疑来自该偏差，见 `feed-high` 的符号镜像检定。"
         ),
     )
     args = parser.parse_args(argv)
 
     rounds, base = args.rounds, args.base_score
+    field_list = [name.strip() for name in (args.field or args.baseline).split(",") if name.strip()]
+    if len(field_list) == 1:
+        field_list = field_list * 3
+    if len(field_list) != 3:
+        raise SystemExit(f"--field 只接受 1 个或 3 个名字，收到 {len(field_list)} 个")
     field = args.field or args.baseline
     print(
-        f"treatment={args.treatment}  baseline={args.baseline}  场上另三座={field}  "
+        f"treatment={args.treatment}  baseline={args.baseline}  场上另三座={field_list}  "
         f"场数 {args.matches}  每场 {rounds} 局  种子 {args.seed}（四座位旋转）"
     )
 
+    def names_for(rotation: int, seat_name: str) -> list[str]:
+        """把 ``seat_name`` 放到 ``rotation`` 座，另三座按升序填 ``field_list``。"""
+        names = list(field_list)
+        others = [seat for seat in range(SEATS) if seat != rotation]
+        row = [""] * SEATS
+        row[rotation] = seat_name
+        for seat, name in zip(others, names):
+            row[seat] = name
+        return row
+
     started = time.perf_counter()
     # 对照侧与试验侧必须在**同一个场**里测，否则差分会混入场强差异。
-    # field == baseline 时退化成「一个 [baseline]*4 跑一遍、按旋转取座」，与原实现等价
+    # field 全是 baseline 时退化成「一个 [baseline]*4 跑一遍、按旋转取座」，与原实现等价
     # （也省掉 4 倍重复计算）。
-    same_field = field == args.baseline
-    field_names = [field] * SEATS
+    same_field = len(set(field_list)) == 1 and field_list[0] == args.baseline
     if same_field:
         shared = [
-            play(field_names, index, rounds=rounds, base_score=base, seed=args.seed)
+            play([args.baseline] * SEATS, index, rounds=rounds, base_score=base, seed=args.seed)
             for index in range(args.matches)
         ]
         baseline_runs = [[row[seat] for seat in range(SEATS)] for row in shared]
@@ -140,9 +158,10 @@ def main(argv: list[str] | None = None) -> int:
         for index in range(args.matches):
             row = []
             for rotation in range(SEATS):
-                names = list(field_names)
-                names[rotation] = args.baseline
-                row.append(play(names, index, rounds=rounds, base_score=base, seed=args.seed)[rotation])
+                names = names_for(rotation, args.baseline)
+                row.append(
+                    play(names, index, rounds=rounds, base_score=base, seed=args.seed)[rotation]
+                )
             baseline_runs.append(row)
 
     score_diff: list[float] = []
@@ -153,8 +172,7 @@ def main(argv: list[str] | None = None) -> int:
     collected: list[tuple[float, float, float, float, float]] = []
 
     for rotation in range(SEATS):
-        names = list(field_names)
-        names[rotation] = args.treatment
+        names = names_for(rotation, args.treatment)
         mine_total = theirs_total = 0
         for index in range(args.matches):
             mine = play(names, index, rounds=rounds, base_score=base, seed=args.seed)[rotation]

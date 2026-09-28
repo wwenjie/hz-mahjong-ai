@@ -157,6 +157,16 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
     "feed-low": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode, feed_weight=1.0)
     ),
+    # **符号镜像档**：与 `feed-low` 反方向的同一个旋钮。存在的唯一目的是做**仪器检定**——
+    # 已完成的 16 个单旋钮档位里 14 个都是「总得分小幅为正」（合并均值约 +0.40，
+    # 而单种子标准误约 0.4–0.7），这形状要么说明「我们的自对弈场地（三个自己的复制品）
+    # 对任何偏离都给正分」，要么说明这些旋钮都真的有效。
+    # `feed-low` 与 `feed-high` 同时为正 ⇒ 是前者（场地效应），那么**所有 ±0.5 量级的
+    # 自对弈正号都不能作为采纳依据**；一正一负 ⇒ 符号有意义，可以继续按效应量筛。
+    # 这与「dealer-soft 与 dealer-hard 两个反方向扰动都为正」的形状一致，需独立确认。
+    "feed-high": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, feed_weight=6.0)
+    ),
     # 价值模型驱动（tasks.md 5.15）：用自对弈学到的价值函数给出牌打分
     "value": lambda mode: _value_decider(mode, VALUE_MODEL_PATH),
     # 对手听牌模型驱动的风险（tasks.md 6B）：模型不可用时自动回退手写启发式
@@ -217,6 +227,21 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
     "ukeire-deep": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", ukeire_max_shanten=5,
                               ukeire_order="blocks", ukeire_candidates=4)
+    ),
+    # 听牌时不截断候选面：所有「打完仍听牌」的候选都参与进张比较。
+    # 依据是 `tools/analyze_wait_ceiling.py` 的实测——我们的听口可见张数离同一手牌的
+    # 上限平均差 0.94 张（6.5%，分位 24.9%），对手只差 0.23 张（1.3%，分位 5.8%）；
+    # 而同向听时 `total` 由骨架厚度与喂牌决定、**根本不看听口**，所以 `total` 前 2 名
+    # 之外的候选（听牌时一共才 2.8 张）里常常就有最宽的那张，被截掉了。
+    # 成本有界（听牌候选本就少 + 0.6 秒墙钟上限），且只动 shanten 0，不碰前中期。
+    "tenpai-wait": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", tenpai_all_candidates=True)
+    ),
+    # 对照：**同一条改动 + 放开管径**（候选面 6）。用来分离「不截断」与「算得更多」
+    # 两个因子——若只有它有效，说明有效的是算得更多、而不是不截断。
+    "tenpai-wait-6": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", tenpai_all_candidates=True,
+                              ukeire_candidates=6)
     ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }

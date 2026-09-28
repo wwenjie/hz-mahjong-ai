@@ -41,6 +41,199 @@
    "claimed_by": 2021563
   },
   {
+   "id": "meld-equal-early-in-field-s771014",
+   "treatment": "meld-equal-early",
+   "baseline": "heuristic",
+   "field": "meld-equal",
+   "matches": 120,
+   "seeds": [
+    771014
+   ],
+   "status": "done",
+   "hypothesis": "**决定性实验**：在**会副露的场**里测副露放宽档。依据 tools/analyze_meld_by_player.py（73 人 / 2519 局）：全体副露率中位 1.201，25 分位也有 1.078，而**副露率与胜率的相关系数 r=+0.839**；我们 0.609 排第 7 低。即我们掉在分布外面，不是「略低」。而默认自对弈的另三座是**几乎不副露的我们自己**（0.6），所以此前所有 meld 实验都在结构上测不出这件事——field=meld-equal 把场抬到接近真机的副露水平，这才能回答「在真机那样的场里，多吃碰是否对我们有利」。",
+   "started_at": "2026-09-28T02:18:31+08:00",
+   "result": {
+    "status": "done",
+    "seeds": [
+     771014
+    ],
+    "matches": 120,
+    "commands": [
+     [
+      "nice",
+      "-n",
+      "15",
+      "uv",
+      "run",
+      "python",
+      "tools/ab_test.py",
+      "--treatment",
+      "meld-equal-early",
+      "--baseline",
+      "heuristic",
+      "--matches",
+      "120",
+      "--seed",
+      "771014",
+      "--field",
+      "meld-equal"
+     ]
+    ],
+    "metrics": {
+     "总得分": {
+      "mean": 0.037,
+      "se": 1.164,
+      "t": 0.03178694158075601
+     },
+     "名次分": {
+      "mean": -0.154,
+      "se": 0.148,
+      "t": -1.0405405405405406
+     },
+     "白板数": {
+      "mean": -0.030999999999999996,
+      "se": 0.051,
+      "t": -0.6078431372549019
+     },
+     "胡次数": {
+      "mean": -0.052,
+      "se": 0.042,
+      "t": -1.238095238095238
+     },
+     "番数总和": {
+      "mean": -0.075,
+      "se": 0.059000000000000004,
+      "t": -1.271186440677966
+     }
+    }
+   },
+   "ended_at": "2026-09-28T12:10:08+08:00"
+  },
+  {
+   "id": "meld-equal-in-field-s20260927",
+   "treatment": "meld-equal",
+   "baseline": "heuristic",
+   "field": "meld-equal",
+   "matches": 120,
+   "seeds": [
+    20260927
+   ],
+   "status": "running",
+   "hypothesis": "**决定性实验**：在**会副露的场**里测副露放宽档。依据 tools/analyze_meld_by_player.py（73 人 / 2519 局）：全体副露率中位 1.201，25 分位也有 1.078，而**副露率与胜率的相关系数 r=+0.839**；我们 0.609 排第 7 低。即我们掉在分布外面，不是「略低」。而默认自对弈的另三座是**几乎不副露的我们自己**（0.6），所以此前所有 meld 实验都在结构上测不出这件事——field=meld-equal 把场抬到接近真机的副露水平，这才能回答「在真机那样的场里，多吃碰是否对我们有利」。",
+   "started_at": "2026-09-28T10:09:32+08:00",
+   "claimed_by": 2021563
+  },
+  {
+   "id": "meld-equal-in-field-s771014",
+   "treatment": "meld-equal",
+   "baseline": "heuristic",
+   "field": "meld-equal",
+   "matches": 120,
+   "seeds": [
+    771014
+   ],
+   "status": "running",
+   "hypothesis": "**决定性实验**：在**会副露的场**里测副露放宽档。依据 tools/analyze_meld_by_player.py（73 人 / 2519 局）：全体副露率中位 1.201，25 分位也有 1.078，而**副露率与胜率的相关系数 r=+0.839**；我们 0.609 排第 7 低。即我们掉在分布外面，不是「略低」。而默认自对弈的另三座是**几乎不副露的我们自己**（0.6），所以此前所有 meld 实验都在结构上测不出这件事——field=meld-equal 把场抬到接近真机的副露水平，这才能回答「在真机那样的场里，多吃碰是否对我们有利」。",
+   "started_at": "2026-09-28T10:13:43+08:00",
+   "claimed_by": 2021563
+  },
+  {
+   "id": "tenpai-wait-6-s20260927",
+   "treatment": "tenpai-wait-6",
+   "baseline": "heuristic",
+   "matches": 120,
+   "seeds": [
+    20260927
+   ],
+   "status": "running",
+   "hypothesis": "不截断 + 候选面 6（分离「算得更多」与「不截断」）。依据是 `tools/analyze_wait_ceiling.py` 的实测（150 文件 / 1211 个我们的听牌出牌点）：听牌时我们的听口可见张数离同一手牌的上限平均差 0.94 张（6.5%，分位 24.9%），对手只差 0.23 张（1.3%，分位 5.8%）。机械链条清楚：同向听时 total 由骨架厚度与喂牌决定、根本不看听口，而 ukeire 只在 total 前 2 名里比，听牌时候选一共才 2.8 张——**最宽的那张常常就被截掉了**。整条 3/4 的听口缺口在「路径」上，这一条只切可在出牌层兑现的那 1/4。",
+   "kill_criteria": "自对弈机制检查（`analyze_wait_ceiling.py --decider X`）若 regret 没从 6.5% 附近降下来 ⇒ 改动没有生效，先查实现再谈 A/B；若 regret 降了但总得分不升，说明听口宽度这条轴对总得分的传导比估计弱，记档为「机制成立、收益不成立」。",
+   "started_at": "2026-09-28T12:10:08+08:00",
+   "claimed_by": 2021563
+  },
+  {
+   "id": "tenpai-wait-6-s771014",
+   "treatment": "tenpai-wait-6",
+   "baseline": "heuristic",
+   "matches": 120,
+   "seeds": [
+    771014
+   ],
+   "status": "pending",
+   "hypothesis": "不截断 + 候选面 6（分离「算得更多」与「不截断」）。依据是 `tools/analyze_wait_ceiling.py` 的实测（150 文件 / 1211 个我们的听牌出牌点）：听牌时我们的听口可见张数离同一手牌的上限平均差 0.94 张（6.5%，分位 24.9%），对手只差 0.23 张（1.3%，分位 5.8%）。机械链条清楚：同向听时 total 由骨架厚度与喂牌决定、根本不看听口，而 ukeire 只在 total 前 2 名里比，听牌时候选一共才 2.8 张——**最宽的那张常常就被截掉了**。整条 3/4 的听口缺口在「路径」上，这一条只切可在出牌层兑现的那 1/4。",
+   "kill_criteria": "自对弈机制检查（`analyze_wait_ceiling.py --decider X`）若 regret 没从 6.5% 附近降下来 ⇒ 改动没有生效，先查实现再谈 A/B；若 regret 降了但总得分不升，说明听口宽度这条轴对总得分的传导比估计弱，记档为「机制成立、收益不成立」。"
+  },
+  {
+   "id": "tenpai-wait-s20260927",
+   "treatment": "tenpai-wait",
+   "baseline": "heuristic",
+   "matches": 120,
+   "seeds": [
+    20260927
+   ],
+   "status": "pending",
+   "hypothesis": "**不截断**听牌候选面。依据是 `tools/analyze_wait_ceiling.py` 的实测（150 文件 / 1211 个我们的听牌出牌点）：听牌时我们的听口可见张数离同一手牌的上限平均差 0.94 张（6.5%，分位 24.9%），对手只差 0.23 张（1.3%，分位 5.8%）。机械链条清楚：同向听时 total 由骨架厚度与喂牌决定、根本不看听口，而 ukeire 只在 total 前 2 名里比，听牌时候选一共才 2.8 张——**最宽的那张常常就被截掉了**。整条 3/4 的听口缺口在「路径」上，这一条只切可在出牌层兑现的那 1/4。",
+   "kill_criteria": "自对弈机制检查（`analyze_wait_ceiling.py --decider X`）若 regret 没从 6.5% 附近降下来 ⇒ 改动没有生效，先查实现再谈 A/B；若 regret 降了但总得分不升，说明听口宽度这条轴对总得分的传导比估计弱，记档为「机制成立、收益不成立」。"
+  },
+  {
+   "id": "tenpai-wait-s771014",
+   "treatment": "tenpai-wait",
+   "baseline": "heuristic",
+   "matches": 120,
+   "seeds": [
+    771014
+   ],
+   "status": "pending",
+   "hypothesis": "**不截断**听牌候选面。依据是 `tools/analyze_wait_ceiling.py` 的实测（150 文件 / 1211 个我们的听牌出牌点）：听牌时我们的听口可见张数离同一手牌的上限平均差 0.94 张（6.5%，分位 24.9%），对手只差 0.23 张（1.3%，分位 5.8%）。机械链条清楚：同向听时 total 由骨架厚度与喂牌决定、根本不看听口，而 ukeire 只在 total 前 2 名里比，听牌时候选一共才 2.8 张——**最宽的那张常常就被截掉了**。整条 3/4 的听口缺口在「路径」上，这一条只切可在出牌层兑现的那 1/4。",
+   "kill_criteria": "自对弈机制检查（`analyze_wait_ceiling.py --decider X`）若 regret 没从 6.5% 附近降下来 ⇒ 改动没有生效，先查实现再谈 A/B；若 regret 降了但总得分不升，说明听口宽度这条轴对总得分的传导比估计弱，记档为「机制成立、收益不成立」。"
+  },
+  {
+   "id": "feed-high-s20260927",
+   "treatment": "feed-high",
+   "baseline": "heuristic",
+   "matches": 120,
+   "seeds": [
+    20260927
+   ],
+   "status": "pending",
+   "hypothesis": "**仪器检定，不是策略实验**：与 feed-low 反方向的同一个旋钮。16 个单旋钮档位里14 个总得分小幅为正（合并均值约 +0.40，单种子标准误 0.4–0.7）。若 feed-high 也为正 ⇒ 我们的自对弈场地（三个自己的复制品）对任何偏离都给正分，那么所有 ±0.5 量级的自对弈正号都不能作为采纳依据，判据必须改用机制指标。若 feed-high 为负 ⇒ 符号有意义，可按效应量筛。",
+   "kill_criteria": "无（这条只用于判定仪器是否可用，不产出策略结论）"
+  },
+  {
+   "id": "feed-high-s771014",
+   "treatment": "feed-high",
+   "baseline": "heuristic",
+   "matches": 120,
+   "seeds": [
+    771014
+   ],
+   "status": "pending",
+   "hypothesis": "**仪器检定，不是策略实验**：与 feed-low 反方向的同一个旋钮。16 个单旋钮档位里14 个总得分小幅为正（合并均值约 +0.40，单种子标准误 0.4–0.7）。若 feed-high 也为正 ⇒ 我们的自对弈场地（三个自己的复制品）对任何偏离都给正分，那么所有 ±0.5 量级的自对弈正号都不能作为采纳依据，判据必须改用机制指标。若 feed-high 为负 ⇒ 符号有意义，可按效应量筛。",
+   "kill_criteria": "无（这条只用于判定仪器是否可用，不产出策略结论）"
+  },
+  {
+   "id": "ukeire-early40-s20260927",
+   "treatment": "ukeire-early",
+   "baseline": "heuristic",
+   "matches": 40,
+   "seeds": [
+    20260927
+   ],
+   "status": "pending",
+   "hypothesis": "同 ukeire-early，但只跑 40 场以保证在 4 小时上限内跑完（放宽适用向听使单场成本升到约 3~5 倍）。"
+  },
+  {
+   "id": "ukeire-early40-s771014",
+   "treatment": "ukeire-early",
+   "baseline": "heuristic",
+   "matches": 40,
+   "seeds": [
+    771014
+   ],
+   "status": "pending",
+   "hypothesis": "同 ukeire-early，但只跑 40 场以保证在 4 小时上限内跑完（放宽适用向听使单场成本升到约 3~5 倍）。"
+  },
+  {
    "id": "ukeire-g2-s771014",
    "treatment": "ukeire-g2",
    "baseline": "heuristic",
@@ -94,6 +287,72 @@
    ],
    "status": "pending",
    "hypothesis": "候选面**按骨架厚度（手牌质量）排序**后再截断，而不是按 total（同向听时被喂牌代价主导、可达 9 分）。与 ukeire-wide 互补：那个改「取几张」、这个改「按什么顺序取」。同时把适用范围放宽到 3，对准 B 测出的「差距集中在 2→1 与 1→0」上游。"
+  },
+  {
+   "id": "ukeire-deep-s20260927",
+   "treatment": "ukeire-deep",
+   "baseline": "heuristic",
+   "matches": 40,
+   "seeds": [
+    20260927
+   ],
+   "status": "pending",
+   "hypothesis": "**适用门家族的最强形态**：适用向听 5 + 候选按 blocks 排序 + 候选面 4。设计意图是**一次性定生死**——若最强形态也无效，这个家族就死掉，转统一期望得分；若有效，再拆是哪个因子在起作用。成本因一次决策共用 memo 而降（门=3 实测 2.1 倍），故 40 场可行。"
+  },
+  {
+   "id": "ukeire-deep-s771014",
+   "treatment": "ukeire-deep",
+   "baseline": "heuristic",
+   "matches": 40,
+   "seeds": [
+    771014
+   ],
+   "status": "pending",
+   "hypothesis": "**适用门家族的最强形态**：适用向听 5 + 候选按 blocks 排序 + 候选面 4。设计意图是**一次性定生死**——若最强形态也无效，这个家族就死掉，转统一期望得分；若有效，再拆是哪个因子在起作用。成本因一次决策共用 memo 而降（门=3 实测 2.1 倍），故 40 场可行。"
+  },
+  {
+   "id": "natural-s20260927",
+   "treatment": "natural",
+   "baseline": "heuristic",
+   "matches": 120,
+   "seeds": [
+    20260927
+   ],
+   "status": "pending",
+   "hypothesis": "爆头路线极端档：preserve_god + natural_route（财神只当将、逼做 4 组自然面子，把财神留成爆头种子） vs 当前默认。依据：**网上资料 + 我们的数据缺口同向**——杭州麻将经验说财神的价值**分阶段**：前期用它补齐搭子快速到听；后期若听口窄则**故意单吊财神求爆头**。而我们的 god_discard_penalty=25 是**与阶段无关的常数**。我们最大的缺口正是「有财神时转化差 7.9~10.1pp」（analyze_god_usage.py）。这两个档位存在但从未在当前默认下测过。"
+  },
+  {
+   "id": "natural-s771014",
+   "treatment": "natural",
+   "baseline": "heuristic",
+   "matches": 120,
+   "seeds": [
+    771014
+   ],
+   "status": "pending",
+   "hypothesis": "爆头路线极端档：preserve_god + natural_route（财神只当将、逼做 4 组自然面子，把财神留成爆头种子） vs 当前默认。依据：**网上资料 + 我们的数据缺口同向**——杭州麻将经验说财神的价值**分阶段**：前期用它补齐搭子快速到听；后期若听口窄则**故意单吊财神求爆头**。而我们的 god_discard_penalty=25 是**与阶段无关的常数**。我们最大的缺口正是「有财神时转化差 7.9~10.1pp」（analyze_god_usage.py）。这两个档位存在但从未在当前默认下测过。"
+  },
+  {
+   "id": "preserve-god-s20260927",
+   "treatment": "preserve-god",
+   "baseline": "heuristic",
+   "matches": 120,
+   "seeds": [
+    20260927
+   ],
+   "status": "pending",
+   "hypothesis": "只保留财神不当普通百搭用（god 只在无其它可打时才打） vs 当前默认。依据：**网上资料 + 我们的数据缺口同向**——杭州麻将经验说财神的价值**分阶段**：前期用它补齐搭子快速到听；后期若听口窄则**故意单吊财神求爆头**。而我们的 god_discard_penalty=25 是**与阶段无关的常数**。我们最大的缺口正是「有财神时转化差 7.9~10.1pp」（analyze_god_usage.py）。这两个档位存在但从未在当前默认下测过。"
+  },
+  {
+   "id": "preserve-god-s771014",
+   "treatment": "preserve-god",
+   "baseline": "heuristic",
+   "matches": 120,
+   "seeds": [
+    771014
+   ],
+   "status": "pending",
+   "hypothesis": "只保留财神不当普通百搭用（god 只在无其它可打时才打） vs 当前默认。依据：**网上资料 + 我们的数据缺口同向**——杭州麻将经验说财神的价值**分阶段**：前期用它补齐搭子快速到听；后期若听口窄则**故意单吊财神求爆头**。而我们的 god_discard_penalty=25 是**与阶段无关的常数**。我们最大的缺口正是「有财神时转化差 7.9~10.1pp」（analyze_god_usage.py）。这两个档位存在但从未在当前默认下测过。"
   },
   {
    "id": "ukeire-wide-field-s20260927",
@@ -366,50 +625,6 @@
    "ended_at": "2026-09-27T21:20:18+08:00"
   },
   {
-   "id": "ukeire-early40-s20260927",
-   "treatment": "ukeire-early",
-   "baseline": "heuristic",
-   "matches": 40,
-   "seeds": [
-    20260927
-   ],
-   "status": "pending",
-   "hypothesis": "同 ukeire-early，但只跑 40 场以保证在 4 小时上限内跑完（放宽适用向听使单场成本升到约 3~5 倍）。"
-  },
-  {
-   "id": "ukeire-early40-s771014",
-   "treatment": "ukeire-early",
-   "baseline": "heuristic",
-   "matches": 40,
-   "seeds": [
-    771014
-   ],
-   "status": "pending",
-   "hypothesis": "同 ukeire-early，但只跑 40 场以保证在 4 小时上限内跑完（放宽适用向听使单场成本升到约 3~5 倍）。"
-  },
-  {
-   "id": "ukeire-deep-s20260927",
-   "treatment": "ukeire-deep",
-   "baseline": "heuristic",
-   "matches": 40,
-   "seeds": [
-    20260927
-   ],
-   "status": "pending",
-   "hypothesis": "**适用门家族的最强形态**：适用向听 5 + 候选按 blocks 排序 + 候选面 4。设计意图是**一次性定生死**——若最强形态也无效，这个家族就死掉，转统一期望得分；若有效，再拆是哪个因子在起作用。成本因一次决策共用 memo 而降（门=3 实测 2.1 倍），故 40 场可行。"
-  },
-  {
-   "id": "ukeire-deep-s771014",
-   "treatment": "ukeire-deep",
-   "baseline": "heuristic",
-   "matches": 40,
-   "seeds": [
-    771014
-   ],
-   "status": "pending",
-   "hypothesis": "**适用门家族的最强形态**：适用向听 5 + 候选按 blocks 排序 + 候选面 4。设计意图是**一次性定生死**——若最强形态也无效，这个家族就死掉，转统一期望得分；若有效，再拆是哪个因子在起作用。成本因一次决策共用 memo 而降（门=3 实测 2.1 倍），故 40 场可行。"
-  },
-  {
    "id": "meld-equal-early-in-field-s20260927",
    "treatment": "meld-equal-early",
    "baseline": "heuristic",
@@ -477,20 +692,6 @@
     }
    },
    "ended_at": "2026-09-28T11:34:06+08:00"
-  },
-  {
-   "id": "meld-equal-early-in-field-s771014",
-   "treatment": "meld-equal-early",
-   "baseline": "heuristic",
-   "field": "meld-equal",
-   "matches": 120,
-   "seeds": [
-    771014
-   ],
-   "status": "running",
-   "hypothesis": "**决定性实验**：在**会副露的场**里测副露放宽档。依据 tools/analyze_meld_by_player.py（73 人 / 2519 局）：全体副露率中位 1.201，25 分位也有 1.078，而**副露率与胜率的相关系数 r=+0.839**；我们 0.609 排第 7 低。即我们掉在分布外面，不是「略低」。而默认自对弈的另三座是**几乎不副露的我们自己**（0.6），所以此前所有 meld 实验都在结构上测不出这件事——field=meld-equal 把场抬到接近真机的副露水平，这才能回答「在真机那样的场里，多吃碰是否对我们有利」。",
-   "started_at": "2026-09-28T02:18:31+08:00",
-   "claimed_by": 2021563
   },
   {
    "id": "chase-more-s20260927",
@@ -1883,78 +2084,6 @@
     }
    },
    "ended_at": "2026-09-28T10:13:43+08:00"
-  },
-  {
-   "id": "meld-equal-in-field-s20260927",
-   "treatment": "meld-equal",
-   "baseline": "heuristic",
-   "field": "meld-equal",
-   "matches": 120,
-   "seeds": [
-    20260927
-   ],
-   "status": "running",
-   "hypothesis": "**决定性实验**：在**会副露的场**里测副露放宽档。依据 tools/analyze_meld_by_player.py（73 人 / 2519 局）：全体副露率中位 1.201，25 分位也有 1.078，而**副露率与胜率的相关系数 r=+0.839**；我们 0.609 排第 7 低。即我们掉在分布外面，不是「略低」。而默认自对弈的另三座是**几乎不副露的我们自己**（0.6），所以此前所有 meld 实验都在结构上测不出这件事——field=meld-equal 把场抬到接近真机的副露水平，这才能回答「在真机那样的场里，多吃碰是否对我们有利」。",
-   "started_at": "2026-09-28T10:09:32+08:00",
-   "claimed_by": 2021563
-  },
-  {
-   "id": "meld-equal-in-field-s771014",
-   "treatment": "meld-equal",
-   "baseline": "heuristic",
-   "field": "meld-equal",
-   "matches": 120,
-   "seeds": [
-    771014
-   ],
-   "status": "running",
-   "hypothesis": "**决定性实验**：在**会副露的场**里测副露放宽档。依据 tools/analyze_meld_by_player.py（73 人 / 2519 局）：全体副露率中位 1.201，25 分位也有 1.078，而**副露率与胜率的相关系数 r=+0.839**；我们 0.609 排第 7 低。即我们掉在分布外面，不是「略低」。而默认自对弈的另三座是**几乎不副露的我们自己**（0.6），所以此前所有 meld 实验都在结构上测不出这件事——field=meld-equal 把场抬到接近真机的副露水平，这才能回答「在真机那样的场里，多吃碰是否对我们有利」。",
-   "started_at": "2026-09-28T10:13:43+08:00",
-   "claimed_by": 2021563
-  },
-  {
-   "id": "natural-s20260927",
-   "treatment": "natural",
-   "baseline": "heuristic",
-   "matches": 120,
-   "seeds": [
-    20260927
-   ],
-   "status": "pending",
-   "hypothesis": "爆头路线极端档：preserve_god + natural_route（财神只当将、逼做 4 组自然面子，把财神留成爆头种子） vs 当前默认。依据：**网上资料 + 我们的数据缺口同向**——杭州麻将经验说财神的价值**分阶段**：前期用它补齐搭子快速到听；后期若听口窄则**故意单吊财神求爆头**。而我们的 god_discard_penalty=25 是**与阶段无关的常数**。我们最大的缺口正是「有财神时转化差 7.9~10.1pp」（analyze_god_usage.py）。这两个档位存在但从未在当前默认下测过。"
-  },
-  {
-   "id": "natural-s771014",
-   "treatment": "natural",
-   "baseline": "heuristic",
-   "matches": 120,
-   "seeds": [
-    771014
-   ],
-   "status": "pending",
-   "hypothesis": "爆头路线极端档：preserve_god + natural_route（财神只当将、逼做 4 组自然面子，把财神留成爆头种子） vs 当前默认。依据：**网上资料 + 我们的数据缺口同向**——杭州麻将经验说财神的价值**分阶段**：前期用它补齐搭子快速到听；后期若听口窄则**故意单吊财神求爆头**。而我们的 god_discard_penalty=25 是**与阶段无关的常数**。我们最大的缺口正是「有财神时转化差 7.9~10.1pp」（analyze_god_usage.py）。这两个档位存在但从未在当前默认下测过。"
-  },
-  {
-   "id": "preserve-god-s20260927",
-   "treatment": "preserve-god",
-   "baseline": "heuristic",
-   "matches": 120,
-   "seeds": [
-    20260927
-   ],
-   "status": "pending",
-   "hypothesis": "只保留财神不当普通百搭用（god 只在无其它可打时才打） vs 当前默认。依据：**网上资料 + 我们的数据缺口同向**——杭州麻将经验说财神的价值**分阶段**：前期用它补齐搭子快速到听；后期若听口窄则**故意单吊财神求爆头**。而我们的 god_discard_penalty=25 是**与阶段无关的常数**。我们最大的缺口正是「有财神时转化差 7.9~10.1pp」（analyze_god_usage.py）。这两个档位存在但从未在当前默认下测过。"
-  },
-  {
-   "id": "preserve-god-s771014",
-   "treatment": "preserve-god",
-   "baseline": "heuristic",
-   "matches": 120,
-   "seeds": [
-    771014
-   ],
-   "status": "pending",
-   "hypothesis": "只保留财神不当普通百搭用（god 只在无其它可打时才打） vs 当前默认。依据：**网上资料 + 我们的数据缺口同向**——杭州麻将经验说财神的价值**分阶段**：前期用它补齐搭子快速到听；后期若听口窄则**故意单吊财神求爆头**。而我们的 god_discard_penalty=25 是**与阶段无关的常数**。我们最大的缺口正是「有财神时转化差 7.9~10.1pp」（analyze_god_usage.py）。这两个档位存在但从未在当前默认下测过。"
   }
  ]
 }

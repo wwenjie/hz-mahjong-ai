@@ -43,6 +43,7 @@ VARIANT_FIELDS = (
     "ukeire_candidates",
     "ukeire_max_shanten",
     "ukeire_order",
+    "tenpai_all_candidates",
     "dealer_feed_scale",
     "chase_baotou",
     "route_aware",
@@ -143,6 +144,19 @@ class PolicyConfig:
     # 就被截掉。改成 `blocks`（骨架厚度，微秒级）可让候选面**按手牌质量**取，
     # 再看进张——零成本地换掉那个被喂牌污染的入口顺序。
     ukeire_order: str = "total"
+    # 听牌（向听 0）时**不截断候选面**，让所有「打完仍听牌」的候选都参与进张比较。
+    #
+    # 依据（`tools/analyze_wait_ceiling.py`，150 文件 / 1211 个我们的听牌出牌点）：
+    # 我们的听口可见张数离「同一手牌能达到的上限」平均差 **0.94 张（6.5%）**、
+    # 分位 24.9%；而对手只差 **0.23 张（1.3%）**、分位 5.8%。听牌后唯一还能选的
+    # 就是「留哪个听口」，而 `ukeire_candidates=2` 会把 `total` 前 2 名之外的候选
+    # （听牌时候选均只有 2.8 张）直接截掉——**最宽的那张常常不在前 2 名里**，
+    # 因为同向听时 `total` 由骨架厚度与喂牌决定、根本不看听口。
+    #
+    # 成本有界：听牌时候选本来就少（均 2.8 张），且仍在 0.6 秒墙钟上限内。
+    # 只对 shanten 0 生效，前中期行为完全不变——这是刻意的小切口，
+    # 因为「路径窄」（约 3/4 的听口缺口）是另一个问题，不该混在这条改动里。
+    tenpai_all_candidates: bool = False
     # 同向听候选项之间的次排序键。**默认 "exact-ukeire"**。
     #
     # 历史：原默认是 "blocks"（骨架厚度）。5.4 曾试过 "ukeire" 并记为「无增益」，
@@ -638,7 +652,9 @@ class HeuristicDecider:
         if exact:
             if self.config.ukeire_order == "blocks":
                 tied = sorted(tied, key=lambda item: -item.blocks)
-            tied = tied[: max(1, self.config.ukeire_candidates)]
+            # 听牌时不截断：见 `PolicyConfig.tenpai_all_candidates` 的实测依据。
+            if not (self.config.tenpai_all_candidates and top_shanten == 0):
+                tied = tied[: max(1, self.config.ukeire_candidates)]
         visible = shanten_module.visible_counts(
             situation.hand.counts,
             [meld.tiles for meld in situation.all_melds],
