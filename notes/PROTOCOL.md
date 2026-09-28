@@ -47,7 +47,8 @@
 | 文件 | 谁写 | 内容 | 入库 |
 |---|---|---|---|
 | `notes/THREAD.md` | 双方，**只追加** | 请求 / 回复 / 交接（见第 3 节格式） | 是 |
-| `notes/agent-a.md`<br>`notes/agent-b.md` | 各自，**只追加** | 详细结论、证据、下一步 | 是 |
+| `notes/agent-a.md`<br>`notes/agent-c.md` | 各自，**只追加** | 详细结论、证据、下一步 | 是 |
+| `notes/agent-b.md` | **冻结只读**（B 已退役） | 历史记录，不得改写 | 是 |
 | `notes/PROTOCOL.md` | 双方（改动需在 THREAD 里说一声） | 本协议 | 是 |
 | `notes/OWNERSHIP.md` | 双方，**只追加** | 文件所有权表、历史教训 | 是 |
 | `notes/STATUS.md` | 机器 | 状态页 | **否**（gitignore） |
@@ -200,9 +201,14 @@
 
 ## 8. 当前 OPEN 事项
 
-见 `notes/THREAD.md` 里状态为 `OPEN` 且 `TO A` / `TO B` 的条目。
-写本文件时有三条：仪器方向检验（A→B）、算力纪律确认（A→B）、以及 A 的实验中队列
-（`notes/experiments.json`，由队列守护自动消费，不需要 B 参与）。
+见 `notes/THREAD.md` 里状态为 `OPEN` 且收件人是自己（`TO A` / `TO C`）的条目。
+**改组后的三条**（2026-09-28 15:55）：
+1. **C**：听口维度真值表（给 `verify/win_rate_table.py` 加可见听口张数分桶），
+   验收口径见 `notes/OWNERSHIP.md`「B 退役与移交」。
+2. **C**：v3 真机机制验证（v3 时代 ≥30 场后按 B 的原口径切分；预期窄桶压缩、均宽 +0.5~1.0 张，
+   没动就喊）。
+3. **A**：ukeire 家族的收尾裁定（机制量已不支持：到听率/进入各向听进张/听口均宽三项都没动），
+   以及队列 `notes/experiments.json` 的消费（由队列守护自动跑，不需要 C 参与）。
 
 ---
 
