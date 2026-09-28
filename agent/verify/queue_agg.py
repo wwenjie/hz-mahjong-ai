@@ -39,7 +39,7 @@ def combine(rows):
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--noise-floor", type=float, default=1.33,
-                    help="B 的噪声底：两臂差 SD（%%）。默认 1.33，来自 verify/noise_floor.py")
+                    help="真机噪声底背景值：两臂差胜率 SD%%。仅作参考打印；本表判读用 |t|>=1.96（分数尺度），不与它直接比较")
     args = ap.parse_args()
 
     doc = json.loads(EXPERIMENTS.read_text(encoding="utf-8"))
@@ -63,7 +63,8 @@ def main() -> int:
             if k in m and isinstance(m[k], dict):
                 groups[t][k].append((m[k].get("mean"), m[k].get("se")))
 
-    print(f"噪声底（B 实测，两臂差 SD）= {args.noise_floor:.2f}%")
+    print(f"[背景] 真机两臂差胜率 SD（B 实测）= {args.noise_floor:.2f}% —— **胜率尺度**，仅参考")
+    print("判据：|t|>=1.96 且符号一致 → 过门（t 为跨种子逆方差合并，**总得分=分数尺度**）")
     print(f"{'treatment':22s} {'种子':>5} {'matches':>9} {'总得分(合并)':>20} {'t':>7} {'符号':>5} 判读")
     print("-" * 88)
     rows = []
@@ -77,24 +78,29 @@ def main() -> int:
         tstat = mean / se if se else float("nan")
         signs = [1 if m > 0 else -1 for m, _ in md["总得分"] if m is not None]
         consistent = len(set(signs)) == 1
-        if abs(tstat) >= 2 and consistent:
-            verdict = "过门槛"
-        elif abs(tstat) >= 2 and not consistent:
+        if abs(tstat) >= 1.96 and consistent and abs(tstat) < 2.5:
+            verdict = "边缘(过门，需更多种子)"
+        elif abs(tstat) >= 1.96 and consistent:
+            verdict = "过门"
+        elif abs(tstat) >= 1.96 and not consistent:
             verdict = "显著但符号不一致"
         else:
-            verdict = "低于噪声底"
+            verdict = "未过门"
         print(f"{t:22s} {len(seeds_by_group[t]):>5} {str(sorted(matches_by_group[t])):>9} "
               f"{mean:+8.3f}±{se:.3f}  {tstat:>+7.2f} {'一致' if consistent else '不一致':>4} {verdict}")
         rows.append((t, mean, se, tstat, verdict))
 
     print()
     print("=== 判读 ===")
-    ok = [r for r in rows if r[4] == "过门槛"]
-    if not ok:
-        print("无任何 treatment 在 |t|>=2 且符号一致下过噪声底 → 现阶段不得写「有提升」。")
+    ok = [r for r in rows if r[4] == "过门"]
+    edge = [r for r in rows if r[4].startswith("边缘")]
+    if not ok and not edge:
+        print("无任何 treatment 在 |t|>=1.96 且符号一致下过门 → 现阶段不得写「有提升」。")
     else:
         for t, mean, se, tstat, _ in ok:
             print(f"  {t}: {mean:+.3f}±{se:.3f} (t={tstat:+.2f})")
+    for t, mean, se, tstat, _ in edge:
+        print(f"  [边缘] {t}: {mean:+.3f}±{se:.3f} (t={tstat:+.2f}) — 刚过 1.96，加种子复核前不采信")
     print()
     print("注意：合并只做**跨种子**；同一种子内的配对结构已由 ab_test 的 se 反映。")
     print("matches 数不同（40/120/200）时逆方差权重已按各自 se 处理，未强行等权。")
