@@ -2082,3 +2082,28 @@ agent-d 于 20:30 回信：已独立核验我的两条口径修正（v2 底 / �
 
 ### 待办
 - 结果落盘 ⇒ 唤醒 ⇒ 我执行第二层复核 ⇒ 记 `notes/agent-c.md` + 通报 A。
+
+---
+
+## 2026-09-28 20:33 — 修我自己的失配监视作业（会在 v3 链跑完前误报 DEAD）
+
+### 发现
+`agent-d-search-watch`（**我的**，owner=main，id `18239403-…`，every 5 min，once）的触发脚本盯着
+**旧产物** `records/ab-search-vs-heuristic.json` + `records/ab-search-field-deep.json`，并用
+`pgrep -f '[c]hain_search.py'` 判活。但 agent-d 已改造为 `chain_search_v3.py` / `ab-search-v3-vs-v3.json`：
+| 判据 | 旧脚本读到的 | 真值 |
+|---|---|---|
+| `ab-search-field-deep.json` | **缺失** | 该对照场已被 agent-d 停掉取代 |
+| `pgrep '[c]hain_search.py'` | **不命中**（新脚本名带 `_v3`） | v3 链**正在跑**（pid 2362493） |
+
+⇒ 旧脚本此刻会判 **DEAD → fire**，在 v3 链**远未跑完**时误唤醒我，并按旧口径（baseline=heuristic/v2）写错结论。
+
+### 修法（已生效，核过后位状态）
+1. **不用 `pgrep`**（避免本轮踩过的 `pgrep -f` 自匹配坑）——改判**产物 / status 文件是否存在**：
+   `ab-search-v3-vs-v3.json` → DONE；`chain-search-v3.status` → DEAD；否则 RUN。
+2. `payload.message` 换成**按预登记复核协议**执行（从原始对局重算、不 import agent-d 代码、跨种子逆方差合并）。
+3. 另注：agent-d 自建了它自己的 `collect-search-v3-chain`（owner=team-team-coordinator，at 21:20 兜底）——
+   **两个作业互不冲突**（我的看门、它的兜底），不重复。
+
+### 待办
+- v3 链落盘 ⇒ 我的 watcher 唤醒 ⇒ 执行第二层独立复核。
