@@ -91,7 +91,7 @@ A 这一轮被数据推翻 / 自己查出错的次数已到六次，**每一次�
 |---|---|---|
 | `agent/**` | C | 工作区、技能、部署脚本、巡检实现与产物（`agent/out/`） |
 | `research/**` | C | RL/NN 训练代码、训练记录、导出的纯 Python 模型 |
-| `notes/agent-openclaw.md` | C | 追加式记录 |
+| `notes/agent-c.md` | C | 追加式记录（原 `notes/agent-openclaw.md`，已更名并入；见文件内 2026-09-28 改名说明） |
 
 **C 的硬约束**（与 B 同源，另加两条）
 
