@@ -33,13 +33,26 @@ import time
 from pathlib import Path
 
 REPO = Path("/home/wuwenjie01/majiang_ai")
+RL_ROOT = Path("/home/wuwenjie01/majiang_rl")
 sys.path.insert(0, str(REPO / "src"))
+sys.path.insert(0, str(RL_ROOT / "src"))
 
 from majiang.cli import DECIDERS  # noqa: E402
 from majiang.sim.batch import run_match  # noqa: E402
-from majiang.strategy.policy import HeuristicDecider, Mode  # noqa: E402
+from majiang.strategy.policy import HeuristicDecider, Mode, PolicyConfig  # noqa: E402
 from majiang.strategy.search import SearchConfig, SearchDecider  # noqa: E402
 from majiang.strategy.versions import build as build_version  # noqa: E402
+
+# agent-d 本线三臂的纯 Python 产物（只读；**不 import nnrl.eval**——测量侧保持独立）
+_ARM_PAYLOADS = {
+    "rl": "runs/rl-s20260928/params.json",
+    "mlp-value": "runs/mlp-value-s20260928/model.json",
+    "policy-bc": "runs/policy-bc-v2/model.json",
+}
+
+
+def _load_arm_payload(name: str) -> dict:
+    return json.loads((RL_ROOT / _ARM_PAYLOADS[name]).read_text(encoding="utf-8"))
 
 LAMBDA = 100003
 SEATS = 4
@@ -54,6 +67,23 @@ def make(name: str):
         return SearchDecider(build_version("v3", Mode.QUALIFIER), SearchConfig(samples=16, top_k=3))
     if name in ("v1", "v2", "v3"):
         return build_version(name, Mode.QUALIFIER)
+    if name in _ARM_PAYLOADS:
+        # 构造**臂本体**（不是评测器）：rl / mlp-value / policy-bc
+        if name == "rl":
+            from nnrl.rl_play import RLPolicy
+
+            p = _load_arm_payload("rl")
+            return RLPolicy(p.get("params", p), sample=False, seed=0, label="rl")
+        if name == "mlp-value":
+            from majiang.strategy.features import extract
+            from nnrl.decider import MLPValueDecider
+
+            h = HeuristicDecider(PolicyConfig.for_mode(Mode.QUALIFIER))
+            return MLPValueDecider(_load_arm_payload("mlp-value"), h,
+                                   feature_extract=extract, label="mlp-value")
+        from nnrl.policy_decider import PolicyNetDecider
+
+        return PolicyNetDecider(_load_arm_payload("policy-bc"), label="policy-bc")
     if name in DECIDERS:
         from majiang.cli import make_decider
 
@@ -169,6 +199,8 @@ def main() -> int:
     ap.add_argument("--out", default=str(REPO / "agent" / "out" / "recompute-search-v3.json"))
     ap.add_argument("--chunks", default=str(REPO / "agent" / "out" / "recompute-chunks"),
                     help="分块目录（幂等续跑）")
+    ap.add_argument("--ref", default="/home/wuwenjie01/majiang_rl/records/ab-search-v3-vs-v3.json",
+                    help="agent-d 的参照产物（只读，用于并排显示）")
     ap.add_argument("--identity", action="store_true", help="先做 ⓐ 同一性检验")
     args = ap.parse_args()
 
@@ -181,7 +213,7 @@ def main() -> int:
           f"matches={args.matches} workers={workers}")
     print("=" * 74)
 
-    ref_path = Path("/home/wuwenjie01/majiang_rl/records/ab-search-v3-vs-v3.json")
+    ref_path = Path(args.ref)
     ref = json.loads(ref_path.read_text()) if ref_path.exists() else None
 
     chunks = Path(args.chunks)
