@@ -211,6 +211,13 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", ukeire_order="blocks",
                               ukeire_max_shanten=3)
     ),
+    # **这个家族的最强形态**：适用向听 5 + 候选按手牌质量排序 + 候选面 4。
+    # 意义在于判据是一次性的：若最强形态也无效，则「适用门」家族死掉，
+    # 直接转统一期望得分；若有效，再逐项拆解是哪个因子在起作用。
+    "ukeire-deep": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", ukeire_max_shanten=5,
+                              ukeire_order="blocks", ukeire_candidates=4)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 

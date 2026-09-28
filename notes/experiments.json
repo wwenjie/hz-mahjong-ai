@@ -35,8 +35,10 @@
    "seeds": [
     20260927
    ],
-   "status": "pending",
-   "hypothesis": "适用向听门槛 = 2（默认 1，ukeire-early=3）。默认 1 意味着 shanten>=2 的前中期完全不看进张；这组是**包围测试**，用于定位进张该从几向听起生效。实测我们第 4 摸均向听就落后 0.16，那段正是前中期出牌决定的。"
+   "status": "running",
+   "hypothesis": "适用向听门槛 = 2（默认 1，ukeire-early=3）。默认 1 意味着 shanten>=2 的前中期完全不看进张；这组是**包围测试**，用于定位进张该从几向听起生效。实测我们第 4 摸均向听就落后 0.16，那段正是前中期出牌决定的。",
+   "started_at": "2026-09-28T11:34:06+08:00",
+   "claimed_by": 2021563
   },
   {
    "id": "ukeire-g2-s771014",
@@ -386,6 +388,28 @@
    "hypothesis": "同 ukeire-early，但只跑 40 场以保证在 4 小时上限内跑完（放宽适用向听使单场成本升到约 3~5 倍）。"
   },
   {
+   "id": "ukeire-deep-s20260927",
+   "treatment": "ukeire-deep",
+   "baseline": "heuristic",
+   "matches": 40,
+   "seeds": [
+    20260927
+   ],
+   "status": "pending",
+   "hypothesis": "**适用门家族的最强形态**：适用向听 5 + 候选按 blocks 排序 + 候选面 4。设计意图是**一次性定生死**——若最强形态也无效，这个家族就死掉，转统一期望得分；若有效，再拆是哪个因子在起作用。成本因一次决策共用 memo 而降（门=3 实测 2.1 倍），故 40 场可行。"
+  },
+  {
+   "id": "ukeire-deep-s771014",
+   "treatment": "ukeire-deep",
+   "baseline": "heuristic",
+   "matches": 40,
+   "seeds": [
+    771014
+   ],
+   "status": "pending",
+   "hypothesis": "**适用门家族的最强形态**：适用向听 5 + 候选按 blocks 排序 + 候选面 4。设计意图是**一次性定生死**——若最强形态也无效，这个家族就死掉，转统一期望得分；若有效，再拆是哪个因子在起作用。成本因一次决策共用 memo 而降（门=3 实测 2.1 倍），故 40 场可行。"
+  },
+  {
    "id": "meld-equal-early-in-field-s20260927",
    "treatment": "meld-equal-early",
    "baseline": "heuristic",
@@ -394,10 +418,65 @@
    "seeds": [
     20260927
    ],
-   "status": "running",
+   "status": "done",
    "hypothesis": "**决定性实验**：在**会副露的场**里测副露放宽档。依据 tools/analyze_meld_by_player.py（73 人 / 2519 局）：全体副露率中位 1.201，25 分位也有 1.078，而**副露率与胜率的相关系数 r=+0.839**；我们 0.609 排第 7 低。即我们掉在分布外面，不是「略低」。而默认自对弈的另三座是**几乎不副露的我们自己**（0.6），所以此前所有 meld 实验都在结构上测不出这件事——field=meld-equal 把场抬到接近真机的副露水平，这才能回答「在真机那样的场里，多吃碰是否对我们有利」。",
    "started_at": "2026-09-28T01:58:42+08:00",
-   "claimed_by": 2021563
+   "result": {
+    "status": "done",
+    "seeds": [
+     20260927
+    ],
+    "matches": 120,
+    "commands": [
+     [
+      "nice",
+      "-n",
+      "15",
+      "uv",
+      "run",
+      "python",
+      "tools/ab_test.py",
+      "--treatment",
+      "meld-equal-early",
+      "--baseline",
+      "heuristic",
+      "--matches",
+      "120",
+      "--seed",
+      "20260927",
+      "--field",
+      "meld-equal"
+     ]
+    ],
+    "metrics": {
+     "总得分": {
+      "mean": -0.523,
+      "se": 1.201,
+      "t": -0.43547044129891754
+     },
+     "名次分": {
+      "mean": -0.094,
+      "se": 0.151,
+      "t": -0.6225165562913908
+     },
+     "白板数": {
+      "mean": -0.021,
+      "se": 0.046,
+      "t": -0.4565217391304348
+     },
+     "胡次数": {
+      "mean": -0.017,
+      "se": 0.043,
+      "t": -0.39534883720930236
+     },
+     "番数总和": {
+      "mean": 0.005999999999999999,
+      "se": 0.061,
+      "t": 0.0983606557377049
+     }
+    }
+   },
+   "ended_at": "2026-09-28T11:34:06+08:00"
   },
   {
    "id": "meld-equal-early-in-field-s771014",
