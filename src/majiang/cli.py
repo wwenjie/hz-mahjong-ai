@@ -256,6 +256,18 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
     "two-ply-only": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", two_ply_shanten1=True)
     ),
+    # 同向听次排序改用**加权形质值**（叠在 v3 之上，所以直接与冠军档对比）。
+    # 依据：真机 3493 个决策点上 **77.2% 的决策里所有同向听候选的 `2×面子+搭子` 完全相同**
+    # （副露 1 组 89.2%、2 组 93.5%）⇒ 次排序退化、中段只剩「喂牌」在起作用。
+    # 修法给两面/对子/坎张分级并按副露数裁剪，且修正幅度 <1（只打破并列）。
+    "shape": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire",
+                              wait_aware_tenpai=True, shape_value=True)
+    ),
+    # 对照：只换形质值、不叠听牌修复（用来把两层分开归因）。
+    "shape-only": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", shape_value=True)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 

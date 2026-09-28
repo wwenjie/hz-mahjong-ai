@@ -45,6 +45,7 @@ VARIANT_FIELDS = (
     "ukeire_order",
     "wait_aware_tenpai",
     "two_ply_shanten1",
+    "shape_value",
     "dealer_feed_scale",
     "chase_baotou",
     "route_aware",
@@ -180,6 +181,22 @@ class PolicyConfig:
     # **默认关闭**：11.6% 落在「10–25% 灰区」，所以先做成档位，
     # 用一个**非循环论证**的机制量（自对弈里实际拿到的听口宽度）判它该不该进 A/B。
     two_ply_shanten1: bool = False
+    # 同向听的次排序改用**加权形质值**（`shanten.shape_value`）替代 `2×面子 + 搭子`。
+    #
+    # **依据（今晚实测，这是当前最大的一个缺口）**：`quick_blocks` 的
+    # `partials = min(partials, 4 - sets)` 恒饱和，导致同向听候选之间取值高度集中——
+    # 真机 3493 个决策点上 **77.2% 的决策里所有候选的 `2×面子+搭子` 完全相同**
+    # （副露 1 组 89.2%、2 组 93.5%）。次排序一旦并列，`_choose_discard` 就只剩
+    # 「喂牌」一项在起作用，**中段等于完全没有形质概念**。
+    # 这也解释了 `ukeire-wide/hand/early` 全族为何测平：候选池是按这个退化键排序的，
+    # 加宽池子等于随机采样。
+    #
+    # 而对手侧的行为指纹显示缺口正在中段：强 bot **首次到听摸序 4.96~5.48、序号 10 到听率 75~80%**，
+    # 我们是 **6.23 / 54.2%**（副露 0.62 vs 他们 1.20~1.30，听口宽 11.56 vs 12.2~12.7）。
+    #
+    # 设计成窄改动：形质修正幅度 < 1，**只打破并列、不覆盖「块数差 1」**。
+    # 默认关闭（v1/v2/v3 行为逐位不变）。
+    shape_value: bool = False
     # 同向听候选项之间的次排序键。**默认 "exact-ukeire"**。
     #
     # 历史：原默认是 "blocks"（骨架厚度）。5.4 曾试过 "ukeire" 并记为「无增益」，
@@ -830,8 +847,11 @@ class HeuristicDecider:
         hand = situation.hand
         counts = list(hand.counts)
         counts[tile] -= 1
-        blocks = shanten_module.quick_blocks(counts)
-        block_value = 2 * blocks[0] + blocks[1]
+        if self.config.shape_value:
+            block_value = shanten_module.shape_value(counts, hand.meld_count)
+        else:
+            blocks = shanten_module.quick_blocks(counts)
+            block_value = 2 * blocks[0] + blocks[1]
 
         risks = self._risks(situation)
         threat = sum(item.ready_probability for item in risks)

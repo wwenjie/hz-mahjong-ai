@@ -364,6 +364,85 @@ def quick_blocks(counts: Sequence[int]) -> tuple[int, int, int]:
     return sets, partials, min(1, pairs)
 
 
+def shape_value(counts: Sequence[int], meld_count: int = 0) -> float:
+    """骨架的**加权形质值**（微秒级），用于替代 ``2×面子 + 搭子`` 的次排序。
+
+    **为什么需要它**：``quick_blocks`` 把「两面 / 对子 / 坎张」都记作 1 个搭子，
+    再 ``partials = min(partials, 4 - sets)`` —— 而手牌几乎总有 ≥4 个块，
+    于是这个裁剪**恒饱和**，同向听候选之间的取值高度集中。实测（3493 个真机决策点）：
+
+    =========  =========  ==================  ==========
+    副露数      决策点数   **全并列占比**      不同值数
+    =========  =========  ==================  ==========
+    0            3493      **77.2%**            1.23
+    1            1255      **89.2%**            1.11
+    2             217      **93.5%**            1.07
+    =========  =========  ==================  ==========
+
+    ⇒ 次排序一旦并列，``_choose_discard`` 就只剩「喂牌」一项在起作用，
+    **中段等于完全没有形质概念**。这也解释了为什么 `ukeire-wide / ukeire-hand /
+    ukeire-early` 全族测平：候选池是按这个退化键排序的，加宽池子等于随机采样。
+
+    **设计要点（刻意做成窄改动）**：返回值 = ``2×面子 + 块数 + 形质修正``，其中
+    形质修正的幅度 **< 1**（``mean_w − 1`` 的绝对值不超过 0.4）。
+    这保证它**只能打破并列、永远不会覆盖「块数差 1」**——排序语义不变，
+    只是把原本并列的候选分开。搭子按「能等到几张」分级：两面 1.2（8 张）、
+    对子 1.0（2 张成刻且可当雀头）、坎张/边张 0.7（4 张）、财神 1.4（百搭）。
+
+    **顺带修一处副露口径错**：需要几个块是 ``SETS_PER_HAND - meld_count``
+    （含雀头），而 ``quick_blocks`` 恒按 4 裁。``quick_shanten`` 用 ``−2×meld_count``
+    补偿了向听，但 ``2×面子 + 搭子`` 这个**次排序项没有补偿** ⇒ 副露越多，
+    「多留一个用不上的搭子」越被加分。
+    """
+    real = list(counts)
+    real[GOD] = 0
+    sets = 0
+    weights: list[float] = []
+    for start, size in ((0, 9), (9, 9), (18, 9), (27, 7)):
+        group = real[start : start + size]
+        if start == 27:  # 字牌不能成顺
+            for amount in group:
+                sets += amount // tiles.SET_LENGTH
+                if amount % tiles.SET_LENGTH >= 2:
+                    weights.append(1.0)
+            continue
+        for index in range(size):
+            while group[index] >= tiles.SET_LENGTH:
+                group[index] -= tiles.SET_LENGTH
+                sets += 1
+        for index in range(size - tiles.RUN_LENGTH + 1):
+            while group[index] and group[index + 1] and group[index + 2]:
+                group[index] -= 1
+                group[index + 1] -= 1
+                group[index + 2] -= 1
+                sets += 1
+        # 两面优先于对子：它等到 8 张，对子只等到 2 张（另可当雀头，故不低太多）
+        for index in range(size - 1):
+            while group[index] and group[index + 1]:
+                group[index] -= 1
+                group[index + 1] -= 1
+                weights.append(1.2)
+        for index in range(size):
+            while group[index] >= 2:
+                group[index] -= 2
+                weights.append(1.0)
+        for index in range(size - 2):
+            while group[index] and group[index + 2]:
+                group[index] -= 1
+                group[index + 2] -= 1
+                weights.append(0.7)
+    if counts[GOD]:
+        weights.append(1.4)
+    # 只需要 `SETS_PER_HAND - meld_count` 个块，取**最好的**那几个（按副露数裁剪）
+    need = max(0, tiles.SETS_PER_HAND - meld_count - sets)
+    weights.sort(reverse=True)
+    taken = weights[:need]
+    if not taken:
+        return 2.0 * sets
+    mean_w = sum(taken) / len(taken)
+    return 2.0 * sets + len(taken) + 0.9 * (mean_w - 1.0)
+
+
 def quick_shanten(counts: Sequence[int], meld_count: int = 0) -> int:
     """骨架版的向听近似（微秒级），用于同向听候选项之间的次排序与廉价进张估计。"""
     sets, partials, pair = quick_blocks(counts)
