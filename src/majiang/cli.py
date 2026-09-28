@@ -268,6 +268,16 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
     "shape-only": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", shape_value=True)
     ),
+    # **形质修好之后才谈得上降喂牌权重**：实测「全量 total」的 argmax 与「只看喂牌」
+    # 的前 1 一致率 = 97.7%（形质项退化时），打开 shape 后降到 92.3%——因为
+    # `3×feed` 的差幅（最大 1.8）仍大于形质项分辨率（<1）。而 `feed` 本身只是
+    # 一张按牌种写死的表（字牌 0.4 / 中张 1.0 / 边张 0.6），**完全不看自己手牌需要什么**。
+    # 所以 `feed-low` 当年测平是可解释的：**形质项退化 ⇒ 权重降了也没有东西可让位**。
+    # 这条臂就是「修好形质 + 降权重」的组合。
+    "shape-feed-low": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, feed_weight=1.0)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 
