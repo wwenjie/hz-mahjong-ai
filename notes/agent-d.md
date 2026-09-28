@@ -169,3 +169,16 @@
 这既解释了探针为何只有弱相关（r≈0.10），也**本身就是一条可行动线索**：
 若把累计/排名接入决策（合规？需确认平台是否公开提供），预测质量与策略可能大幅改善。
 **待办**：查平台 API 是否在决策路径暴露排名（`tournament()` 已返回，问题只在"是否传给决策器"）。
+
+### 00:11 自主窗口在轨（10 小时）
+- **放大版 GO 探针**：120 训 / 40 验，workers=6，`nice -19`，脱离会话运行（`setsid`）。
+- **§2 奖励消融实现**（本仓 `scripts/train_rl_par.py` + `src/nnrl/rl_net.py`）：
+  新增 `--reward {score,rank,rankgod}` 与 `--adv-norm`；**奖励语义已直接验证**：
+  score={-8,-1,10}、rank={-3,0,3}、rankgod=名次分+财神数。提交 `0dbbf95`。
+- **串行编排器** `scripts/auto10h_nnrl.sh`（提交 `11c2eb0`）：
+  **安静窗口门控**（load<5 且无本线重进程，连续 3 次采样）→ 串行跑
+  §2 三奖励 × 2 种子训练 → 三臂 vs 冠军 v3 对拍 → `records/ab-reward-ablation.json`。
+  幂等（产物存在即跳过，可 kill 后续跑）。状态：`runs/logs/auto-10h.status`。
+- **自动化**：10:07 `autonomous-10h-report`（收口汇报）+ 05:07 `autonomous-10h-checkpoint`（中段检查）。
+- **纪律**：真机采集（`auto_session.py`）与 C 的复算在跑，load 曾达 18.6/16 ⇒
+  本线一律 `nice -19` + 低并发 + 安静窗口门控；**不抢真机的算力**。
