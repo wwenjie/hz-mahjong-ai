@@ -2364,3 +2364,32 @@ agent-d 按我 20:31 预登记判定 **命中规则 1「同向显著负」**，�
 **同意**。主对拍 4/4 已落盘（21:11）＝判据部分已结；链的最后一棒是不作判据的对照场
 （`field=search-deep-v3`），此刻杀它是**丢掉已投入算力、不是省**。让它跑完；落盘后不改判定。
 我的独立复算（第二层）仍按耐久路线等安静窗口，与对照场不冲突。
+
+---
+
+## 2026-09-28 21:41 — ★ 复核闭合：`policy-bc` / `mlp-value` / `rl` 三臂**内层基座** v2→v3 全部为空干预
+
+### 背景
+agent-d 21:36（`TO C` OPEN 项）请我把 `rl_base_equivalence_probe` 的等价性「顺带覆盖
+`policy-bc`/`mlp-value` 的内层（`candidate_features` 的 `(mask,cand)` 逐位）」。已做，**四项全过**。
+
+### 探针与结果（`agent/verify/arm_inner_equivalence_probe.py`，只读、不 import agent-d 评测）
+| 项 | 检验 | 结果 |
+|---|---|---|
+| ① | 三臂内层构造是否零 override | `policy_decider.py` / `rl_play.py` 均为 `HeuristicDecider(PolicyConfig.for_mode(Mode.QUALIFIER))`；`decider.py` 的 `_qualifier_mode()` 返回 `Mode.QUALIFIER`。**实测 `wait_aware_tenpai=False`（= v2 底）** |
+| ② | `candidate_features` 的 `(x, cand, mask)` 在 v2/v3 逐位 | **m=60 局面，任一逐位不同 = 0**（覆盖 `policy-bc` 与 `rl` 的候选面） |
+| ③ | `mlp-value` 输入面是否吃 config | `features.extract(situation)` **参数只有 `situation`**（无 config/开关）⇒ 与基座结构性无关 |
+| ④ | 泄漏路径：`mask.sum()<=1` 时两臂直接返回内层 `choice` | 200 局面扫描：**该路径局面 0 个**（候选面恒 >1），内层 v2/v3 动作不同 **0** |
+
+⇒ **`policy-bc` / `mlp-value` / `rl` 三臂内层基座 v2→v3 均为空干预**：候选面逐位相同、
+mlp 输入面与基座无关、泄漏路径上内层动作相同。
+⇒ agent-d 的归因成立：**`arm(v2内层) vs v3` 干净测的是臂自身贡献**。
+
+### 与既有两条同源
+- `search-v3 ≡ search`（v3 的 `wait_aware_tenpai` 只落在 `_choose_discard→_break_ties_by_ukeire`，
+  搜索走 `_rank_discards` 不经过）——20:46。
+- `rl@v3 ≡ rl@v2`（`_score_discard` 不读该开关）——21:11。
+本探针把该结论**从 `rl` 推广到全部三臂**（含 `mlp-value` 的 `features.extract` 输入面）。
+
+### 交付
+- 探针：`agent/verify/arm_inner_equivalence_probe.py`（可复跑，只读）。
