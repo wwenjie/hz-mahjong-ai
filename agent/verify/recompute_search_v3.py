@@ -167,6 +167,8 @@ def main() -> int:
     ap.add_argument("--rounds", type=int, default=8)
     ap.add_argument("--workers", type=int, default=0, help="0=核数-4")
     ap.add_argument("--out", default=str(REPO / "agent" / "out" / "recompute-search-v3.json"))
+    ap.add_argument("--chunks", default=str(REPO / "agent" / "out" / "recompute-chunks"),
+                    help="分块目录（幂等续跑）")
     ap.add_argument("--identity", action="store_true", help="先做 ⓐ 同一性检验")
     args = ap.parse_args()
 
@@ -182,6 +184,8 @@ def main() -> int:
     ref_path = Path("/home/wuwenjie01/majiang_rl/records/ab-search-v3-vs-v3.json")
     ref = json.loads(ref_path.read_text()) if ref_path.exists() else None
 
+    chunks = Path(args.chunks)
+    chunks.mkdir(parents=True, exist_ok=True)
     results: dict = {}
     t0 = time.time()
     with mp.get_context("fork").Pool(processes=workers) as pool:
@@ -189,10 +193,20 @@ def main() -> int:
             check_rank_discards_identity()
         for arm in arms:
             for seed in seeds:
+                key = f"{arm}@{seed}"
+                chunk = chunks / f"{key}.json"
+                # **幂等续跑**：已完成的块直接读回，不重算（抗进程回收）
+                if chunk.exists():
+                    try:
+                        results[key] = json.loads(chunk.read_text())
+                        print(f"\n[{key}] 已存在，跳过（幂等）")
+                        continue
+                    except Exception:  # noqa: BLE001
+                        pass
                 diffs, ts, bs = paired_ab_par(pool, arm, "v3", matches=args.matches,
                                               rounds=args.rounds, base_score=1, seed=seed)
                 row = {}
-                print(f"\n[{arm} seed={seed}] n={args.matches * SEATS}（treatment − baseline=v3）")
+                print(f"\n[{key}] n={args.matches * SEATS}（treatment − baseline=v3）")
                 for lab in LABELS:
                     m, se, t, n = stat(diffs[lab])
                     row[lab] = {"mean": m, "se": se, "t": t, "n": n}
@@ -205,12 +219,18 @@ def main() -> int:
                             refm = ""
                     print(f"   {lab:8s} {m:+8.3f} ±{se:5.3f}  t {t:+6.2f}  n={n}{refm}")
                 row["_scores"] = {"treatment": ts, "baseline": bs}
-                results[f"{arm}@{seed}"] = row
+                # 原子落块
+                tmp = chunk.with_name(chunk.name + ".tmp")
+                tmp.write_text(json.dumps(row, ensure_ascii=False, indent=2), encoding="utf-8")
+                tmp.replace(chunk)
+                results[key] = row
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"\n复算结果写入 {out}  用时 {time.time() - t0:.0f}s")
+    tmp = out.with_name(out.name + ".tmp")
+    tmp.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(out)
+    print(f"\n复算结果写入 {out}（块目录 {chunks}）  用时 {time.time() - t0:.0f}s")
     return 0
 
 

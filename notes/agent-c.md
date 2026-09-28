@@ -2283,3 +2283,28 @@ agent-d 20:29 指出我 19:26 那条推论②（本文件 2035–2039 行）机�
   「`ab-search-v3-vs-v3.json` 存在 ⇒ DONE」——主对拍确实已完成，但链还在跑第二步。
 - **设计缺陷（记下）**：`chain-search-v3.status` **没有任何脚本写它**（`after_chain_rl_v3.sh` 只**读**
   它判链是否结束）⇒ 我的 DEAD 分支永不触发，只有 DONE 分支有效。下次应改判「产物 + 进程消失」。
+
+---
+
+## 2026-09-28 21:20 — 复算改为**抗回收耐久任务**（按 `mahjong-durable-long-jobs`）
+
+### 背景
+主产物 `ab-search-v3-vs-v3.json` 已落盘（21:11），我的 `agent-d-search-watch` 已于 **21:12:44 fire** 唤醒。
+但链仍在跑第二步「对照场 field=search-deep-v3」，且 agent-d 的 `after_chain_rl_v3.sh` 接着要跑
+「RL vs v3」对拍；16 核机上 load ≈ 21。**此刻跑复算只会三方抢 CPU**（我前两次 `nice -n 19` 复现
+都因争用超时，其中一次还是**设计太重**：每局面两次 `candidate_features` 含全牌种精确进账）。
+
+### 做法（四件套）
+1. **分块幂等落盘**：`recompute_search_v3.py` 现在按 `arm@seed` 把结果原子写入
+   `agent/out/recompute-chunks/<key>.json`（`.tmp` → `os.replace`）；重跑时已存在的块**直接跳过**。
+2. **并行化**：fork 池（`--workers`，默认核数−4），复刻 `nnrl.eval.paired_ab` 的配对逻辑
+   （同 `seed*100003+index`、同 `start_dealer=index%SEATS`）但**自带实现**，不 import 它。
+3. **后台自愈 runner**：`agent/out/run_recompute_when_idle.sh`（`setsid` 脱离会话，**已核实存活**，
+   pid 组独立）。它先轮询等**安静窗口**（链、`after_chain`、`run_ab` 全退 + `load<4`），
+   再 `nice -n 19` 跑来复算；被杀就外层重冲（最多 8 次），靠已落块接上。
+4. **调度器收口**：完成判据 = `agent/out/recompute-search-v3.json` 出现 + runner 写
+   `recompute-runner.status`。**不在前台等待。**
+
+### 已提交
+- `6728110`：复算脚本改并行版（fork 池 + `--arms/--seeds/--workers/--identity`）。
+- 本轮：分块幂等落盘 + 耐久 runner。
