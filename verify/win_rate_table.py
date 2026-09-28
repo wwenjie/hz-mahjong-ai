@@ -3,9 +3,13 @@
 
 用途（A 的「统一期望得分」前置）：把手调线性组合的隐含定价与实测价格对拍。
 分桶：shanten ∈ {0,1,2,3,4+} × god ∈ {0,1,≥2} × melds ∈ {0,1,≥2} × 阶段（摸序号 ≤4 / 5-8 / ≥9）。
-结局：P(下一摸后向听下降) 与 P(本局最终自摸胜)。
+结局：P(下一摸后向听下降) 与 P(本局最终自摸胜) 与 E[胡时番]。
 过滤：抓打圈强制的出牌不参与（那是被迫的）。
 
+**合规边界（A 10:45 第 4 条）**：对手的向听需重建对手手牌才能算——本表离线这么做是
+允许的；但表一旦用于真机决策，只允许含**我们自己手牌**的公开量。
+
+产物：打印 + verify/out/win_rate_table.json（机器可读，供 A 的排序对拍脚本消费）。
 用法：nice -n 19 uv run python verify/win_rate_table.py
 """
 import collections
@@ -41,44 +45,45 @@ def bucket(sh, god, melds, draw_no):
     return (shb, godb, mb, phase)
 
 
-def scan(our, rnd, memo, out, winner):
+def scan(our, rnd, memo, points, key):
+    """每个座位：出牌后记录状态点；该座位下次出牌时结算「向听是否降了」。"""
     if rnd["hands"] is None:
         return
     hand = [collections.Counter(h) for h in rnd["hands"]]
     melds = [0, 0, 0, 0]
     draw_no = [0, 0, 0, 0]
-    catch_play = False
-    last_drawn = [None] * 4
-    # 记录每座位在 bucket 状态下的后续：下一摸后向听是否降、本局是否自摸胜
-    prev_sh = [None] * 4
+    pending = [None] * 4  # (bucket, shanten) 上一条待结算的出牌点
+
+    def evaluate(s, key):
+        counts = [0] * tiles.TILE_KINDS
+        for code, c in hand[s].items():
+            counts[tiles.parse(code)] = c
+        try:
+            sh = shanten_any(counts, melds[s], memo=memo)
+        except Exception:
+            return None
+        return counts[tiles.GOD], sh
+
     for e in rnd["events"]:
         et, s, tile, data = e["type"], e.get("seat"), e.get("tile") or "", e.get("data") or {}
-        if et == "round_ended":
-            return
         if s not in (0, 1, 2, 3):
             continue
         if et == "tile_drawn":
             hand[s][tile] += 1
             draw_no[s] += 1
-            last_drawn[s] = tile
         elif et == "tile_discarded":
-            if data.get("catch_play"):
-                catch_play = True
             hand[s][tile] -= 1
-            # 出牌后评估（自由决策样本）
-            counts = [0] * tiles.TILE_KINDS
-            for code, c in hand[s].items():
-                counts[tiles.parse(code)] = c
-            god = counts[tiles.GOD]
-            try:
-                sh = shanten_any(counts, melds[s], memo=memo)
-            except Exception:
+            if data.get("catch_play"):
+                continue  # 抓打圈强制出牌不算自由决策点
+            cur = evaluate(s, rnd["round_no"])
+            if cur is None:
                 continue
+            god, sh = cur
             who = "us" if s == our else "opp"
-            b = bucket(sh, god, melds[s], draw_no[s])
-            # 到听/自摸结局后填：先记账状态点
-            out["points"].append((who, b, s))
-            prev_sh[s] = sh
+            if pending[s] is not None:
+                pb, psh = pending[s]
+                points.append((who, pb, sh < psh, key, s))
+            pending[s] = (bucket(sh, god, melds[s], draw_no[s]), sh)
         elif et == "chi":
             need = collections.Counter(data.get("tiles") or [])
             need[tile] -= 1
@@ -95,6 +100,7 @@ def scan(our, rnd, memo, out, winner):
             hand[s][tile] -= {"an": 4, "bu": 1, "ming": 3}.get(kind, 0)
             if kind != "bu":
                 melds[s] += 1
+    # 局尾未结算的点：win 结局在 main 里按 (file,round) 回填
 
 
 def main():
@@ -124,18 +130,33 @@ def main():
                         win_seat = e.get("seat")
                         win_fan = d.get("fan") or 0
             win_by_key[key] = (win_seat, win_fan)
-            out = {"points": []}
-            scan(our, rnd, memo, out, win_seat)
-            for who, b, s in out["points"]:
-                points.append((who, b, key, s))
+            scan(our, rnd, memo, points, key)
 
+    # points: (who, bucket, dropped_next, key, seat)
     agg = collections.Counter()
-    for who, b, key, s in points:
+    for who, b, dropped, key, s in points:
         agg[(who, b, "n")] += 1
+        if dropped:
+            agg[(who, b, "drop")] += 1
         w, fan = win_by_key.get(key, (None, 0))
         if w == s:
             agg[(who, b, "win")] += 1
             agg[(who, b, "fan")] += fan
+
+    table = {}
+    for (who, b, kind), n in agg.items():
+        if kind != "n":
+            continue
+        cell = table.setdefault(f"{who}|{b[0]}|{b[1]}|{b[2]}|{b[3]}", {})
+        cell["n"] = n
+        cell["p_drop"] = agg[(who, b, "drop")] / n
+        cell["p_win"] = agg[(who, b, "win")] / n
+        w = agg[(who, b, "win")]
+        cell["fan_avg"] = agg[(who, b, "fan")] / w if w else 0.0
+    import os
+    os.makedirs("verify/out", exist_ok=True)
+    with open("verify/out/win_rate_table.json", "w", encoding="utf-8") as f:
+        json.dump(table, f, ensure_ascii=False, indent=1)
 
     # 打印：按 (shanten, god, melds) 合并阶段，先看主效应
     print("== P(最终自摸 | 向听, 财神, 副露) 与胡时均番 —— 我们 vs 对手 ==")
@@ -157,6 +178,24 @@ def main():
                 of = op_f / op_w if op_w else 0
                 print(f"{shb:>3} {godb:>3} {mb:>3} | {ur:7.1%} {uf:5.2f} {us_n:>6} | "
                       f"{orr:8.1%} {of:6.2f} {op_n:>7} | {orr-ur:+6.1%}")
+
+    print("\n== P(下一周期降向听 | 向听, 财神)（合并副露与阶段）==")
+    for shb in range(1, 5):
+        line = f"向听{shb}: "
+        for godb in range(3):
+            us_n = sum(agg[("us", (shb, godb, mb, ph), "n")]
+                       for mb in range(3) for ph in range(3))
+            op_n = sum(agg[("opp", (shb, godb, mb, ph), "n")]
+                       for mb in range(3) for ph in range(3))
+            if us_n < 300 or op_n < 1000:
+                continue
+            us_d = sum(agg[("us", (shb, godb, mb, ph), "drop")]
+                       for mb in range(3) for ph in range(3)) / us_n
+            op_d = sum(agg[("opp", (shb, godb, mb, ph), "drop")]
+                       for mb in range(3) for ph in range(3)) / op_n
+            line += f" 财神{godb}: us {us_d:.1%}/opp {op_d:.1%}({op_d-us_d:+.1%})"
+        print(line)
+    print("\nJSON -> verify/out/win_rate_table.json")
 
 
 if __name__ == "__main__":
