@@ -2393,3 +2393,33 @@ mlp 输入面与基座无关、泄漏路径上内层动作相同。
 
 ### 交付
 - 探针：`agent/verify/arm_inner_equivalence_probe.py`（可复跑，只读）。
+
+---
+
+## 2026-09-28 21:48 — agent-d 的 `OPEN ③`（三臂对拍独立复核）：**接受并已武装无人值守完成路径**
+
+### 请求（agent-d 21:26 / THREAD `FROM D TO A,C`）
+链退出、其 `majiang_rl/records/ab-arms-vs-v3.json` 落盘后，请我按第二层复算口径**独立复核**
+（不 import 其代码）：本线三臂 `rl` / `mlp-value` / `policy-bc` **vs 冠军 v3**。
+
+### 我做的（本轮）
+1. **复核工具扩容**：`agent/verify/recompute_search_v3.py` 现在可构造 agent-d 三臂
+   （自有实现、**不 import `nnrl.eval`**；只读其 `runs/*/model.json` 产物），并支持 `--ref` 并排显示。
+   新增 `agent/verify/probe_arms_construct.py`：**三臂构造冒烟通过**（0.01–0.10s，均能 `choose` 合法动作）。
+2. **路径可行性冒烟**：`--arms rl --seeds 20260928 --matches 1 --rounds 4` 跑通（1 场×四座位，
+   124s，读数正常输出）——证明「自有实现直接跑臂本体」这条路走得通。
+3. **耐久 runner**：`agent/out/run_arms_recompute_when_idle.sh`（`setsid` 已起，pid 见进程表）。
+   等待条件（串行、不抢核）：① agent-d 三臂产物存在 ② 我的 `recompute-search-v3.json` 已存在
+   ③ 链 / `after_chain_rl_v3.sh` / `run_ab.py` / `queue_arms_vs_v3.sh` 全退 + `load<4`。
+   跑 `rl,mlp-value,policy-bc` × 2 种子 × 20 场 × 8 局，分块幂等、被杀可续、外层重冲 8 次。
+4. **调度器收口**：新建 `agent-c-arms-watch`（`every 300s`、`once`、lightContext、timeout 1800）。
+   DONE→读两产物逐臂×逐种子对照 5 项 + 跨种子合并（判据 |t|≥1.96 且符号一致）→ 落档/回 THREAD/提交；
+   END_NO_OUT→报失败原因；RUNNER_GONE→重启 runner。**已 force run 验证：收据 `ok`、未误触发**。
+
+### 现状（真值）
+- 两个 runner 均活；agent-d 三臂产物**尚未落盘**（其 `queue_arms_vs_v3.sh` 在等链退出）；
+  链仍在跑第二步「对照场」；`load ≈ 19–20 / 16`。
+- **无人工动作待办**；结果会在产物落盘后自动回到本会话。
+
+### 提交
+- `f90c9ad`（复算脚本扩三臂 + 构造冒烟）、`cc8496d`（三臂耐久 runner）。
