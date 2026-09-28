@@ -1055,3 +1055,45 @@ A 14:40 已把 `v3`（`wait-aware-tenpai`）上线真机，采集进程重启为
   （`--era v2|v3`）。
 
 产物：无新脚本（复用 `agent/verify/wait_width_check.py`，只读、零平台请求）。
+
+---
+
+## 2026-09-28 16:02 — 接管 B 后第一轮：两个调度作业的**uv 锁卡死**全部根除 + 一次自我更正
+
+### （一）根因：`uv run` 会挂住 headless exec（真问题，不是偶发）
+
+**症状**：调度作业的收据 `status=running` 长时间不结束，把该作业的后续 tick 全部堵住。
+**实测**：
+- `queue-settled-watch`：15:27:29 force run 卡死 **5 分钟**（`already-running`），
+  而脚本本体用 **venv python 直跑只要 0.053 s**。
+- `v3-era-waitwidth`：15:55:00 起卡在 running **5 分钟以上**（同一根因，payload 写在学到该教训之前）。
+**根因**：触发器/载荷里用 `uv run`，而 A 的队列（两个 `ab_test` 各 99.9%）正在占用 `uv`，
+触发器的 exec 与它抢锁 → **headless exec 永远等不到 EOF**。
+**修法**：一律改 **venv python 绝对路径直跑**（`.venv/bin/python`，本机**无 `python3`**）。
+改后收据 `status=ok`、42 s 完成，不再卡死。**已重建两个作业，均 venv 直跑。**
+
+### （二）一次自我更正（撤回我自己的误读）
+
+我在 16:01 一度断言「`queue-settled-watch` 的 trigger state **未持久化**」——**错的**。
+真相：它持久化在 `cron_jobs.state_json` 的**嵌套键 `triggerState`** 里：
+`sig` / `since` / `firedSettled` / `alertedStall` 四个键全在。我先前只扫 `state_json` 顶层、
+又误把**脚本文本**里的 `firedSettled` 字样当成状态，两次都查错了位置。
+⇒ **去重机制成立**，`once:true` 的「结算后只报一次」「停滞只告警一次」都有效。
+
+### （三）接管 B 的继承验收（实测，不靠读文档）
+
+| B 交接项 | 现状 | 验收 |
+|---|---|---|
+| ① 听口维度真值表 | `verify/wait_width_table.py` 已交、`verify/out/wait_width_table.json` 995 B | 脚本与产物在位 |
+| ② v3 真机机制验证 | 已重建为**阈值触发**作业（≥8 房报方向、≥30 房正式判读）| 见下 |
+| ③ `verify/**`+`docs/**`+`scripts/**` | 全部在位（25 个脚本）| `tests/test_stability.py` **9 passed in 17 s** |
+
+> **注**：任务①已由 B 交付，但按 `OWNERSHIP.md` 的硬条件「**C 不能既造表又验表**」，
+> 我**不会自己认证它**——它的复核留给 A 或 `majiang_rl` 线。
+
+### （四）v3 真机：`v3 = 5 房`（仍 < 8）
+
+阈值作业已就位：跨 8 房报方向、跨 30 房正式判读（那时才写结论）。
+**无人值守，不占前台。**
+
+产物：`agent/verify/queue_watch.py`、`agent/verify/v3_rooms.py`（新增，只读台账）。
