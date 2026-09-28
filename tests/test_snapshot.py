@@ -154,3 +154,36 @@ def test_snapshot_round_trips_into_situation() -> None:
     assert situation.table.wall_remaining == 74
     assert len(situation.discards) == 4
     assert situation.hand.tile_count == 14
+
+
+def test_platform_placeholder_zero_tile_means_not_applicable() -> None:
+    """平台用点数为 0 的牌码表示「本字段不适用」，只认空串会在开局丢快照。
+
+    实测依据（`logs/a_*.jsonl`）：307 场里 **125 场**出现过
+    `TileCodeError: 非法牌码: '0w'`，共 1795 次，**全部落在开局 2.6 秒内**
+    （每场对局的前几个快照），中局 **0 次**。每场因此多花约 0.6 秒重拉快照。
+    """
+    from majiang.client.snapshot import nullable_tile
+
+    assert nullable_tile("") is None
+    assert nullable_tile(None) is None
+    assert nullable_tile("0w") is None and nullable_tile("0b") is None
+    assert nullable_tile("2t") == tiles.parse("2t"), "正常牌码不得被当成占位吞掉"
+
+    for field in ("drawn_tile", "last_discard"):
+        snapshot = Snapshot.parse({**REAL_DRAW_SNAPSHOT, field: "0w"})
+        assert getattr(snapshot, field) is None, f"{field} 的占位码应解析为 None"
+    assert Snapshot.parse({**REAL_DRAW_SNAPSHOT, "drawn_tile": "0w"}).to_situation()
+
+
+def test_placeholder_is_not_tolerated_in_hand() -> None:
+    """**暗手必须继续严格报错**：若哪天 `my_hand` 里真出现 `0w`（例如平台启用赤 5），
+    把它当占位就会**静默丢掉一张真牌**——那比报错糟得多。"""
+    import pytest
+
+    from majiang.rules.tiles import TileCodeError
+
+    with pytest.raises(TileCodeError):
+        Snapshot.parse({**REAL_DRAW_SNAPSHOT, "my_hand": ["0w"] + REAL_DRAW_SNAPSHOT["my_hand"][1:]})
+    with pytest.raises(TileCodeError):
+        Snapshot.parse({**REAL_DRAW_SNAPSHOT, "discards": [["0w"], [], [], []]})

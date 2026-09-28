@@ -44,6 +44,26 @@ def optional_tile(value: Any) -> int | None:
     return value if isinstance(value, int) else tiles.parse(str(value))
 
 
+# 平台用**点数为 0 的牌码**表示「本字段不适用」，我们此前只认空串与 None。
+# 实测（`logs/a_*.jsonl`）：307 场里 125 场出现过 `TileCodeError: 非法牌码: '0w'`，
+# 共 1795 次，**全部集中在开局 2.6 秒内**（每场对局的前几个快照，
+# 那时还没有人打牌），中局出现 **0 次**。后果是那几个快照被整条丢弃、
+# 每场开局多花约 0.6 秒重拉——**目前没丢动作，但若这个占位哪天出现在中局就会丢**。
+PLACEHOLDER_CODES = frozenset({"0", "0w", "0b", "0t"})
+
+
+def nullable_tile(value: Any) -> int | None:
+    """同 :func:`optional_tile`，但把平台的「不适用」占位码也当作 ``None``。
+
+    **只用于可空的单张字段**（`drawn_tile` / `last_discard`）。**不要用于暗手与弃牌**：
+    若哪天 `my_hand` 里真的出现 `0w`（例如平台启用赤 5），把它当占位就会**静默丢掉一张真牌**，
+    那比报错糟得多。暗手必须继续走严格的 :func:`tiles_of`。
+    """
+    if isinstance(value, str) and value.strip() in PLACEHOLDER_CODES:
+        return None
+    return optional_tile(value)
+
+
 def tiles_of(raw: Sequence[Any] | None) -> tuple[int, ...]:
     return tuple(optional_tile(code) for code in (raw or ()))  # type: ignore[misc]
 
@@ -165,8 +185,8 @@ class Snapshot:
             melds=parsed_melds,
             discards=tuple(tiles_of(seat_discards) for seat_discards in raw.get("discards") or ()),
             scores=tuple(int(v) for v in raw.get("scores") or ()),
-            drawn_tile=optional_tile(raw.get("drawn_tile")),
-            last_discard=optional_tile(raw.get("last_discard")),
+            drawn_tile=nullable_tile(raw.get("drawn_tile")),
+            last_discard=nullable_tile(raw.get("last_discard")),
             god=god_raw if isinstance(god_raw, Mapping) else {},
             responding_seats=tuple(int(s) for s in raw.get("responding_seats") or ()),
             window_deadline_ms=None if window in (None, "") else int(window),
@@ -198,4 +218,4 @@ class Snapshot:
         )
 
 
-__all__ = ["Snapshot", "optional_tile", "tiles_of"]
+__all__ = ["Snapshot", "optional_tile", "nullable_tile", "tiles_of"]
