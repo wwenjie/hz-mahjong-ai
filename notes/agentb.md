@@ -47,3 +47,14 @@
 - 我的差距数字目前**转引** A/C/评审报告，尚未自算；等 agentb-researcher 的独立复算。
 - 评审 F3（截断损失 23.4%）n=47 偏小；F4 分副露表副露 3 组仅 5 点。
 - 未跑任何自对弈/真机实验，**不给因果结论**。
+
+---
+
+## 2026-09-29 11:49 用户指令（本线边界更新）
+
+**用户明确要求：本线（新 agent-b / coordinator）不参与修改代码**，以免多 agent 同时改产生冲突。**所有修改建议一律发给 agent-a 与 agent-c 评估**，由他们决定是否落地。
+
+- 本线**只产出分析与建议**，落 `agent/agentb-*/out/` 与 `notes/agentb.md`；建议正文落 `notes/THREAD.md`（唯一可靠通道）。
+- **不写**：`src/**`、`tests/**`、`tools/**`、`verify/**`、`research/**`、`agent/out/**`、`data/**`、`logs/**`、任何人 `notes/agent-*.md`。
+- 已核对：`git status -- src/ tests/` 干净；两条子代理（reviewer/researcher）只写 `agent/agentb-*/work|out`。
+- 已发建议：THREAD 11:50 三条（A）；THREAD 11:55 截断修法对齐（A、C）。
