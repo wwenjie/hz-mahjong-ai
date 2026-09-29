@@ -2768,3 +2768,61 @@ A 问「官方排序键」并要我核到原文。我做的是**第一手取证*
 
 ### 本轮无平台请求声明（10:05）
 仅读产物/日志、追加本报告；离线、单进程。未做任何平台写操作。
+
+---
+
+## 2026-09-29 11:21 — 出牌策略代码独立复核（用户 11:17 要求）+ 已派 specialist
+
+### 触发
+用户 11:17：A 昨晚分析了自由对战平台上其他强 bot 与 v3 的区别，要求我也审一遍出牌策略代码，
+并研究麻将高端技巧（听牌/牌效），找优化空间。用户建议：让 team-researcher 研究、team-reviewer 审代码。
+
+### 已派（经 team-team-coordinator，因为只有它被授权 spawn specialist）
+我（`main`）**无权**直接 `sessions_spawn(agentId=team-researcher|team-reviewer)`——
+配置里只有 `team-team-coordinator` 有 `subagents.allowAgents=[team-researcher,team-writer,team-reviewer]`。
+故我把两件活发给 `agent:team-team-coordinator:main`（`sessions_send`，`accepted/queued`）：
+1. **team-researcher** → `research/mahjong-tenpai-speed-survey.md`（牌效/到听速度/听口形状通用技巧 + 出处 + 哪些依赖本变体没有的机制）
+2. **team-reviewer** → `research/code-review-discard-strategy.md`（独立审 `policy.py` / `risk.py` / `shanten.py`）
+
+### 我自己的复核（读代码 + 实测取证；边界：我不改 `src/**`，以下交 A）
+
+**F1 —— 我怀疑的一处「分层反转」：实测否定（查过，不是问题）**
+`_break_ties_by_ukeire` 用 `scores[0].shanten` 作分层（`scores` 按 `total` 降序）。
+理论上若 `god_discard_penalty=25` 把「打财神的低向听」候选压到低于「高向听」候选，
+分层会落在高向听上、把低向听候选排除。
+**实测 229,094 个真机决策点（355 个日志文件，`detail.discards` 解析）：领跑者向听 > 该决策最小向听 = 0 次。**
+⇒ 不发生（因为 `shanten_weight=10` 的向听差通常盖过财神罚）。**这条我撤回，不报。**
+
+**F2 —— 候选面截断 + 排序键污染（确证，A 已在注释里承认，但仍是 default）**
+- `ukeire_candidates=2`、`ukeire_order="total"`（都是默认值）。`_break_ties_by_ukeire` 里
+  `tied = tied[:2]` 而 `tied` 来自按 `total` 排序的 `scores`；同向听时 `total` 由喂牌主导。
+- 实测：同向听候选项之间**喂牌值可分辨的有 149,495 / 200,929（74.4%）**，喂牌全同仅 51,434。
+  ⇒ 实际判别键就是喂牌。**「听口明显更好但喂牌稍多」的牌在进入精确进张比较前就被截掉。**
+- 建议（零风险、已实现）：`ukeire_order="blocks"` 或「先按形质取候选面再截断」。**这是可立即 A/B 的最小改动。**
+
+**F3 —— 量纲不可比：喂牌项动态范围 ≈ 形质分辨率的 8 倍（确证，机制根因）**
+`total = -10×向听 + block_value - 3×喂牌 - 财神罚`：
+- `block_value` 同向听内**分辨率 < 1**（`shape_value` 刻意做成 `0.9×(mean_w−1)`，|修正|<0.4；旧 `quick_blocks` 常全并列）。
+- `feed×3` 动态范围：`visible_need∈[0.4,1.0]` × `threat=Σ ready_probability ≤ 3×0.85=2.55` × `3.0` ⇒ 上限 **≈7.7**。
+- ⇒ 任何「只打破并列」的形质修正**永远竞争不过喂牌**（A 实测：开 shape 后喂牌主导 97.7%→92.3%）。
+- **更本质的修法**（比调 `feed_weight` 数值）：把 feed 项**归一化到与 block 同量级**，或让 feed 只做**同分 tie-break**。
+  这解释了 A 的 `feed-low`(1.0)/`feed-high`(6.0) 为何都测平——**只改数值不改符号，argmax 不变**。
+
+**F4 —— `visible_need` 两处遗漏（确证，独立于 A 的修复）**
+(a) `risk.visible_need(tile)` 是**牌种静态表**（字牌 0.4 / 中张 1.0 / 边张 0.6），
+    **不含「已见张数」**。一张已见 3 张的牌几乎喂不出东西，代码仍按满值计罚。
+    ⇒ 建议乘剩余张数因子（如 `(4−seen_tile)/4`）。**这是喂牌项里最直接的一个物理遗漏。**
+(b) 同样不含「我们自己在等什么」；`total` 里没有自摸进张项，且 `ukeire_max_shanten=1`
+    意味着**向听 ≥2 的前中期完全不看进张**（配置注释承认）。
+
+**F5 —— 形质分级不完整（对应研究任务）**
+`shape_value` 只分 两面 1.2 / 对子 1.0 / 坎张边张 0.7 / 财神 1.4；
+**没有复合形/连续形识别**（如 2334 的两面+对子）、**没有孤立牌按邻接度的价值**。待 team-researcher 的通用理论对照。
+
+**F6 —— 喂牌项被系统性放大（与 A 的标定互为印证）**
+`threat` 用的 `HeuristicReadyModel` 被 A 标定为高估 ~1.4–1.6×（我的独立复核：全库 1.43×、逐 era 1.38–1.56×），
+再叠加 `CONSERVATIVE_UPLIFT=1.25` ⇒ 净放大 ≈1.8–2.0×。与「我们比强 bot 少打 47% 相对的中张」互为独立印证。
+
+### 纪律
+- 未改 `src/**`（属 A）：以上是**发现与建议**，已/将通报 A。
+- 只读日志与代码；零平台请求。
