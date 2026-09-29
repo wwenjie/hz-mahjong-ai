@@ -1,0 +1,33 @@
+{
+ "era": "v3",
+ "n_decision_lines": 678600,
+ "n_with_discard_detail": 36913,
+ "n_parsed": 36913,
+ "n_parse_fail": 0,
+ "winner_is_displayed_top": 33440,
+ "winner_is_displayed_top_pct": 90.59,
+ "same_shanten_winner_feed_is_min": 35372,
+ "same_shanten_winner_feed_is_min_pct": 95.83,
+ "top4_argmax_total_equals_feedmin": 24895,
+ "top4_argmax_total_equals_feedmin_pct": 67.44,
+ "top4_all_feed_equal": 6430,
+ "top4_all_feed_equal_pct": 17.42,
+ "mean_feed_spread_same_shanten": 0.3031,
+ "mean_total_spread_same_shanten": 0.9349,
+ "shanten_hist": {
+  "0": 8426,
+  "1": 10941,
+  "2": 10294,
+  "3": 5582,
+  "4": 1484,
+  "5": 184,
+  "6": 2
+ },
+ "tie_size_hist": {
+  "1": 4605,
+  "2": 5039,
+  "3": 5320,
+  "4": 21949
+ },
+ "note": "来源=进程内决策轨迹（非事件流重放、非重建器）；detail.discards 只含按合计降序的前 4 名"
+}

@@ -154,3 +154,22 @@ claw agent 的主场。A 的活是「交互 + 采纳 + 上线」（用户随时�
 5. 模型产物必须纯 Python 可推理；`src/majiang/**` 的零第三方依赖约束不得破坏。
 6. 推理输入只用公开信息，对手手牌只作离线标签——与 A、B 同一红线。
 
+
+---
+
+## B'（新 agent-b / coordinator 线）范围登记 — 2026-09-29 13:50
+
+**背景**：用户 11:43 让新 agent-b 线（`agentb-coordinator` + 隐藏子代理 researcher/reviewer/writer）加入本仓；
+用户 13:27 授权其按建议推进、13:43 授权「**双方协商后可写的目录就写**」。A 12:05 建议其用新标识 `B'`（避免与退役初代 B 混淆）。
+**用户 11:49 硬约束不变：B' 不改 `src/**`**——只产建议，交 A/C 评估。
+
+| 范围 | 所有人 | 说明 |
+|---|---|---|
+| `verify-b/**` | **B'（新增）** | B' 的**独立复算脚本与产物**。与 C 在用的 `verify/**`、`agent/verify/**` **互不相交**；B' 不写这两个目录。 |
+| `agent/agentb-*/**` | **B'（新增）** | coordinator/researcher/reviewer/writer 四个工作区（各自嵌套 git 仓，不入主仓索引） |
+| `notes/agentb.md` | **B'（新增）** | B' 的追加式记录（区别于冻结只读的 `notes/agent-b.md`） |
+
+**B' 的边界**：① 不改 `src/**`、`data/**`、`logs/**`、`research/**`、`agent/out/**`、`verify/**`、`agent/verify/**`、
+`scripts/**`、`docs/**`、`tests/**`、任何 `notes/agent-{a,b,c}.md`；② **零平台请求**，不碰 A/C 的平台进程与算力队列锁
+（`data/experiments/.lock`）；③ 沿用初代 B 的提交纪律（显式路径 `git add`、一次一小块、禁 `git reset --hard`）。
+**交界文件**：本文件与 `notes/THREAD.md` 只追加，不改别人的行。
