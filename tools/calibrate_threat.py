@@ -11,13 +11,23 @@
 （副露数、弃牌数、局进度）与模型给出的 ready；再以**该对手下一次出牌**（即下次摸牌后）
 是否听牌（`shanten_any == 0`）作为标签。按 (副露数, 弃牌数) 分桶比较预测 vs 实测。
 
-**实测结论（2026-09-29，n=7045）**：模型 **36.1%** vs 实测 **12.4%**，
-差 **+23.7pp ≈ 2.9 倍**，且**每个分桶都高估**（0 副露桶高估 26~36pp、1 副露桶 19~26pp）。
-两条连锁后果：
-1. 喂牌惩罚被放大约 2.9 倍 ⇒ **过度避免喂牌**，代价是手牌形质；
-2. `lap_survival` 被低估 ⇒ **过于保守不敢飘**（我们财飘/胡 0.26% vs 对手 0.8%）。
+**实测结论（2026-09-29，**按房抽样 30 房 / n=58663**）**：
 
-给出数据依据：`3.0 / 2.9 ≈ 1.03`（与 `shape-feed-low` 的 1.0 吻合）。
+| 模型 | 预测 | 实测 | 偏差 |
+|---|---|---|---|
+| 手写 `HeuristicReadyModel`（**默认档在用**） | 42.0% | 28.2% | **+13.8pp（1.49×）** |
+| GBDT `models/opponent_model.json` | **29.1%** | 28.2% | **+0.9pp（几乎完美）** |
+
+两条连锁后果（对**手写**模型）：① 喂牌惩罚被放大约 1.5 倍 ⇒ 过度避免喂牌、代价是手形；
+② 同一模型进 `lap_survival` ⇒ 低估生存概率 ⇒ 过于保守不敢飘（财飘/胡 0.26% vs 对手 0.8%）。
+**校准后的 `feed_weight` ≈ 3.0 / 1.49 ≈ 2.0。**
+⇒ **换用 GBDT 才是更彻底的修法**（它同时修好上面两条）。
+
+**⚠ 一条我自己踩过的坑（这个工具上）**：第一版用 `--limit 40`——看着是 40 个文件、
+其实只有 **4 个房**（每房 10 个文件），算出的过估是 2.9 倍；agent-c 全库复算给 1.4~1.6 倍。
+**同一个「按文件抽样」坑我在别处反复警告，却在自己新写的工具上犯了。**
+另一条旁证：**房间异质性极大**——4 房样本里实测听牌率 13.2%、30 房样本里 28.2%。
+所以本类分析**必须按房抽样且房数足够**，并复报房数。
 
 判据：系统性高估 ⇒ 喂牌项被放大、`feed_weight` 应下调；低估则相反。
 
@@ -63,9 +73,26 @@ def predict(melds: int, discards: int, draws: int) -> float:
     return min(READY_MAX, max(READY_MIN, ready))
 
 
+def rooms_first(paths: list[str], rooms: int) -> list[str]:
+    """**按房抽样**，不按文件。
+
+    `--limit 40` 这种写法看着覆盖 40 个文件、其实只有 **4 个房**（每房 10 个文件）。
+    2026-09-29 我就在这个工具上踩了：只抽 4 个房时算出「手写模型高估 2.9 倍」，
+    而 agent-c 全库复算给 1.4~1.6 倍——**同一个坑，我在别处警告别人却在这里自己犯**。
+    """
+    by_room: dict[str, list[str]] = {}
+    for path in paths:
+        by_room.setdefault(str(Path(path).parts[-3]), []).append(path)
+    picked: list[str] = []
+    for room in sorted(by_room)[:rooms]:
+        picked.extend(sorted(by_room[room]))
+    return picked
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="threat 层标定")
-    parser.add_argument("--limit", type=int, default=40)
+    parser.add_argument("--rooms", type=int, default=20, help="**按房**抽样的房数（不是文件数）")
+    parser.add_argument("--limit", type=int, default=0, help="兼容旧参数：最多几个文件（0=不限）")
     parser.add_argument(
         "--model",
         default="both",
@@ -92,7 +119,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"⚠ 加载 GBDT 失败：{type(exc).__name__}", file=__import__("sys").stderr)
             gbdt = None
 
-    files = sorted(glob.glob("data/auto_sessions/*/events/*.json"))[: args.limit]
+    files = rooms_first(sorted(glob.glob("data/auto_sessions/*/events/*.json")), args.rooms)
+    if args.limit:
+        files = files[: args.limit]
+    print(f"按房抽样 {args.rooms} 房（{len(files)} 文件）", file=__import__("sys").stderr)
     rows: dict[tuple[int, int], list[tuple[float, float | None, int]]] = collections.defaultdict(list)
     for path in files:
         try:
