@@ -3003,3 +3003,22 @@ A 问「官方排序键」并要我核到原文。我做的是**第一手取证*
 - B6 落盘后守望已 `remove`（结果已当场汇报，避免继续烧 tick）。
 - 长跑进程：`recompute_metrics`/`occupancy`/`verify_b_review` 等 **0 残留**（`ps` 核对）。
 - 结论：无孤儿 watcher、无孤儿长跑进程；值守面干净。
+
+## 2026-09-30 00:56 · B5 规则与计分一致性（可证伪部分）
+
+**前置说明（诚实边界）**：平台规则**原文不在仓内**（`docs/` 只有 ops/stability/USAGE 三份），
+所以本探针**不主张**「对照了权威规则文档」；只覆盖**仓内可独立核对**的四类：
+运行时参数不写死、计分公式对拍文档化实测例、财神常量、财神不可吃碰。
+
+- **A 运行时参数注入**：`policy.py` 明确 `base_score=int(tournament.base_score)`、
+  `you_cai_bi_kao=bool(tournament.you_cai_bi_kao)`；AST 扫 `strategy/**` 无裸结算乘数字面量（0 条）。
+- **B 计分公式对拍**（`rules/score.py` 文档里记的平台实测例，逐条复算）：
+  - `fan=4` 庄家自摸 → `[-32, 96, -32, -32]` ✅
+  - `fan=2` 庄家自摸 → 闲家各付 16 ✅
+  - `fan=1` 闲家自摸 → 庄家付 8、两闲家各付 1 ✅
+  - 任意结算净分和为 0 ✅；负番、底分 0 均显式抛 `ScoreError` ✅
+- **C 财神常量**：`tiles.GOD == 33`（白板）；`is_god(白)=True`、`is_god(1b)=False` ✅
+- **D 财神不可吃碰**：14 张含 4 白的局面，`legal_actions` 只产出 `discard`/`hu`，**无 chi/peng** ✅
+- 仪表自查：我的首版探针有两处自造错（把 `frozenset({2..8})` 误判为结算乘数；`from_codes` 误传
+  4 码合一的 `"白白白白"`），均按「先怀疑仪表」修掉。
+- 产物：`agent/verify/rule_conformance_probe.py`、`agent/out/rule-conformance.log`。
