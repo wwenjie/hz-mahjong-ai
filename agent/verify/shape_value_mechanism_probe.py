@@ -94,6 +94,11 @@ def main() -> int:
                 sit = state.situation_for(mine, phase=replay.PHASE_DRAW)
             except Exception:  # noqa: BLE001
                 continue
+            # 抓打圈（`is_restricted`）内只能打刚摸到的牌 ⇒ **不是选择**，且重建快照无
+            # `drawn_tile` 会让 `legal_actions` 抛 `SituationError`。这类点整点跳过
+            # （既修正了候选集口径，也避免误把强制出牌算成并列）。
+            if getattr(sit, "is_restricted", False):
+                continue
             counts = list(sit.hand.counts)
             avail = [t for t in range(TILE_KINDS) if counts[t] > 0]
             if len(avail) < 2:
@@ -143,8 +148,11 @@ def main() -> int:
                 else:
                     dir_eq += 1
 
-            # 端到端：真实 choose()
-            acts = legal_actions(sit)
+            # 端到端：真实 choose()（抓打圈点已在上方跳过）
+            try:
+                acts = legal_actions(sit)
+            except Exception:  # noqa: BLE001
+                acts = ()
             if acts:
                 try:
                     c3 = dec3.choose(sit, acts, budget_ms=0)
