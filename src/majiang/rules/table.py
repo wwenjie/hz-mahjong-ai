@@ -16,6 +16,9 @@ from . import tiles
 SEATS = 4
 DEALT_TILES = tiles.HAND_SIZE * SEATS + 1
 INITIAL_WALL = tiles.WALL_SIZE - DEALT_TILES
+# 一场几局。**由服务端 room_config 的 `Rounds` 给出**（实测恒为 8），这里只是缺省值；
+# 真机路径应注入真实值，否则「剩余局数」会算错。
+ROUNDS_PER_GAME_DEFAULT = 8
 RESERVED_TILES = 20
 MAX_DRAWS = INITIAL_WALL - RESERVED_TILES
 
@@ -29,6 +32,31 @@ class TableState:
     wall_remaining: int = INITIAL_WALL
     dealer_seat: int = 0
     round_no: int = 1
+    # **局况**：四家累计比分（座位序）与本场总局数。
+    #
+    # 为什么要有这两个字段：比赛按**首名率**结算（我们 6.2% vs 榜首 45.0%），而决策器此前
+    # **完全看不到比分**——`TableState` 只有牌墙/庄家/局号。实测（`tools/analyze_match_standing.py`，
+    # 4800 局）：`P(终局首名 | 本局开始时的名次 × 剩余局数)` 从 **2.3%**（垫底+剩≤3 局）
+    # 到 **69.9%**（领先+剩≤3 局）——**30 倍跨度**，而这个变量一直没进决策器。
+    # 两个极端档位的战略含义相反（领先且近尾该保、垫底且近尾该搏），而此前两处打得一模一样。
+    #
+    # 平台**本来就发比分**（`Snapshot.scores`，`client/snapshot.py:187`，也在实测字段表 `:210` 里），
+    # 只是 `to_situation()` 把它丢了。所以这是**补上一个已收到的输入**，不是新造数据。
+    #
+    # 缺省空元组 = 「局况未知」（例如单局离线调用），消费方必须**当作未知处理**，
+    # 不得把空元组当成「四家都是 0 分」——那会让所有离线旧路径突然以为自己在并列第一。
+    scores: tuple[int, ...] = ()
+    rounds_total: int = ROUNDS_PER_GAME_DEFAULT
+    # **自对弈侧还没接上（已知缺口，2026-09-30 02:20）**：真机路径已通并测试覆盖
+    # （`client/snapshot.py:table_state` → `tests/test_snapshot.py`），但自对弈路径没走通——
+    # 试过在 `sim/round.py:run_round` 里把 `prior_scores` 写进 `RoundState.scores`、
+    # `sim/batch.py:run_match` 传累计分，实测探针拿到的仍是全 0，且**不是**「没人胡」造成的
+    # （8 局 0 流局、四家总分 −23/−13/34/2，但 344 条记录里累计分全为 0）。
+    # 线索：`deal()` 之后 `state.table` 会因为牌墙 84 抛 `TableError`（尚未摸第一张牌），
+    # 所以 `play_round` 构造局面的那条路径与 `RoundState.table` **不是同一条**——
+    # 下一步应先定位 `play_round` 实际用哪条路径造 `Situation`。
+    # **影响**：在接上之前，任何「局况类档位」在自对弈里看到的都是空元组 ⇒ 必然测成空干预。
+    # 所以**先别开局况臂**，或者先把这条接线补完。
 
     def __post_init__(self) -> None:
         if not 0 <= self.wall_remaining <= INITIAL_WALL:

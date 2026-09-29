@@ -68,6 +68,22 @@ def tiles_of(raw: Sequence[Any] | None) -> tuple[int, ...]:
     return tuple(optional_tile(code) for code in (raw or ()))  # type: ignore[misc]
 
 
+def _rounds_total_of(extra: object) -> int:
+    """本场总局数。优先读快照 `extra`，读不到就用缺省（实测恒为 8）。
+
+    **不硬编码在决策里**：`rounds_total` 只影响「剩余局数」这个档位，若服务端换了赛制
+    而这里读不到，档位会偏——但偏的方向是保守的（把赛制当成 8 局）。
+    """
+    from majiang.rules.table import ROUNDS_PER_GAME_DEFAULT
+
+    if isinstance(extra, dict):
+        for key in ("rounds", "Rounds", "rounds_per_game"):
+            value = extra.get(key)
+            if isinstance(value, int) and value > 0:
+                return value
+    return ROUNDS_PER_GAME_DEFAULT
+
+
 @dataclass(frozen=True, slots=True)
 class Snapshot:
     game_id: str
@@ -131,6 +147,10 @@ class Snapshot:
             wall_remaining=self.wall_remaining,
             dealer_seat=self.dealer,
             round_no=self.round_no,
+            # **平台本来就发比分**（`:187` 解析、`:210` 在实测字段表里），此前只是没往
+            # `TableState` 传 ⇒ 决策器看不到局况。这里补上，缺省仍是空元组（未知）。
+            scores=tuple(self.scores),
+            rounds_total=_rounds_total_of(self.extra),
         )
 
     def god_state(self, *, piao_count: int = 0, hand: Hand | None = None) -> GodState:

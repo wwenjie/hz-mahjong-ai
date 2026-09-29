@@ -187,3 +187,33 @@ def test_placeholder_is_not_tolerated_in_hand() -> None:
         Snapshot.parse({**REAL_DRAW_SNAPSHOT, "my_hand": ["0w"] + REAL_DRAW_SNAPSHOT["my_hand"][1:]})
     with pytest.raises(TileCodeError):
         Snapshot.parse({**REAL_DRAW_SNAPSHOT, "discards": [["0w"], [], [], []]})
+
+
+def test_table_state_carries_the_scores_the_platform_sends() -> None:
+    """**局况接线（真机路径）**：平台发的 `scores` 必须走到 `TableState`。
+
+    补的是一个**已收到却被丢掉**的输入：`Snapshot.scores` 一直在解析
+    （`client/snapshot.py:187`，且 `scores` 就在实测字段表里），但 `to_situation()` 没往
+    `TableState` 传 ⇒ 决策器看不到局况。实测（`tools/analyze_match_standing.py`，4800 局）：
+    `P(终局首名 | 本局开始时的名次)` 从 2.3% 到 69.9%（30 倍跨度），不是装饰性字段。
+
+    **缺省必须是「未知」（空元组）而不是「四家 0 分」**——否则所有离线旧路径会突然
+    以为自己并列第一，静默改变行为。
+    """
+    from majiang.client.snapshot import Snapshot
+
+    raw = {
+        "game_id": "g_1", "phase": "draw", "seat": 0, "round_no": 3, "dealer": 1, "turn": 0,
+        "waited_seat": 0, "wall_remaining": 40,
+        "discards": [[], [], [], []], "melds": [[], [], [], []],
+        "hand_counts": [13, 13, 13, 13],
+        "my_hand": ["1w", "2w", "3w", "4w", "5w", "6w", "7w", "8w", "9w", "1b", "2b", "3b", "白"],
+        "last_discard": "", "drawn_tile": "",
+        "god": {"baotou": False, "chain_count": 0, "catch_play": False, "god_discarder_seat": -1},
+        "scores": [34, -23, -13, 2],
+    }
+    table = Snapshot.parse(raw).table_state()
+    assert table.scores == (34, -23, -13, 2)
+    assert table.round_no == 3
+    raw.pop("scores")
+    assert Snapshot.parse(raw).table_state().scores == ()
