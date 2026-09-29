@@ -40,6 +40,7 @@ ANGANG = "angang"
 VARIANT_FIELDS = (
     "meld_tolerance",
     "tiebreak",
+    "safe_tiebreak",
     "ukeire_candidates",
     "ukeire_max_shanten",
     "ukeire_order",
@@ -222,6 +223,22 @@ class PolicyConfig:
     #   白板数不受损（+0.014，不显著）；胡率 25.6% vs 24.5%
     # 故切为默认。旧行为保留在 `--decider blocks` 供后续对照。
     tiebreak: str = "exact-ukeire"
+    # 实验档位：**只在完全打平**的候选中，优先打「已见张最多」的那张。
+    #
+    # **为什么需要它**：`_choose_discard` 的最终兜底是 `sorted(..., reverse=True)` 的稳定性，
+    # 于是同分时永远选**最小牌索引**——万 0~8 / 筒 9~17 / 条 18~26 / 字 27~33，即系统性地
+    # 偏向打万。B' 独立量到这条偏置的分布（万 0.54 / 筒 0.28 / 字 0.22 / 条 0.08），
+    # 而我们的弃牌结构与强 bot 差得最大的一列正是中张占比（我们 19.6% vs 对手 29.7%，
+    # 逐房配对差 −11.2pp ± 0.4）。**这个偏置是排序实现的副作用，不是任何设计决定**。
+    #
+    # 换成「同分优先打已见张最多的那张」，依据是**安全性有确定方向**：一张已经被别人打掉
+    # 多张的牌，别人持有的同牌更少 ⇒ 更不可能是他等的那张。它同时天然抹掉花色索引偏置
+    # （已见张数与花色无关）。
+    #
+    # 与已被判死的 `feed_visibility` 的区别（**这条很重要**）：那个把 `(4−seen)/4` 乘进
+    # **喂牌项本身**，于是能压过形质、改变 total 的排序（实测总得分/名次分 2/2 反向）；
+    # 这里**只在 total 完全相等的候选之间**起作用，结构上不可能覆盖任何一项，改动面严格更小。
+    safe_tiebreak: bool = False
     # 实验档位：绝不打出财神（只在无其他可打牌时才打）。
     # 用途是验证一条尚未测过的假设——爆头需要「4 组**自然**面子 + 1 张闲余财神」，
     # 而此前的 0 次爆头是被动观测到的（现有策略会把财神当百搭用掉）。若把财神硬留，
@@ -767,11 +784,26 @@ class HeuristicDecider:
                 candidates = without_god
         if not candidates:
             return next((action for action in actions if action.kind != PASS), None)
-        scores = sorted(
-            (self._score_discard(situation, action) for action in candidates),
-            key=lambda item: item.total,
-            reverse=True,
-        )
+        # 同分（total 完全相等）时的次序：默认靠 `sorted` 的稳定性落到**最小牌索引**上，
+        # 那是一个没被设计过的花色偏置（见 `safe_tiebreak` 的说明）。开启后改成
+        # 「已见张多的优先」——只影响完全打平的候选，动不了任何一项的排序。
+        if self.config.safe_tiebreak:
+            seen = shanten_module.visible_counts(
+                situation.hand.counts,
+                [meld.tiles for meld in situation.all_melds],
+                situation.discards,
+            )
+            scores = sorted(
+                (self._score_discard(situation, action) for action in candidates),
+                key=lambda item: (item.total, seen[item.tile]),
+                reverse=True,
+            )
+        else:
+            scores = sorted(
+                (self._score_discard(situation, action) for action in candidates),
+                key=lambda item: item.total,
+                reverse=True,
+            )
         best = scores[0]
         if self.config.tiebreak in ("ukeire", "exact-ukeire"):
             best = self._break_ties_by_ukeire(situation, scores) or best

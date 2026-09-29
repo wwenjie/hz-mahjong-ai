@@ -230,8 +230,59 @@ def test_final_mode_is_more_willing_to_piao() -> None:
     assert chosen_q is not None and chosen_f is not None
 
 
-def test_peng_accepted_when_meld_route_wins() -> None:
-    # 对子很少（七对很远）、副露更近：碰把向听 3 推到 2，副露路线期望反超七对
+# 一手很散、且「南/西/北」三张单张字牌**完全等价**的牌（东东是对子，故东不同价）：
+# 三张的向听、骨架构型、静态喂牌值全相同 ⇒ `total` 逐位相等，是纯粹的三方并列。
+# 注意 `discards` 让**北**的已见张数最多（1 家打过两张），这才有可分辨的方向。
+TIE_THREE_HONORS = "1w4w7w1b4b7b1t4t7t东东南西北"
+
+
+def test_default_tiebreak_falls_back_to_the_lowest_index() -> None:
+    """**把现状钉住**：并列时默认走 `sorted(reverse=True)` 的稳定性 ⇒ 永远选最小牌索引。
+
+    这不是设计决定而是实现副作用——棋牌花色的索引顺序（万 0-8 / 筒 9-17 / 条 18-26 /
+    字 27-33）让它变成一个**系统性的花色偏置**（B' 量到 万 0.54 / 筒 0.28 / 字 0.22 / 条 0.08）。
+    这条测试的作用是：一旦有人无意改了并列行为，它先响。
+    """
+    obj = situation(TIE_THREE_HONORS, drawn="北", discards={1: "北北"})
+    decider = HeuristicDecider()
+    chosen = decider.choose(obj, legal_actions(obj), budget_ms=1000)
+    assert chosen is not None and chosen.kind == DISCARD
+    assert tiles.to_code(chosen.tile) == "南"
+    # 三张确实同价（否则这条测试测的不是并列）
+    totals = {
+        row.split()[0]: row.split("合计=")[1] for row in decider.last_detail["discards"][:3]
+    }
+    assert totals["南"] == totals["西"] == totals["北"]
+
+
+def test_safe_tiebreak_prefers_the_most_visible_of_equal_candidates() -> None:
+    """`safe_tiebreak` 把并列规则显式写成「同分优先打已见张最多的那张」。
+
+    依据是**安全性有确定方向**：一张已经被人打过两张的牌，别人手里的同牌更少 ⇒ 更不可能
+    是他等的那张。它同时天然抹掉花色索引偏置（已见张数与花色无关）。
+    """
+    obj = situation(TIE_THREE_HONORS, drawn="北", discards={1: "北北"})
+    config = PolicyConfig.for_mode(Mode.QUALIFIER, safe_tiebreak=True)
+    chosen = HeuristicDecider(config).choose(obj, legal_actions(obj), budget_ms=1000)
+    assert chosen is not None and chosen.kind == DISCARD
+    assert tiles.to_code(chosen.tile) == "北"
+
+
+def test_safe_tiebreak_cannot_override_a_non_tied_candidate() -> None:
+    """**改动面的边界**：它只重排 `total` 完全相等的候选，压不过任何一项。
+
+    这是它与已被判死的 `feed_visibility` 的关键差别——那个把 `(4−seen)/4` 乘进喂牌项**本身**，
+    于是能越过形质改变排序。这里用手牌分辨力不同的两张牌验证：改 safe_tiebreak 不改变选择。
+    """
+    obj = situation("1w2w3w4w5w6w7w8w9w5b6b2b2b9b", drawn="9b", discards={1: "9b9b"})
+    plain = HeuristicDecider()
+    safe = HeuristicDecider(PolicyConfig.for_mode(Mode.QUALIFIER, safe_tiebreak=True))
+    a = plain.choose(obj, legal_actions(obj), budget_ms=1000)
+    b = safe.choose(obj, legal_actions(obj), budget_ms=1000)
+    assert a is not None and b is not None and a.tile == b.tile
+
+
+def test_peng_accepted_when_meld_route_wins() -> None:    # 对子很少（七对很远）、副露更近：碰把向听 3 推到 2，副露路线期望反超七对
     obj = situation(
         "2w4w5w5w9w2b5b6b3t4t5t北中",
         phase="response_peng",

@@ -319,6 +319,17 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3)
     ),
+    # **显式的并列规则**（B' 的 D2）。依据：`shape-blocks` 的机制门实测显示，它对真机决策的
+    # 改动 19.5% 全是「同喂牌值、同听口」的**等价候选换花色**（v3 打 1w、它打 1b／1t）
+    # —— 也就是它实际兑现出来的是「并列怎么破」，而不是 ② 说的「更宽的听口被截掉」。
+    # 而现在的并列兜底是 `sorted` 的稳定性 ⇒ 永远选最小牌索引 ⇒ 系统性偏向打万
+    # （B' 量到万 0.54 / 筒 0.28 / 字 0.22 / 条 0.08）。这条臂把规则**显式**写成
+    # 「同分优先打已见张最多的那张」（已被人打过 ⇒ 更不可能是他等的），
+    # 与 v3 只差这一个开关，且结构上不可能覆盖任何一项的排序。
+    "seen-tiebreak": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              safe_tiebreak=True)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 
