@@ -19,17 +19,22 @@ set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
 BACKOFF="${MAJIANG_QUEUE_BACKOFF:-60}"
-# 并行度。16 核、ab_test 单线程、真机采集基本是 I/O 等待，所以 3 个并行是安全的；
-# 串行时 21 个 job 要 16 小时，3 路并行降到约 5 小时。别开太大——
-# 碰/吃窗口只有 600 ms，CPU 压满会污染真机数据。
-WORKERS="${MAJIANG_QUEUE_WORKERS:-3}"
+# 并行度。**核预算 = WORKERS × JOBS，默认 2×5 = 10 核（本机 16 核）**，余量留给真机采集
+# 的 600 ms 碰吃窗口与系统本身。子进程一律 `nice -n 15`、采集是 `nice 0`，所以真机随时可抢占，
+# 但真被压满时抢占带来的抖动仍可能让决策算不完 600 ms —— 所以留余量，别顶满。
+#
+# 变更记录（2026-09-29）：原先 WORKERS=3 且 ab_test **单线程**，实测 CPU 用不到 1/3。
+# `tools/ab_test.py` 多进程化后（`--jobs`，并行与串行输出逐位相同），改成「少 job × 多进程」——
+# 同样的核数下进程都是同粒度任务、调度更平，且 job 少了以后单 job 的墙钟时间不再被 job 数拖慢。
+WORKERS="${MAJIANG_QUEUE_WORKERS:-2}"
+JOBS="${MAJIANG_QUEUE_JOBS:-5}"
 child=0
 stopping=0
 trap 'stopping=1; [ "$child" -ne 0 ] && kill -TERM "$child" 2>/dev/null' TERM INT
 
 echo "$(date -Is) 实验队列守护启动（只跑离线自对弈，不碰平台）"
 while [ "$stopping" -eq 0 ]; do
-  uv run python tools/iterate_loop.py --loop --workers "$WORKERS" &
+  uv run python tools/iterate_loop.py --loop --workers "$WORKERS" --jobs "$JOBS" &
   child=$!
   wait "$child"
   code=$?
