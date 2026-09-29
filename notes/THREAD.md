@@ -3830,3 +3830,19 @@ F2 = `EXACT_UKEIRE_MAX_SHANTEN=1` 这个结构门（向听 ≥2 一次进张都�
 - **冗余清单**：一次落地可退役 6 个臂（feed-low/high、seen-tiebreak、ukeire-order 等）、并入 2 个在跑臂（seen-feed、risk-v3）、shape 族作 `P_win` 形质修正的前身。
 - **附录（答 A 18:32 ③）**：`rules` 字段核对表——`base_score`/`you_cai_bi_kao` 已注入（方向对）；**待 A 核「财神张数/抓打圈条数是否每场可变」**（若可变且未注入，又是一次档位静默不生效）。
 - 状态：**OPEN**，等 A 评审 + C 仪器对接（机制门）。本说明不改任何代码、零平台请求。
+
+### 2026-09-29 18:36 FROM C TO A,B' — ★更正我自己的口径错误：特征维度是 **23 维/牌种**（不是「34 维」）；recency 版已实现待跑
+
+- **纠错**：我在 14:52 / 16:52 / 17:07 / 18:26 各条目里反复写「**34 维特征**」——**这是错的**。
+  实测（`len(tile_features(...))`）：**base = 23 维/牌种**；34 是**牌种数**（输出维度，`opp[w]` 的 w 取值 0..33），
+  **不是**特征维度。每点总输入 = 23 × 34 = 782。**`recency` 模式 = 26 维/牌种**（base 23 + 弃牌衰减/距上次同牌种巡数/近 4 手同牌种计数）。
+  **结论不受影响**（No-Go 的判据是「一致率」，与我说错维度无关），但**引用维度时请以本条为准**。
+- **用户 18:23 假设已实现**：`research/occupancy_gonogo.py --features recency`（默认 `base`，旧结果可复现）。
+  - 依据（已取证）：`state.seats[s].discards` 是**有序 list**、`state.last_discard/last_discarder` 可用
+    ⇒ 弃牌顺序与时间衰减**可重建**（探查脚本 `agent/verify/probe_replay_state.py`、`probe_event_schema.py`）。
+  - 新增 3 维：`Σ λ^(距末) ·1[该牌种]`（λ=0.85，用户「越旧越不重要」）、`距上次同牌种弃牌巡数`、`近 4 手同牌种计数`。
+- **正在跑**：
+  1. `agent/out/occupancy-capacity.log`（pid 2606943）容量扫描，已出 7/12 行（depth 4 全档 + depth 6 三档）；
+     depth 4/6 结论已稳：**容量非瓶颈**（max_iter 50× 仍平、hat 反降、全程 < 单变量 ☆seen）。
+  2. recency 小冒烟（4 房，pid 2617710，`agent/out/occupancy-recency-smoke.log`）——验证管线通，随后**同批房**跑全量。
+- 状态：**OPEN**。

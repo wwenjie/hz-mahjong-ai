@@ -44,8 +44,8 @@ def suit_of(t: int) -> int:
     return tiles.suit(t) if tiles.is_number(t) else 3
 
 
-def tile_features(ctx: dict, w: int) -> list[float]:
-    """某牌种 `w` 在该点上的公开特征。"""
+def tile_features(ctx: dict, w: int, mode: str = "base") -> list[float]:
+    """某牌种 `w` 在该点上的公开特征。mode="recency" 追加弃牌顺序/时间衰减维度。"""
     seen = ctx["seen"]
     own = ctx["own"]
     s = tiles.is_number(w)
@@ -53,7 +53,7 @@ def tile_features(ctx: dict, w: int) -> list[float]:
     right = seen[w + 1] if (s and w % 9 != 8) else -1
     od_total = ctx["od_total"]
     od = [v / od_total for v in ctx["od_suit"]] if od_total else [0.0] * SUITS
-    return [
+    base = [
         float(own[w]),
         float(seen[w]) / CPK,
         float(ctx["opp_disc"][w]),
@@ -75,9 +75,34 @@ def tile_features(ctx: dict, w: int) -> list[float]:
         float(ctx["n_opp_disc"]),
         float(ctx["gods_seen"]) / CPK,
     ]
+    if mode != "recency":
+        return base
+    # ── 用户 18:23 的假设：弃牌顺序次关键、越久的越不重要 ──
+    gd = ctx.get("gdisc") or []
+    mine = ctx.get("mine", -1)
+    L = len(gd)
+    lam = 0.85
+    decayed = 0.0
+    last_pos = -1
+    recent4 = 0
+    for i, (sd, td) in enumerate(gd):
+        if sd == mine:
+            continue
+        if td == w:
+            decayed += lam ** (L - 1 - i)
+            last_pos = i
+        if i >= L - 4 and td == w:
+            recent4 += 1
+    since = (L - last_pos) if last_pos >= 0 else 0
+    base += [
+        decayed,
+        float(since) / 12.0,
+        float(recent4) / 4.0,
+    ]
+    return base
 
 
-def build_ctx(sit, state, mine: int, counts14: list[int]) -> dict:
+def build_ctx(sit, state, mine: int, counts14: list[int], global_disc=None) -> dict:
     seen = sm.visible_counts(counts14, [m.tiles for m in sit.all_melds], sit.discards)
     opp = [0] * TK
     H = 0
@@ -111,10 +136,11 @@ def build_ctx(sit, state, mine: int, counts14: list[int]) -> dict:
         "wall": sit.table.wall_remaining, "progress": sit.table.progress,
         "draws": sit.table.draws_made, "n_opp_melds": n_opp_melds,
         "n_opp_disc": n_opp_disc, "gods_seen": gods_seen, "opp": opp,
+        "gdisc": global_disc or [], "mine": mine,
     }
 
 
-def scan(rooms: int, cap: int, seed: int):
+def scan(rooms: int, cap: int, seed: int, mode: str = "base"):
     files = sorted(glob.glob("data/auto_sessions/*/events/*.json"))
     rng = random.Random(seed)
     rng.shuffle(files)
@@ -135,6 +161,7 @@ def scan(rooms: int, cap: int, seed: int):
         used += 1
         mine = ids.index(OUR)
         taken = 0
+        gdisc: list[tuple[int, int]] = []
         for event, state in replay.iter_before_each_event(doc):
             if event.get("type") != replay.DISCARDED or not state.opened:
                 continue
@@ -143,6 +170,10 @@ def scan(rooms: int, cap: int, seed: int):
             s_disc = event.get("seat")
             if s_disc is None or not (0 <= int(s_disc) < SEATS):
                 continue
+            ld = getattr(state, "last_discarder", None)
+            td = getattr(state, "last_discard", None)
+            if ld is not None and td is not None:
+                gdisc.append((int(ld), int(td)))
             if taken >= cap:
                 # 训练样本封顶，但**评估点不封顶**（否则只剩前 50 次出牌、样本过少）
                 if int(s_disc) != mine:
@@ -152,10 +183,10 @@ def scan(rooms: int, cap: int, seed: int):
             except Exception:
                 continue
             counts14 = list(sit.hand.counts)
-            ctx = build_ctx(sit, state, mine, counts14)
+            ctx = build_ctx(sit, state, mine, counts14, gdisc)
             if taken < cap:
                 for w in range(TK):
-                    X.append(tile_features(ctx, w))
+                    X.append(tile_features(ctx, w, mode))
                     Y.append(float(ctx["opp"][w]))
                     Ti.append(w)
                 taken += 1
@@ -181,7 +212,7 @@ def scan(rooms: int, cap: int, seed: int):
     )
 
 
-def score(eval_ctxs, predict_fn, seen_lookup=None, detail=None) -> tuple[int, ...]:
+def score(eval_ctxs, predict_fn, seen_lookup=None, detail=None, mode: str = "base") -> tuple[int, ...]:
     """返回 (n, 一致_hat, 一致_seen, 一致_V, 一致_prop, 一致_beh)。
 
     一致_seen：若给出 `seen_lookup`（长度 CPK+1，`E[opp|seen=w]` 的训练集查表），
@@ -213,7 +244,7 @@ def score(eval_ctxs, predict_fn, seen_lookup=None, detail=None) -> tuple[int, ..
             ctx2 = dict(ctx)
             ctx2["own"] = after
             ctx2["seen"] = rem
-            feat = np.asarray([tile_features(ctx2, w) for w in range(TK)], dtype=np.float64)
+            feat = np.asarray([tile_features(ctx2, w, mode) for w in range(TK)], dtype=np.float64)
             p = predict_fn(feat)
             hat = [max(0.0, min(float(CPK), p[w])) for w in range(TK)]
             v = sum(unseen[w] for w in waits)
@@ -266,16 +297,19 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--cap-per-room", type=int, default=120)
     ap.add_argument("--trees", type=int, default=250)
     ap.add_argument("--seed", type=int, default=20260929)
+    ap.add_argument("--features", choices=["base", "recency"], default="base",
+                    help="base=原 34 维聚合；recency=追加弃牌顺序/时间衰减（用户 18:23 假设）")
     args = ap.parse_args(argv)
 
     tr_rooms = sorted(glob.glob("data/auto_sessions/*/events/*.json"))
     rng = random.Random(args.seed)
     rng.shuffle(tr_rooms)
     print(f"提取：train {args.train_rooms} 房 / test {args.test_rooms} 房（seed={args.seed}）", flush=True)
-    Xtr, Ytr, _, utr, _ = scan(args.train_rooms, args.cap_per_room, args.seed)
+    Xtr, Ytr, _, utr, _ = scan(args.train_rooms, args.cap_per_room, args.seed, args.features)
     # 测试房用不同 seed，避免与训练重叠
-    Xte, Yte, ev, ute, tite = scan(args.test_rooms, args.cap_per_room, args.seed + 1)
-    print(f"  train 房={utr} 行={len(Ytr)} · test 房={ute} 行={len(Yte)} · 评估点={len(ev)}", flush=True)
+    Xte, Yte, ev, ute, tite = scan(args.test_rooms, args.cap_per_room, args.seed + 1, args.features)
+    print(f"  特征模式={args.features} 维数={Xtr.shape[1]} · train 房={utr} 行={len(Ytr)} · "
+          f"test 房={ute} 行={len(Yte)} · 评估点={len(ev)}", flush=True)
     if len(Ytr) == 0 or len(ev) == 0:
         print("样本不足，退出")
         return 1
@@ -327,7 +361,8 @@ def main(argv: list[str] | None = None) -> int:
     mean_abs_bias = float(np.mean(np.abs(pred - Yte)))
     print(f"  [总体偏差] 平均偏差={mean_bias:+.4f} 张 · 平均绝对偏差={mean_abs_bias:.3f} 张", flush=True)
 
-    n, sh, ss, sv, sp, sb = score(ev, lambda f: model.predict(f), seen_lookup=seen_lookup)
+    n, sh, ss, sv, sp, sb = score(ev, lambda f: model.predict(f), seen_lookup=seen_lookup,
+                                  mode=args.features)
     print("=" * 70)
     print(f"评估点（我方听牌、≥2 候选且听口不同）= {n}")
     print(f"  ① 现有口径 V          与全信息 T 同选：{sv}/{n} = {sv / n:.1%}")
