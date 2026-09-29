@@ -121,6 +121,7 @@ def scan(rooms: int, cap: int, seed: int):
     files = files[:rooms]
     X: list[list[float]] = []
     Y: list[float] = []
+    Ti: list[int] = []
     eval_ctxs: list[tuple[dict, dict[int, tuple[int, ...]]]] = []
     used = 0
     for path in files:
@@ -156,6 +157,7 @@ def scan(rooms: int, cap: int, seed: int):
                 for w in range(TK):
                     X.append(tile_features(ctx, w))
                     Y.append(float(ctx["opp"][w]))
+                    Ti.append(w)
                 taken += 1
             if int(s_disc) != mine:
                 continue
@@ -173,7 +175,10 @@ def scan(rooms: int, cap: int, seed: int):
                     waitsets[tile] = waits
             if len({w for w in waitsets.values()}) >= 2:
                 eval_ctxs.append((ctx, waitsets))
-    return np.asarray(X, dtype=np.float64), np.asarray(Y, dtype=np.float64), eval_ctxs, used
+    return (
+        np.asarray(X, dtype=np.float64), np.asarray(Y, dtype=np.float64),
+        eval_ctxs, used, np.asarray(Ti, dtype=np.int64),
+    )
 
 
 def score(eval_ctxs, predict_fn) -> tuple[int, int, int, int, int]:
@@ -241,9 +246,9 @@ def main(argv: list[str] | None = None) -> int:
     rng = random.Random(args.seed)
     rng.shuffle(tr_rooms)
     print(f"提取：train {args.train_rooms} 房 / test {args.test_rooms} 房（seed={args.seed}）", flush=True)
-    Xtr, Ytr, _, utr = scan(args.train_rooms, args.cap_per_room, args.seed)
+    Xtr, Ytr, _, utr, _ = scan(args.train_rooms, args.cap_per_room, args.seed)
     # 测试房用不同 seed，避免与训练重叠
-    Xte, Yte, ev, ute = scan(args.test_rooms, args.cap_per_room, args.seed + 1)
+    Xte, Yte, ev, ute, tite = scan(args.test_rooms, args.cap_per_room, args.seed + 1)
     print(f"  train 房={utr} 行={len(Ytr)} · test 房={ute} 行={len(Yte)} · 评估点={len(ev)}", flush=True)
     if len(Ytr) == 0 or len(ev) == 0:
         print("样本不足，退出")
@@ -259,6 +264,30 @@ def main(argv: list[str] | None = None) -> int:
     mae = float(np.mean(np.abs(pred - Yte)))
     r = float(np.corrcoef(pred, Yte)[0, 1])
     print(f"  [占用回归] test MAE={mae:.3f} 张 · Pearson r={r:.3f}（标签 0..4）", flush=True)
+
+    # ── A 14:58 要求的第二条门：偏差方向与量级可核对（诊断用）──
+    slope = float(np.cov(pred, Yte)[0, 1] / np.var(Yte)) if float(np.var(Yte)) else float("nan")
+    print(
+        f"  [偏差诊断] mean(pred)={pred.mean():.3f} vs mean(true)={Yte.mean():.3f} 张 · "
+        f"std(pred)={pred.std():.3f} vs std(true)={Yte.std():.3f} · "
+        f"回归斜率={slope:.3f}（1=无偏；<1=向均值收缩）",
+        flush=True,
+    )
+    print("  [逐牌种偏差] 牌种: pred 均值 / true 均值 / 偏差 张", flush=True)
+    worst: list[tuple[float, int, float, float]] = []
+    for w in range(TK):
+        mask = tite == w
+        if int(mask.sum()) < 20:
+            continue
+        pm = float(pred[mask].mean())
+        tm = float(Yte[mask].mean())
+        worst.append((abs(pm - tm), w, pm, tm))
+    worst.sort(reverse=True)
+    for _d, w, pm, tm in worst[:6]:
+        print(f"    w={w:2d}: {pm:.3f} / {tm:.3f} / {pm - tm:+.3f}", flush=True)
+    mean_bias = float(np.mean(pred - Yte))
+    mean_abs_bias = float(np.mean(np.abs(pred - Yte)))
+    print(f"  [总体偏差] 平均偏差={mean_bias:+.4f} 张 · 平均绝对偏差={mean_abs_bias:.3f} 张", flush=True)
 
     n, sh, sv, sp, sb = score(ev, lambda f: model.predict(f))
     print("=" * 70)
