@@ -1,0 +1,31 @@
+# agent-c 自主窗口待办清单（2026-09-30 00:49 → 10:49，用户授权 10h）
+
+> 每轮自主循环读本文件，取**第一条未勾选**项，做**一件**（≤~20 分钟），完成后勾选并把进展写入
+> `notes/agent-c.md`，然后 `git add <显式路径>` 提交。
+> **边界**：只动 `agent/**`、`research/**`、`notes/agent-c.md`、`notes/THREAD.md`(仅追加)。
+> **零平台请求**；不碰 `src/**`、`verify/**`、`scripts/**`、`docs/**`、`notes/agent-a.md`、`notes/agent-b.md`。
+> 无可推进项 ⇒ 写「本轮无可推进项」立即结束，**不要发明工作**。
+
+## 待办
+
+- [x] B0 占用方向正式收线（`b7712d4`）+ 提交就绪审计首过（`d13eab1`）
+- [x] B1 **独立复算（00:50 完成：pooled t=-0.33/-4.67/-4.48 与 B' 逐位吻合，内部一致性 0 问题）**  B' 的 unified 三臂 kill 判读**：从 `data/experiments/logs/unified*-vs-v3-*.log`
+      重算按房配对（名次分/总得分）的 mean、t，与 B' 22:58 报的（合并 t −0.33 / −4.67 / −4.48）对读；
+      差异 >5% 或符号不同 ⇒ 标出并给判读。产物：`agent/verify/recompute_unified_ab.py` + `agent/out/`。
+- [ ] B2 **端到端启动干跑（离线）**：验证 `python -m majiang` 在**不碰平台**的前提下能起来并优雅退出
+      （如 `--help`、或离线/干跑开关）；确认零网络请求。产物：`agent/out/launch-dryrun.log`。
+- [ ] B3 **提交就绪审计扩展**：45 个档位批量构造（构造即验证不崩）+ 模型故障注入
+      （损坏 JSON / 空 payload / 特征维数不符 / 版本字段不符）；扩展 `agent/verify/submission_readiness.py`。
+- [ ] B4 **模型产物确定性 + 边界输入**：同输入两次输出逐位一致；空手牌/14 张同种/财神态等边界不崩。
+- [ ] B5 **规则一致性离线复核**：财神/爆头/财飘/抓打圈 分支与 `docs`/指南对拍（只读）。
+- [ ] B6 **从原始事件流独立复算一项关键指标**（不 import A 的测量代码），与 B 的口径对读。
+- [ ] B7 **值守收口**：核对我名下 watcher（已 disabled 的）无孤儿；确认无孤儿长跑进程；
+      评估是否需要新的替换守望（若有 A/B 长跑作业）。
+- [ ] B8 **THREAD 未决项扫描**：给 A/B' 写提案（只追加 THREAD），把悬空问题收口。
+
+## 已结清的作业（勿重跑）
+
+- 占用 Go/No-Go：base / recency / 容量扫 / seen 泄漏重估 —— 四次一致 No-Go，已收线。
+- 独立复核 b-reviewer：D2=46.0%、F4=24.4%（均在噪声内）。
+- 文献调研：`agent/out/literature-opponent-modeling-c.md`（含子代理深挖附录）。
+- 全量 pytest：见 `agent/out/pytest-full.log`。

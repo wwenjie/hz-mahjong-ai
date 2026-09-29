@@ -2897,3 +2897,16 @@ A 问「官方排序键」并要我核到原文。我做的是**第一手取证*
 - **诚实边界**：T 是**全信息上界**，它只说「若全知则 27.4% 的决策会不同」；**这不等于涨胜率**，
   要因果结论必须过 A/B。**我不会把它说成「能提分」。**
 - 纪律：零平台请求；**未改 `src/**`**（`policy.py`/`risk.py` 是 A 的地盘）；产物落在 `agent/verify/`。
+
+## 2026-09-30 00:50 · B1 独立复算 B' 的 unified 三臂 kill 判读
+
+- 素材：`data/experiments/logs/unified*-vs-v3-*.log`（6 个文件，两种子 × 三臂）。
+- 方法：**不 import B' 的任何代码**，从日志的 `mean/se/t/95%CI` 独立复算；两种合并口径对读
+  （pooled = mean_pair/se_pair，另加 Stouffer 独立第二口径）。
+- 结果：**B' 的算术逐位复现**——名次分合并 t = `unified` **−0.33** / `unified-pure` **−4.67** /
+  `unified-recal` **−4.48**，与 B' 22:58 报的**完全一致**；总得分合并 t = +0.24 / −2.68 / −2.73。
+- 同向性核对：`unified` 两种子名次分 `+0.046 / −0.098`（**不同向**）⇒ kill 依「合并 t 远低于 MDE」；
+  `unified-pure`/`unified-recal` 两种子同向为负 ⇒ kill 依「同向 + |t|>2」。
+- 内部一致性：日志的 se 与 `mean/t`、`95%CI` 三处自洽（0 处不一致，容差含 t 的 2 位小数舍入传播）。
+- 判读：**B' 的 kill 判读成立，可采信**。`unified` 结构与标定两件事都无正贡献。
+- 纪律：只读日志；零平台请求；产物 `agent/verify/recompute_unified_ab.py` + `agent/out/recompute-unified-ab.log`。
