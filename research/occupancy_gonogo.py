@@ -181,9 +181,18 @@ def scan(rooms: int, cap: int, seed: int):
     )
 
 
-def score(eval_ctxs, predict_fn) -> tuple[int, int, int, int, int]:
-    """返回 (n, 一致_hat, 一致_V, 一致_prop, 一致_beh)。"""
-    n = same_hat = same_v = same_prop = same_beh = 0
+def score(eval_ctxs, predict_fn, seen_lookup=None, detail=None) -> tuple[int, ...]:
+    """返回 (n, 一致_hat, 一致_seen, 一致_V, 一致_prop, 一致_beh)。
+
+    一致_seen：若给出 `seen_lookup`（长度 CPK+1，`E[opp|seen=w]` 的训练集查表），
+    用它作为「只复制已见张数」的基线——用于判定 34 维模型是否只是复制了 `seen`。
+
+    `detail` 若传一个 dict，会把逐点布尔写入 `detail['hat']`/`['v']` 等（用于配对检验）。
+    """
+    n = same_hat = same_seen = same_v = same_prop = same_beh = 0
+    if detail is not None:
+        for k in ("hat", "seen", "v", "prop", "beh"):
+            detail.setdefault(k, [])
     for ctx, waitsets in eval_ctxs:
         seen = ctx["seen"]
         opp = ctx["opp"]
@@ -193,6 +202,7 @@ def score(eval_ctxs, predict_fn) -> tuple[int, int, int, int, int]:
         sw = [1.0 / r if r > 0 else 1.0 for r in od]
         rows = {}
         rows_t = {}
+        rows_seen: dict[int, float] = {}
         for tile, waits in waitsets.items():
             after = list(ctx["own"])
             after[tile] -= 1
@@ -219,6 +229,12 @@ def score(eval_ctxs, predict_fn) -> tuple[int, int, int, int, int]:
                 share = (unseen[w] * sw[suit_of(w)] / wsum) if wsum else 0.0
                 beh += max(0.0, unseen[w] - H * share)
             rows[tile] = (v, t, th, prop, beh)
+            if seen_lookup is not None:
+                ths = 0.0
+                for w in waits:
+                    e_s = float(seen_lookup[min(CPK, int(rem[w]))])
+                    ths += max(0.0, unseen[w] - e_s)
+                rows_seen[tile] = ths
         n += 1
         bt = max(rows, key=lambda k: (rows[k][1], -k))
         bv = max(rows, key=lambda k: (rows[k][0], -k))
@@ -229,8 +245,18 @@ def score(eval_ctxs, predict_fn) -> tuple[int, int, int, int, int]:
         same_v += bv == bt
         same_prop += bp == bt
         same_beh += bb == bt
+        if seen_lookup is not None and rows_seen:
+            bs = max(rows_seen, key=lambda k: (rows_seen[k], -k))
+            same_seen += bs == bt
+            if detail is not None:
+                detail["seen"].append(bs == bt)
+        if detail is not None:
+            detail["hat"].append(bh == bt)
+            detail["v"].append(bv == bt)
+            detail["prop"].append(bp == bt)
+            detail["beh"].append(bb == bt)
     _ = rows_t
-    return n, same_hat, same_v, same_prop, same_beh
+    return n, same_hat, same_seen, same_v, same_prop, same_beh
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -265,6 +291,18 @@ def main(argv: list[str] | None = None) -> int:
     r = float(np.corrcoef(pred, Yte)[0, 1])
     print(f"  [占用回归] test MAE={mae:.3f} 张 · Pearson r={r:.3f}（标签 0..4）", flush=True)
 
+    # 可证伪的「只复制 seen」基线：E[opp|seen] 的训练集查表（seen 在特征第 1 列，已 /CPK）
+    seen_idx_tr = np.clip(np.rint(Xtr[:, 1] * CPK).astype(int), 0, CPK)
+    seen_lookup = np.array(
+        [float(Ytr[seen_idx_tr == k].mean()) if (seen_idx_tr == k).any() else 0.0
+         for k in range(CPK + 1)]
+    )
+    print(
+        "  [seen查表] E[opp|seen] = "
+        + ", ".join(f"{k}:{v:.2f}" for k, v in enumerate(seen_lookup)),
+        flush=True,
+    )
+
     # ── A 14:58 要求的第二条门：偏差方向与量级可核对（诊断用）──
     slope = float(np.cov(pred, Yte)[0, 1] / np.var(Yte)) if float(np.var(Yte)) else float("nan")
     print(
@@ -289,13 +327,14 @@ def main(argv: list[str] | None = None) -> int:
     mean_abs_bias = float(np.mean(np.abs(pred - Yte)))
     print(f"  [总体偏差] 平均偏差={mean_bias:+.4f} 张 · 平均绝对偏差={mean_abs_bias:.3f} 张", flush=True)
 
-    n, sh, sv, sp, sb = score(ev, lambda f: model.predict(f))
+    n, sh, ss, sv, sp, sb = score(ev, lambda f: model.predict(f), seen_lookup=seen_lookup)
     print("=" * 70)
     print(f"评估点（我方听牌、≥2 候选且听口不同）= {n}")
     print(f"  ① 现有口径 V          与全信息 T 同选：{sv}/{n} = {sv / n:.1%}")
     print(f"  ② 比例摊派（无信息）   与全信息 T 同选：{sp}/{n} = {sp / n:.1%}")
     print(f"  ④ 行为加权（手写读牌） 与全信息 T 同选：{sb}/{n} = {sb / n:.1%}")
     print(f"  ★ 学习占用 hat       与全信息 T 同选：{sh}/{n} = {sh / n:.1%}")
+    print(f"  ☆ 仅复制 seen 查表   与全信息 T 同选：{ss}/{n} = {ss / n:.1%}")
     print(f"  判据：hat 需显著高于 ① 的基线 {sv / n:.1%}")
     print("=" * 70)
     return 0
