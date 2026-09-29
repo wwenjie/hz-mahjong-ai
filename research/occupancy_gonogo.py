@@ -325,15 +325,49 @@ def main(argv: list[str] | None = None) -> int:
     r = float(np.corrcoef(pred, Yte)[0, 1])
     print(f"  [占用回归] test MAE={mae:.3f} 张 · Pearson r={r:.3f}（标签 0..4）", flush=True)
 
-    # 可证伪的「只复制 seen」基线：E[opp|seen] 的训练集查表（seen 在特征第 1 列，已 /CPK）
-    seen_idx_tr = np.clip(np.rint(Xtr[:, 1] * CPK).astype(int), 0, CPK)
-    seen_lookup = np.array(
-        [float(Ytr[seen_idx_tr == k].mean()) if (seen_idx_tr == k).any() else 0.0
-         for k in range(CPK + 1)]
+    # ── B' 20:00 要求的泄漏/重叠核对 ──
+    # (i) 训练房与测试房文件是否重叠（scan 用了不同 seed，理论上不重叠；此处实证）
+    tr_files = sorted(glob.glob("data/auto_sessions/*/events/*.json"))
+    _r = random.Random(args.seed)
+    _r.shuffle(tr_files)
+    tr_sel = tr_files[: args.train_rooms]
+    te_files = sorted(glob.glob("data/auto_sessions/*/events/*.json"))
+    _r = random.Random(args.seed + 1)
+    _r.shuffle(te_files)
+    te_sel = te_files[: args.test_rooms]
+    tr_keys = {Path(p).parent.parent.name for p in tr_sel}
+    te_keys = {Path(p).parent.parent.name for p in te_sel}
+    tr_names = {Path(p).name for p in tr_sel}
+    te_names = {Path(p).name for p in te_sel}
+    print(
+        f"  [房间重叠核对] 训练房 {len(tr_sel)} 个 / 测试房 {len(te_sel)} 个 · "
+        f"按房间目录重合 {len(tr_keys & te_keys)} 个 · 按文件名重合 {len(tr_names & te_names)} 个",
+        flush=True,
+    )
+    n_tr_rows = len(Ytr)
+    print(
+        f"  [样本重叠核对] train_seen 行数={n_tr_rows} · test 行数={len(Yte)} · "
+        f"（scan 用 seed/seed+1 两套独立抽样）",
+        flush=True,
+    )
+
+    # 可证伪的「只复制 seen」基线：E[opp|seen] 查表（seen 在特征第 1 列，已 /CPK）
+    def _lookup_from(X, Y):
+        idx = np.clip(np.rint(X[:, 1] * CPK).astype(int), 0, CPK)
+        return np.array(
+            [float(Y[idx == k].mean()) if (idx == k).any() else 0.0 for k in range(CPK + 1)]
+        )
+
+    seen_lookup = _lookup_from(Xtr, Ytr)  # 用训练集构建（原口径，含泄漏）
+    seen_lookup_te = _lookup_from(Xte, Yte)  # 用测试集构建（B' 要求的无泄漏口径）
+    print(
+        "  [seen查表·train建] E[opp|seen] = "
+        + ", ".join(f"{k}:{v:.2f}" for k, v in enumerate(seen_lookup)),
+        flush=True,
     )
     print(
-        "  [seen查表] E[opp|seen] = "
-        + ", ".join(f"{k}:{v:.2f}" for k, v in enumerate(seen_lookup)),
+        "  [seen查表·test建 ] E[opp|seen] = "
+        + ", ".join(f"{k}:{v:.2f}" for k, v in enumerate(seen_lookup_te)),
         flush=True,
     )
 
@@ -363,13 +397,17 @@ def main(argv: list[str] | None = None) -> int:
 
     n, sh, ss, sv, sp, sb = score(ev, lambda f: model.predict(f), seen_lookup=seen_lookup,
                                   mode=args.features)
+    n2, _, ss_te, _, _, _ = score(ev, lambda f: model.predict(f), seen_lookup=seen_lookup_te,
+                                  mode=args.features)
     print("=" * 70)
     print(f"评估点（我方听牌、≥2 候选且听口不同）= {n}")
     print(f"  ① 现有口径 V          与全信息 T 同选：{sv}/{n} = {sv / n:.1%}")
     print(f"  ② 比例摊派（无信息）   与全信息 T 同选：{sp}/{n} = {sp / n:.1%}")
     print(f"  ④ 行为加权（手写读牌） 与全信息 T 同选：{sb}/{n} = {sb / n:.1%}")
     print(f"  ★ 学习占用 hat       与全信息 T 同选：{sh}/{n} = {sh / n:.1%}")
-    print(f"  ☆ 仅复制 seen 查表   与全信息 T 同选：{ss}/{n} = {ss / n:.1%}")
+    print(f"  ☆ 仅复制 seen 查表(train建,原口径) 与全信息 T 同选：{ss}/{n} = {ss / n:.1%}")
+    print(f"  ☆ 仅复制 seen 查表(test建,无泄漏) 与全信息 T 同选：{ss_te}/{n2} = "
+          f"{ss_te / n2:.1%}   （n 应同为 {n}）")
     print(f"  判据：hat 需显著高于 ① 的基线 {sv / n:.1%}")
     print("=" * 70)
     return 0
