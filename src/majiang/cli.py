@@ -358,6 +358,24 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
         PolicyConfig.for_mode(mode, tiebreak="tenpai-only", wait_aware_tenpai=True,
                               unified_score=True)
     ),
+    # **v4 的缺失格子**（2026-09-30 01:10 登记）。v4 = 三个开关的合取（`shape_value` +
+    # `ukeire_order=blocks` + 门开到 3），而它的两个「子集」都测平了：
+    # `shape`（只开 shape_value，门 1）+0.119(t1.45)、`ukeire-hand`（只换排序键，门 1）+0.086(t0.66)、
+    # `ukeire-early`（只开门 3，键与排序都不变）+0.154/+0.106 ≈ 0。
+    # 于是还剩两个格子没测——**「门 3」与另外两个开关的任意两两组合**：
+    #   `shape-gate3`  = shape_value + 门 3（排序键仍是 total）
+    #   `blocks-gate3` = blocks 排序 + 门 3（**没有** shape_value）
+    # 这两格决定「合取里到底哪一项不可少」：若 `blocks-gate3` 单独就能拿到 +0.27，
+    # 说明**门才是关键**、`shape_value` 是可有可无（那 v4 的版本注释就要改）；
+    # 若两者都明显低于 +0.27，则证实是**三项合取**、且 `shape_value` 确实不可少。
+    "shape-gate3": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_max_shanten=3)
+    ),
+    "blocks-gate3": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              ukeire_order="blocks", ukeire_max_shanten=3)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 
