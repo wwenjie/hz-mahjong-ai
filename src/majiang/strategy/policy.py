@@ -583,11 +583,30 @@ class HeuristicDecider:
             "loss": loss,
             "opponent_risk": [round(r.self_draw_probability, 3) for r in risks],
         }
-        if survival > threshold and current.chain_count < 6:
+        # **规则合规守卫（不是策略参数）**：抓打圈内出牌只能打刚摸到的那张
+        # （``rules/action.py:_turn_actions`` 用 ``tile != drawn`` 过滤候选），而这里是
+        # **自建** `Action(DISCARD, tile=GOD)`、绕过了 ``legal_actions``，所以必须自己确认。
+        # 缺这道守卫时会返回非法弃牌：实测（40 万副随机手牌筛出 6 例）例如
+        # `6w6w8w8w1b1b4b4b7b7b3t3t白白`＋摸 `6w`，续飘成立、生存 0.98 > 阈值 0.54，
+        # 而该局面的合法集只有 `[discard:6w, hu]` ⇒ 真机必被 409 INVALID_ACTION 拒掉、
+        # 白费一个出牌窗口（B' 的 D1）。
+        # 注意**不能**照抄 :562 那种一票否决：摸到的正好是财神时弃财神是合法的，
+        # 而 :562 的目标牌是别人。
+        can_piao = current.chain_count < 6 and (drawn == GOD or not situation.is_restricted)
+        if survival > threshold and can_piao:
             self.last_reason = (
                 f"弃胡飘：番 {current.fan}→{current.fan * 2}，生存 {survival:.2f} > 阈值 {threshold:.2f}"
             )
             return Action(DISCARD, tile=GOD)
+        if survival > threshold and drawn != GOD and situation.is_restricted:
+            # 通过阈值却飘不成：必须说清是**被规则挡住**而不是「没算过阈值」，
+            # 否则真机日志会把这个局面记成一次「保守胡牌」。
+            self.last_detail["piao_blocked_by"] = "catch-play"
+            self.last_reason = (
+                f"胡牌：番 {current.fan}。生存 {survival:.2f} > 阈值 {threshold:.2f}，"
+                "但本座受抓打圈限制、只能打刚摸到的那张，无法弃财神续飘"
+            )
+            return hu_action
         self.last_reason = f"胡牌：番 {current.fan}，生存 {survival:.2f} 未过阈值 {threshold:.2f}"
         return hu_action
 

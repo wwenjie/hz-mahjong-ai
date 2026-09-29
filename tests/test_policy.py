@@ -2,7 +2,7 @@
 
 from majiang.client.snapshot import Snapshot
 from majiang.rules import tiles
-from majiang.rules.action import CHI, DISCARD, GANG, HU, PASS, PENG, Action
+from majiang.rules.action import CHI, DISCARD, GANG, HU, PASS, PENG, Action, legal_actions
 from majiang.rules.tiles import GOD
 from majiang.strategy import risk
 from majiang.strategy.policy import HeuristicDecider, Mode, PolicyConfig
@@ -140,6 +140,68 @@ def test_piao_when_survival_is_high() -> None:
     )
     assert chosen is not None and chosen.kind == DISCARD and chosen.tile == GOD
     assert decider.last_detail["survival"] > decider.last_detail["threshold"]
+    assert "弃胡飘" in decider.last_reason
+
+
+# 续飘成立、但摸到的牌**不是**财神的一手牌（40 万副随机手牌里筛出来的 6 个之一）：
+# 6 对 + 2 张财神。waiting（打掉摸进的 6w）= 5 对 + 1 张单 + 2 张财神，是爆头；
+# 再把一张财神也打掉（五对 + 单张 + 1 张财神）**仍是**爆头 —— 所以 `_piao_candidate`
+# 认定「可以续飘」，而抓打圈内合法出牌只有刚摸到的 6w。
+PIAO_BUT_DRAWN_NOT_GOD = "6w6w8w8w1b1b4b4b7b7b3t3t白白"
+
+
+def test_piao_never_discards_god_inside_catch_play_circle() -> None:
+    """规则合规（B' 的 D1）：抓打圈内只能打刚摸到的那张，弃胡飘不得自建「打财神」。
+
+    原先该分支自建 `Action(DISCARD, tile=GOD)`、**绕过 `legal_actions`**，而这里摸的是
+    `6w`（不是财神），合法集只有 `[discard:6w, hu]` ⇒ 真机必被 409 INVALID_ACTION 拒掉、
+    白费一个出牌窗口。这道闸门的作用是保证提交的动作合法，不是调参。
+    """
+    obj = situation(
+        PIAO_BUT_DRAWN_NOT_GOD,
+        drawn="6w",
+        wall=74,
+        seat=1,
+        turn=1,
+        god={
+            "baotou": False,
+            "chain_count": 0,
+            "catch_play": True,
+            "god_discarder_seat": 0,  # 打财神的是他家，因此本座受抓打圈限制
+        },
+    )
+    actions = legal_actions(obj)
+    assert obj.is_restricted
+    assert GOD not in [a.tile for a in actions if a.kind == DISCARD]
+    decider = HeuristicDecider()
+    chosen = decider.choose(obj, actions, budget_ms=1500)
+    assert chosen is not None
+    assert chosen in actions, f"决策器返回了合法集之外的动作: {chosen}"
+    assert chosen.kind == HU  # 飘不成，退回到胡
+    # 日志必须说清「被抓打圈挡住」而不是「没算过阈值」——真机靠 reason 复核行为
+    assert "抓打圈" in decider.last_reason and decider.last_detail["piao_blocked_by"] == "catch-play"
+
+
+def test_piao_still_allowed_when_the_drawn_tile_is_the_god() -> None:
+    """抓打圈内**摸到的正好是财神**时，打财神是合法的——守卫不能一票否决这种情况。"""
+    obj = situation(
+        PIAO_BUT_DRAWN_NOT_GOD,
+        drawn="白",
+        wall=74,
+        seat=1,
+        turn=1,
+        god={
+            "baotou": False,
+            "chain_count": 0,
+            "catch_play": True,
+            "god_discarder_seat": 0,
+        },
+    )
+    actions = legal_actions(obj)
+    assert obj.is_restricted and Action(DISCARD, tile=GOD) in actions
+    decider = HeuristicDecider()
+    chosen = decider.choose(obj, actions, budget_ms=1500)
+    assert chosen is not None and chosen.kind == DISCARD and chosen.tile == GOD
     assert "弃胡飘" in decider.last_reason
 
 
