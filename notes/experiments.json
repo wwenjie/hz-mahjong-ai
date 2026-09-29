@@ -4556,12 +4556,67 @@
    "seeds": [
     31415926
    ],
-   "status": "running",
+   "status": "done",
    "note_seed_extension": "**同臂第三种子的延续，不是新臂**（PROTOCOL §5.6 只约束「新臂」；本条的 treatment / baseline / matches / 假设 / 击杀判据与已登记的 s20260927、s771014 完全相同，只是补第三个种子以提高合并 t）。动机：`seen-tiebreak` 的机制门预期（若并列次序是 `shape-blocks` 的收益来源，那么纯并列规则也该有 ~+0.2）**被证伪**（+0.083 t0.49 / +0.060 t0.40 ≈ 0），于是必须转向「到底是哪一项在起作用」——`shape`（只开 shape_value）/ `shape-blocks`（shape_value+blocks 排序+门 3）/ `ukeire-hand`（只有 blocks 排序）三个成员各自的名次分都是两种子同向为正（+0.21/+0.11、+0.29/+0.39、+0.23/+0.49），需要用第三个种子把它们**分开**——这是本轮唯一一个「家族内多个成员都同向为正」的族。",
    "hypothesis": "（沿用同臂 s20260927/s771014 的预登记假设，未改）",
    "kill_criteria": "（沿用同臂的击杀判据，未改）第三种子与另两个种子不同向 ⇒ 不采纳。",
    "started_at": "2026-09-29T16:54:58+08:00",
-   "claimed_by": 2590637
+   "result": {
+    "status": "done",
+    "seeds": [
+     31415926
+    ],
+    "matches": 120,
+    "commands": [
+     [
+      "nice",
+      "-n",
+      "15",
+      "uv",
+      "run",
+      "python",
+      "tools/ab_test.py",
+      "--treatment",
+      "shape-blocks",
+      "--baseline",
+      "tenpai-wait",
+      "--matches",
+      "120",
+      "--seed",
+      "31415926",
+      "--jobs",
+      "4"
+     ]
+    ],
+    "metrics": {
+     "总得分": {
+      "mean": 0.46,
+      "se": 1.568,
+      "t": 0.29336734693877553
+     },
+     "名次分": {
+      "mean": 0.373,
+      "se": 0.187,
+      "t": 1.9946524064171123
+     },
+     "白板数": {
+      "mean": 0.019,
+      "se": 0.056,
+      "t": 0.33928571428571425
+     },
+     "胡次数": {
+      "mean": 0.102,
+      "se": 0.053,
+      "t": 1.9245283018867925
+     },
+     "番数总和": {
+      "mean": 0.067,
+      "se": 0.082,
+      "t": 0.8170731707317074
+     }
+    }
+   },
+   "ended_at": "2026-09-29T18:00:38+08:00"
   },
   {
    "id": "ukeire-hand-vs-v3-s31415926",
@@ -4571,12 +4626,67 @@
    "seeds": [
     31415926
    ],
-   "status": "running",
+   "status": "done",
    "note_seed_extension": "**同臂第三种子的延续，不是新臂**（PROTOCOL §5.6 只约束「新臂」；本条的 treatment / baseline / matches / 假设 / 击杀判据与已登记的 s20260927、s771014 完全相同，只是补第三个种子以提高合并 t）。动机：`seen-tiebreak` 的机制门预期（若并列次序是 `shape-blocks` 的收益来源，那么纯并列规则也该有 ~+0.2）**被证伪**（+0.083 t0.49 / +0.060 t0.40 ≈ 0），于是必须转向「到底是哪一项在起作用」——`shape`（只开 shape_value）/ `shape-blocks`（shape_value+blocks 排序+门 3）/ `ukeire-hand`（只有 blocks 排序）三个成员各自的名次分都是两种子同向为正（+0.21/+0.11、+0.29/+0.39、+0.23/+0.49），需要用第三个种子把它们**分开**——这是本轮唯一一个「家族内多个成员都同向为正」的族。",
    "hypothesis": "（沿用同臂 s20260927/s771014 的预登记假设，未改）",
    "kill_criteria": "（沿用同臂的击杀判据，未改）第三种子与另两个种子不同向 ⇒ 不采纳。",
    "started_at": "2026-09-29T16:54:58+08:00",
-   "claimed_by": 2590637
+   "result": {
+    "status": "done",
+    "seeds": [
+     31415926
+    ],
+    "matches": 120,
+    "commands": [
+     [
+      "nice",
+      "-n",
+      "15",
+      "uv",
+      "run",
+      "python",
+      "tools/ab_test.py",
+      "--treatment",
+      "ukeire-hand",
+      "--baseline",
+      "tenpai-wait",
+      "--matches",
+      "120",
+      "--seed",
+      "31415926",
+      "--jobs",
+      "4"
+     ]
+    ],
+    "metrics": {
+     "总得分": {
+      "mean": -0.787,
+      "se": 1.529,
+      "t": -0.5147155003270112
+     },
+     "名次分": {
+      "mean": -0.104,
+      "se": 0.17,
+      "t": -0.6117647058823529
+     },
+     "白板数": {
+      "mean": 0.025,
+      "se": 0.049,
+      "t": 0.5102040816326531
+     },
+     "胡次数": {
+      "mean": -0.05199999999999999,
+      "se": 0.047,
+      "t": -1.106382978723404
+     },
+     "番数总和": {
+      "mean": -0.044,
+      "se": 0.076,
+      "t": -0.5789473684210527
+     }
+    }
+   },
+   "ended_at": "2026-09-29T18:00:48+08:00"
   },
   {
    "id": "shape-vs-v3-s31415926",
@@ -4586,12 +4696,67 @@
    "seeds": [
     31415926
    ],
-   "status": "running",
+   "status": "done",
    "note_seed_extension": "**同臂第三种子的延续，不是新臂**（PROTOCOL §5.6 只约束「新臂」；本条的 treatment / baseline / matches / 假设 / 击杀判据与已登记的 s20260927、s771014 完全相同，只是补第三个种子以提高合并 t）。动机：`seen-tiebreak` 的机制门预期（若并列次序是 `shape-blocks` 的收益来源，那么纯并列规则也该有 ~+0.2）**被证伪**（+0.083 t0.49 / +0.060 t0.40 ≈ 0），于是必须转向「到底是哪一项在起作用」——`shape`（只开 shape_value）/ `shape-blocks`（shape_value+blocks 排序+门 3）/ `ukeire-hand`（只有 blocks 排序）三个成员各自的名次分都是两种子同向为正（+0.21/+0.11、+0.29/+0.39、+0.23/+0.49），需要用第三个种子把它们**分开**——这是本轮唯一一个「家族内多个成员都同向为正」的族。",
    "hypothesis": "（沿用同臂 s20260927/s771014 的预登记假设，未改）",
    "kill_criteria": "（沿用同臂的击杀判据，未改）第三种子与另两个种子不同向 ⇒ 不采纳。",
    "started_at": "2026-09-29T16:54:58+08:00",
-   "claimed_by": 2590637
+   "result": {
+    "status": "done",
+    "seeds": [
+     31415926
+    ],
+    "matches": 120,
+    "commands": [
+     [
+      "nice",
+      "-n",
+      "15",
+      "uv",
+      "run",
+      "python",
+      "tools/ab_test.py",
+      "--treatment",
+      "shape",
+      "--baseline",
+      "tenpai-wait",
+      "--matches",
+      "120",
+      "--seed",
+      "31415926",
+      "--jobs",
+      "4"
+     ]
+    ],
+    "metrics": {
+     "总得分": {
+      "mean": 0.948,
+      "se": 1.114,
+      "t": 0.8509874326750447
+     },
+     "名次分": {
+      "mean": 0.054,
+      "se": 0.135,
+      "t": 0.39999999999999997
+     },
+     "白板数": {
+      "mean": -0.027000000000000003,
+      "se": 0.041,
+      "t": -0.6585365853658537
+     },
+     "胡次数": {
+      "mean": -0.006000000000000001,
+      "se": 0.037,
+      "t": -0.1621621621621622
+     },
+     "番数总和": {
+      "mean": -0.031,
+      "se": 0.057,
+      "t": -0.543859649122807
+     }
+    }
+   },
+   "ended_at": "2026-09-29T17:49:34+08:00"
   },
   {
    "id": "ukeire-deep-vs-v3-s31415926",
@@ -4601,10 +4766,103 @@
    "seeds": [
     31415926
    ],
-   "status": "pending",
+   "status": "running",
    "note_seed_extension": "**同臂第三种子，不是新臂**（同 treatment/baseline/matches/假设/判据）。动机：把 shape 族拆开时 `ukeire-deep` 是极差最大的成员（+0.812 t2.20 / +0.044 t0.13），两种子不同向，需要第三种子上才能判定它是真信号还是噪声。",
    "hypothesis": "（沿用同臂 s20260927/s771014 的预登记假设，未改）",
-   "kill_criteria": "（沿用同臂判据，未改）第三种子与另两种子不同向 ⇒ 不采纳。"
+   "kill_criteria": "（沿用同臂判据，未改）第三种子与另两种子不同向 ⇒ 不采纳。",
+   "started_at": "2026-09-29T17:49:34+08:00",
+   "claimed_by": 2590637
+  },
+  {
+   "id": "shape-blocks-vs-v3-s27182818",
+   "treatment": "shape-blocks",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    27182818
+   ],
+   "status": "pending",
+   "note_seed_extension": "**n=10 的确认批，不是新臂**（同 treatment/baseline/matches/假设/判据，只加种子）。用户 18:15 批准「把最好的那一个成员跑到 n=10」。动机：第三种子把家族里三个成员的结论**分开了**——`shape`（只开 shape_value）合并 +0.119(t1.45,n=3)、`ukeire-hand`（只有 blocks 排序）合并 +0.086(t0.66,n=3)**都归零**，而 `shape-blocks`（shape_value + blocks 排序 + 门 3）第三种子 +0.373(t1.99)、合并 **+0.350(t3.19,n=3)、3/3 同向**。⇒ 单个组件都不行、**合起来才有效**，这正是 agent-c 的 ② 说的「先按形质取候选面、再比精确进张」那个**合取**，也说明我 14:22「收益来自并列次序」的归因是错的（`seen-tiebreak` 纯并列规则 ≈0 已证伪）。单种子 se≈0.19 ⇒ n=10 合并 se≈0.060、t≈5.8；这是本项目第一次有臂在三粒子上 t>3。",
+   "hypothesis": "（沿用 shape-blocks 已登记假设，未改）",
+   "kill_criteria": "n=10 合并名次分 **t≥2 才采纳，否则永久关闭这个族**（含 `ukeire*` / `shape*` / `feed*` / `seen-tiebreak`）并在 `notes/agent-a.md` 记成「中段微族已穷尽，剩余缺口是结构性的（副露 0.6 vs 1.3、到听摸序 6.2 vs 5.2）」。**同时**：机制门仍由 C 的「`shape_value` 为何有用」仪器独立作答——若仪器显示 `shape_value` 近乎不生效，则即使 t≥2 也要先弄清是什么在起作用再谈采纳（A/B 过门 ≠ 机制对，今天已被 `shape-blocks` 自己的归因绕过一次）。"
+  },
+  {
+   "id": "shape-blocks-vs-v3-s16180339",
+   "treatment": "shape-blocks",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    16180339
+   ],
+   "status": "pending",
+   "note_seed_extension": "**n=10 的确认批，不是新臂**（同 treatment/baseline/matches/假设/判据，只加种子）。用户 18:15 批准「把最好的那一个成员跑到 n=10」。动机：第三种子把家族里三个成员的结论**分开了**——`shape`（只开 shape_value）合并 +0.119(t1.45,n=3)、`ukeire-hand`（只有 blocks 排序）合并 +0.086(t0.66,n=3)**都归零**，而 `shape-blocks`（shape_value + blocks 排序 + 门 3）第三种子 +0.373(t1.99)、合并 **+0.350(t3.19,n=3)、3/3 同向**。⇒ 单个组件都不行、**合起来才有效**，这正是 agent-c 的 ② 说的「先按形质取候选面、再比精确进张」那个**合取**，也说明我 14:22「收益来自并列次序」的归因是错的（`seen-tiebreak` 纯并列规则 ≈0 已证伪）。单种子 se≈0.19 ⇒ n=10 合并 se≈0.060、t≈5.8；这是本项目第一次有臂在三粒子上 t>3。",
+   "hypothesis": "（沿用 shape-blocks 已登记假设，未改）",
+   "kill_criteria": "n=10 合并名次分 **t≥2 才采纳，否则永久关闭这个族**（含 `ukeire*` / `shape*` / `feed*` / `seen-tiebreak`）并在 `notes/agent-a.md` 记成「中段微族已穷尽，剩余缺口是结构性的（副露 0.6 vs 1.3、到听摸序 6.2 vs 5.2）」。**同时**：机制门仍由 C 的「`shape_value` 为何有用」仪器独立作答——若仪器显示 `shape_value` 近乎不生效，则即使 t≥2 也要先弄清是什么在起作用再谈采纳（A/B 过门 ≠ 机制对，今天已被 `shape-blocks` 自己的归因绕过一次）。"
+  },
+  {
+   "id": "shape-blocks-vs-v3-s14142135",
+   "treatment": "shape-blocks",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    14142135
+   ],
+   "status": "pending",
+   "note_seed_extension": "**n=10 的确认批，不是新臂**（同 treatment/baseline/matches/假设/判据，只加种子）。用户 18:15 批准「把最好的那一个成员跑到 n=10」。动机：第三种子把家族里三个成员的结论**分开了**——`shape`（只开 shape_value）合并 +0.119(t1.45,n=3)、`ukeire-hand`（只有 blocks 排序）合并 +0.086(t0.66,n=3)**都归零**，而 `shape-blocks`（shape_value + blocks 排序 + 门 3）第三种子 +0.373(t1.99)、合并 **+0.350(t3.19,n=3)、3/3 同向**。⇒ 单个组件都不行、**合起来才有效**，这正是 agent-c 的 ② 说的「先按形质取候选面、再比精确进张」那个**合取**，也说明我 14:22「收益来自并列次序」的归因是错的（`seen-tiebreak` 纯并列规则 ≈0 已证伪）。单种子 se≈0.19 ⇒ n=10 合并 se≈0.060、t≈5.8；这是本项目第一次有臂在三粒子上 t>3。",
+   "hypothesis": "（沿用 shape-blocks 已登记假设，未改）",
+   "kill_criteria": "n=10 合并名次分 **t≥2 才采纳，否则永久关闭这个族**（含 `ukeire*` / `shape*` / `feed*` / `seen-tiebreak`）并在 `notes/agent-a.md` 记成「中段微族已穷尽，剩余缺口是结构性的（副露 0.6 vs 1.3、到听摸序 6.2 vs 5.2）」。**同时**：机制门仍由 C 的「`shape_value` 为何有用」仪器独立作答——若仪器显示 `shape_value` 近乎不生效，则即使 t≥2 也要先弄清是什么在起作用再谈采纳（A/B 过门 ≠ 机制对，今天已被 `shape-blocks` 自己的归因绕过一次）。"
+  },
+  {
+   "id": "shape-blocks-vs-v3-s17320508",
+   "treatment": "shape-blocks",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    17320508
+   ],
+   "status": "pending",
+   "note_seed_extension": "**n=10 的确认批，不是新臂**（同 treatment/baseline/matches/假设/判据，只加种子）。用户 18:15 批准「把最好的那一个成员跑到 n=10」。动机：第三种子把家族里三个成员的结论**分开了**——`shape`（只开 shape_value）合并 +0.119(t1.45,n=3)、`ukeire-hand`（只有 blocks 排序）合并 +0.086(t0.66,n=3)**都归零**，而 `shape-blocks`（shape_value + blocks 排序 + 门 3）第三种子 +0.373(t1.99)、合并 **+0.350(t3.19,n=3)、3/3 同向**。⇒ 单个组件都不行、**合起来才有效**，这正是 agent-c 的 ② 说的「先按形质取候选面、再比精确进张」那个**合取**，也说明我 14:22「收益来自并列次序」的归因是错的（`seen-tiebreak` 纯并列规则 ≈0 已证伪）。单种子 se≈0.19 ⇒ n=10 合并 se≈0.060、t≈5.8；这是本项目第一次有臂在三粒子上 t>3。",
+   "hypothesis": "（沿用 shape-blocks 已登记假设，未改）",
+   "kill_criteria": "n=10 合并名次分 **t≥2 才采纳，否则永久关闭这个族**（含 `ukeire*` / `shape*` / `feed*` / `seen-tiebreak`）并在 `notes/agent-a.md` 记成「中段微族已穷尽，剩余缺口是结构性的（副露 0.6 vs 1.3、到听摸序 6.2 vs 5.2）」。**同时**：机制门仍由 C 的「`shape_value` 为何有用」仪器独立作答——若仪器显示 `shape_value` 近乎不生效，则即使 t≥2 也要先弄清是什么在起作用再谈采纳（A/B 过门 ≠ 机制对，今天已被 `shape-blocks` 自己的归因绕过一次）。"
+  },
+  {
+   "id": "shape-blocks-vs-v3-s22360679",
+   "treatment": "shape-blocks",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    22360679
+   ],
+   "status": "pending",
+   "note_seed_extension": "**n=10 的确认批，不是新臂**（同 treatment/baseline/matches/假设/判据，只加种子）。用户 18:15 批准「把最好的那一个成员跑到 n=10」。动机：第三种子把家族里三个成员的结论**分开了**——`shape`（只开 shape_value）合并 +0.119(t1.45,n=3)、`ukeire-hand`（只有 blocks 排序）合并 +0.086(t0.66,n=3)**都归零**，而 `shape-blocks`（shape_value + blocks 排序 + 门 3）第三种子 +0.373(t1.99)、合并 **+0.350(t3.19,n=3)、3/3 同向**。⇒ 单个组件都不行、**合起来才有效**，这正是 agent-c 的 ② 说的「先按形质取候选面、再比精确进张」那个**合取**，也说明我 14:22「收益来自并列次序」的归因是错的（`seen-tiebreak` 纯并列规则 ≈0 已证伪）。单种子 se≈0.19 ⇒ n=10 合并 se≈0.060、t≈5.8；这是本项目第一次有臂在三粒子上 t>3。",
+   "hypothesis": "（沿用 shape-blocks 已登记假设，未改）",
+   "kill_criteria": "n=10 合并名次分 **t≥2 才采纳，否则永久关闭这个族**（含 `ukeire*` / `shape*` / `feed*` / `seen-tiebreak`）并在 `notes/agent-a.md` 记成「中段微族已穷尽，剩余缺口是结构性的（副露 0.6 vs 1.3、到听摸序 6.2 vs 5.2）」。**同时**：机制门仍由 C 的「`shape_value` 为何有用」仪器独立作答——若仪器显示 `shape_value` 近乎不生效，则即使 t≥2 也要先弄清是什么在起作用再谈采纳（A/B 过门 ≠ 机制对，今天已被 `shape-blocks` 自己的归因绕过一次）。"
+  },
+  {
+   "id": "shape-blocks-vs-v3-s24494897",
+   "treatment": "shape-blocks",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    24494897
+   ],
+   "status": "pending",
+   "note_seed_extension": "**n=10 的确认批，不是新臂**（同 treatment/baseline/matches/假设/判据，只加种子）。用户 18:15 批准「把最好的那一个成员跑到 n=10」。动机：第三种子把家族里三个成员的结论**分开了**——`shape`（只开 shape_value）合并 +0.119(t1.45,n=3)、`ukeire-hand`（只有 blocks 排序）合并 +0.086(t0.66,n=3)**都归零**，而 `shape-blocks`（shape_value + blocks 排序 + 门 3）第三种子 +0.373(t1.99)、合并 **+0.350(t3.19,n=3)、3/3 同向**。⇒ 单个组件都不行、**合起来才有效**，这正是 agent-c 的 ② 说的「先按形质取候选面、再比精确进张」那个**合取**，也说明我 14:22「收益来自并列次序」的归因是错的（`seen-tiebreak` 纯并列规则 ≈0 已证伪）。单种子 se≈0.19 ⇒ n=10 合并 se≈0.060、t≈5.8；这是本项目第一次有臂在三粒子上 t>3。",
+   "hypothesis": "（沿用 shape-blocks 已登记假设，未改）",
+   "kill_criteria": "n=10 合并名次分 **t≥2 才采纳，否则永久关闭这个族**（含 `ukeire*` / `shape*` / `feed*` / `seen-tiebreak`）并在 `notes/agent-a.md` 记成「中段微族已穷尽，剩余缺口是结构性的（副露 0.6 vs 1.3、到听摸序 6.2 vs 5.2）」。**同时**：机制门仍由 C 的「`shape_value` 为何有用」仪器独立作答——若仪器显示 `shape_value` 近乎不生效，则即使 t≥2 也要先弄清是什么在起作用再谈采纳（A/B 过门 ≠ 机制对，今天已被 `shape-blocks` 自己的归因绕过一次）。"
+  },
+  {
+   "id": "shape-blocks-vs-v3-s26457513",
+   "treatment": "shape-blocks",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    26457513
+   ],
+   "status": "pending",
+   "note_seed_extension": "**n=10 的确认批，不是新臂**（同 treatment/baseline/matches/假设/判据，只加种子）。用户 18:15 批准「把最好的那一个成员跑到 n=10」。动机：第三种子把家族里三个成员的结论**分开了**——`shape`（只开 shape_value）合并 +0.119(t1.45,n=3)、`ukeire-hand`（只有 blocks 排序）合并 +0.086(t0.66,n=3)**都归零**，而 `shape-blocks`（shape_value + blocks 排序 + 门 3）第三种子 +0.373(t1.99)、合并 **+0.350(t3.19,n=3)、3/3 同向**。⇒ 单个组件都不行、**合起来才有效**，这正是 agent-c 的 ② 说的「先按形质取候选面、再比精确进张」那个**合取**，也说明我 14:22「收益来自并列次序」的归因是错的（`seen-tiebreak` 纯并列规则 ≈0 已证伪）。单种子 se≈0.19 ⇒ n=10 合并 se≈0.060、t≈5.8；这是本项目第一次有臂在三粒子上 t>3。",
+   "hypothesis": "（沿用 shape-blocks 已登记假设，未改）",
+   "kill_criteria": "n=10 合并名次分 **t≥2 才采纳，否则永久关闭这个族**（含 `ukeire*` / `shape*` / `feed*` / `seen-tiebreak`）并在 `notes/agent-a.md` 记成「中段微族已穷尽，剩余缺口是结构性的（副露 0.6 vs 1.3、到听摸序 6.2 vs 5.2）」。**同时**：机制门仍由 C 的「`shape_value` 为何有用」仪器独立作答——若仪器显示 `shape_value` 近乎不生效，则即使 t≥2 也要先弄清是什么在起作用再谈采纳（A/B 过门 ≠ 机制对，今天已被 `shape-blocks` 自己的归因绕过一次）。"
   }
  ]
 }
