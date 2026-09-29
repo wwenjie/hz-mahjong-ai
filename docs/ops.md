@@ -224,3 +224,38 @@ uv run python -c "from majiang.strategy.versions import describe; print(describe
 中段改动的功效不足，且已知存在场地偏移（见 `notes/agent-a.md` 的 `feed-high` 检定）；
 ③ 全量测试与干净环境验收通过（`uv run pytest tests/` + `scripts/verify_clean_env.sh`）。
 
+### 2026-09-30 00:40 冠军改为 **v3 + v4 交错轮换**（用户授权）
+
+**做法**：不单选一个冠军，而是让采集器在同一时段内**交替**跑 v3 与 v4：
+
+```bash
+set -a; . ./.env; set +a
+MAJIANG_COLLECT_DECIDERS=v3,v4 nohup setsid tools/collector_supervisor.sh \
+  >> /tmp/autoloop.log 2>&1 < /dev/null &
+```
+
+**为什么是轮换而不是单选**：`--decider A,B` 的选择是 `available[done % len(available)]`
+（`tools/auto_session.py:360`，`done` 是账本里的会话总数）⇒ **严格逐场交替**，
+所以拿到的是**交错对比**，而不是 v2-vs-v3 那种被房间/对手池/时段混杂污染的时代对比
+（那份分析里已注明时代混杂）。会话账本按 `decider` 字段分臂，两边数据都留着、都能单独分析。
+**注意不加 `--arm-limit`**：那个开关是「给对照臂设上限、到量自动停用」，用于一次性对照臂；
+v3/v4 是要长期交替的两臂。
+
+**回退（一条命令）**：把 `MAJIANG_COLLECT_DECIDERS` 改回 `v3`（或不设，用守护默认值），
+再按下面「切换步骤」停旧起新即可。`versions.py` 里 **v3 的快照原样保留**，
+`ab_test --treatment v4 --baseline v3` 随时可再直接对拍。
+
+**⚠ 与上面「新增冠军的纪律」的偏差（必须记账）**：v4 满足 ①③，但**②只满足一半**——
+它有 n=10 种子、合并名次分 +0.2732（t+4.66）、10/10 同向的自对弈 A/B（比 v3 当年的两种子更强），
+但 **`shape_value` 的机制门尚未独立复算**（该仪器由 agent-c 承担，2026-09-29 17:05 派下，
+换档时未交付）。也就是说**这次换档的顺序与 v3 相反**：v3 是机制先行（regret 6.7%→0 才谈 A/B），
+v4 是 A/B 先行、机制待验。选择这样做是因为真机只能积累、错过就没了，而回退成本是一条命令。
+
+**可证伪的机制预测（换档时写下，供事后核对）**：
+① 弃牌结构应**向强 bot 画像靠拢**——中张占比从 ~19.6% 上升（强 bot 29.7%，逐房配对差 −11.2pp ± 0.4
+是当前最大的指纹差之一）；
+② 同向听内的**形质分辨率**应上升（当前 `quick_blocks` 恒饱和 ⇒ 77~93% 全并列）；
+③ 若真机机制量**一条都没动**，说明 A/B 的正号另有来源，需回头重审本档
+（`shape-blocks` 自己就被这样绕过一次：它的机制归因一度被记成「并列次序」，后被 `seen-tiebreak` ≈0 证伪）。
+
+
