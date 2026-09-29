@@ -73,12 +73,22 @@ def collect_stats(root: Path, user_id: str) -> dict:
     wins = draws = hands = 0
     fan_total = 0
     per_user: dict[str, dict] = {}
+    # **对手名字**（用户 2026-09-30 00:58 要求写进比赛记录，`majiang_rl` 那条线要用作训练标签）。
+    # 平台**不暴露真名**，只给「AI 昵称」——但昵称是稳定的身份标识（例 `凤凰-5531`＝我们的账号、
+    # `玄武-2346`＝榜首），所以对「按对手分层的训练/评测」够用。
+    # 名字来自事件流顶层 `seats[].name`，与 `user_id` 一一对应。
+    user_names: dict[str, str] = {}
     for path in sorted((root / "events").glob("*.json")):
         payload = json.loads(path.read_text(encoding="utf-8"))
         seats = payload.get("seats") or []
         if len(seats) != 4:
             continue
         ids = [str(seat.get("user_id", "")) for seat in seats]
+        for seat in seats:
+            who = str(seat.get("user_id", ""))
+            name = str(seat.get("name", "") or "")
+            if who and name:
+                user_names.setdefault(who, name)
         mine = ids.index(user_id) if user_id in ids else None
         for result in payload.get("rounds") or []:
             scores = result.get("scores") or []
@@ -86,7 +96,9 @@ def collect_stats(root: Path, user_id: str) -> dict:
                 continue
             hands += 1
             for index, who in enumerate(ids):
-                bucket = per_user.setdefault(who, {"score": 0, "wins": 0, "hands": 0})
+                bucket = per_user.setdefault(
+                    who, {"name": user_names.get(who, ""), "score": 0, "wins": 0, "hands": 0}
+                )
                 bucket["score"] += int(scores[index])
                 bucket["hands"] += 1
             if result.get("is_draw"):
@@ -109,6 +121,7 @@ def collect_stats(root: Path, user_id: str) -> dict:
         "our_win_rate": (wins / hands) if hands else 0.0,
         "our_average_fan": (fan_total / wins) if wins else 0.0,
         "per_user": per_user,
+        "user_names": user_names,
     }
 
 
