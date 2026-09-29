@@ -2994,3 +2994,12 @@ A 问「官方排序键」并要我核到原文。我做的是**第一手取证*
 - 口径提示：总得分含所有档位（多档位混合运行），**不是单一档位强度**；本跑定位是**数据完整性核验**，
   不是策略评测。名次分为负 = 该样本里我方总体排在后半，与「混合档位、含早期弱档」一致。
 - 产物：`agent/out/recompute-metrics-full.log`。
+
+## 2026-09-30 00:56 · B7 值守与进程收口
+
+- 我名下 automations 共 9 个：**6 个 disabled**（queue-settled-watch、v3-era-waitwidth、
+  agent-d-search-watch、agent-c-recompute-watch、agent-c-specialist-watch、agent-c-occupancy-watch2）
+  ——均为历史作业，已停用、无孤儿；**3 个 enabled**：自主循环、截止终报、B6 守望。
+- B6 落盘后守望已 `remove`（结果已当场汇报，避免继续烧 tick）。
+- 长跑进程：`recompute_metrics`/`occupancy`/`verify_b_review` 等 **0 残留**（`ps` 核对）。
+- 结论：无孤儿 watcher、无孤儿长跑进程；值守面干净。
