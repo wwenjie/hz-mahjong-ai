@@ -38,6 +38,19 @@ LINE_RE = re.compile(
     r"喂牌=(?P<feed>[\d.]+) 财神=(?P<god>[\d.]+) 合计=(?P<total>-?[\d.]+)$"
 )
 CHAMPION_MARKER = "wait-aware-tenpai=True"
+# v3 只冻结 wait_aware_tenpai；喂牌权重沿用 `PolicyConfig` 默认（shape-feed-low 才改 3.0→1.0）。
+# 用于把 total 的组内极差分解为 block + feed_weight×feed 两部分。
+DEFAULT_FEED_WEIGHT = 3.0
+
+
+def _median(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    mid = len(ordered) // 2
+    if len(ordered) % 2:
+        return ordered[mid]
+    return 0.5 * (ordered[mid - 1] + ordered[mid])
 
 
 def parse_line(text: str) -> dict | None:
@@ -78,6 +91,8 @@ def main() -> int:
     feed_spread_sum = 0.0
     total_spread_sum = 0.0
     feed_spread_n = 0
+    feed_spreads: list[float] = []
+    total_spreads: list[float] = []
     shanten_hist: Counter[int] = Counter()
 
     for path in sorted(glob.glob(args.logs)):
@@ -130,10 +145,14 @@ def main() -> int:
                 if abs(chosen["feed"] - min_feed) < 1e-9:
                     winner_feed_is_min_same_s += 1
                 if len(same) >= 2:
-                    feed_spread_sum += max(item["feed"] for item in same) - min_feed
-                    total_spread_sum += max(item["total"] for item in same) - min(
+                    fs = max(item["feed"] for item in same) - min_feed
+                    ts = max(item["total"] for item in same) - min(
                         item["total"] for item in same
                     )
+                    feed_spread_sum += fs
+                    total_spread_sum += ts
+                    feed_spreads.append(fs)
+                    total_spreads.append(ts)
                     feed_spread_n += 1
 
                 # 前 4 名整体：argmax(合计) 的喂牌是否即全局最小喂牌
@@ -164,6 +183,17 @@ def main() -> int:
         "top4_all_feed_equal_pct": round(100.0 * identical_feed_set / max(1, n_parsed), 2),
         "mean_feed_spread_same_shanten": round(feed_spread_sum / max(1, feed_spread_n), 4),
         "mean_total_spread_same_shanten": round(total_spread_sum / max(1, feed_spread_n), 4),
+        "median_feed_spread_same_shanten": round(_median(feed_spreads), 4),
+        "median_total_spread_same_shanten": round(_median(total_spreads), 4),
+        # total = block - feed_weight*feed（同向听内偏移量相同，取组内极差即可分离）
+        # ⇒ block 的组内极差 ≈ total 极差 - feed_weight × feed 极差。
+        "implied_block_spread_mean": round(
+            (total_spread_sum - DEFAULT_FEED_WEIGHT * feed_spread_sum) / max(1, feed_spread_n), 4
+        ),
+        "feed_weight_used": DEFAULT_FEED_WEIGHT,
+        "feed_share_of_total_spread_mean": round(
+            DEFAULT_FEED_WEIGHT * feed_spread_sum / max(1e-9, total_spread_sum), 4
+        ),
         "shanten_hist": dict(sorted(shanten_hist.items())),
         "tie_size_hist": dict(sorted(tie_sizes.items())),
         "note": (
