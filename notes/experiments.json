@@ -4556,10 +4556,12 @@
    "seeds": [
     31415926
    ],
-   "status": "pending",
+   "status": "running",
    "note_seed_extension": "**同臂第三种子的延续，不是新臂**（PROTOCOL §5.6 只约束「新臂」；本条的 treatment / baseline / matches / 假设 / 击杀判据与已登记的 s20260927、s771014 完全相同，只是补第三个种子以提高合并 t）。动机：`seen-tiebreak` 的机制门预期（若并列次序是 `shape-blocks` 的收益来源，那么纯并列规则也该有 ~+0.2）**被证伪**（+0.083 t0.49 / +0.060 t0.40 ≈ 0），于是必须转向「到底是哪一项在起作用」——`shape`（只开 shape_value）/ `shape-blocks`（shape_value+blocks 排序+门 3）/ `ukeire-hand`（只有 blocks 排序）三个成员各自的名次分都是两种子同向为正（+0.21/+0.11、+0.29/+0.39、+0.23/+0.49），需要用第三个种子把它们**分开**——这是本轮唯一一个「家族内多个成员都同向为正」的族。",
    "hypothesis": "（沿用同臂 s20260927/s771014 的预登记假设，未改）",
-   "kill_criteria": "（沿用同臂的击杀判据，未改）第三种子与另两个种子不同向 ⇒ 不采纳。"
+   "kill_criteria": "（沿用同臂的击杀判据，未改）第三种子与另两个种子不同向 ⇒ 不采纳。",
+   "started_at": "2026-09-29T16:54:58+08:00",
+   "claimed_by": 2590637
   },
   {
    "id": "ukeire-hand-vs-v3-s31415926",
@@ -4569,10 +4571,12 @@
    "seeds": [
     31415926
    ],
-   "status": "pending",
+   "status": "running",
    "note_seed_extension": "**同臂第三种子的延续，不是新臂**（PROTOCOL §5.6 只约束「新臂」；本条的 treatment / baseline / matches / 假设 / 击杀判据与已登记的 s20260927、s771014 完全相同，只是补第三个种子以提高合并 t）。动机：`seen-tiebreak` 的机制门预期（若并列次序是 `shape-blocks` 的收益来源，那么纯并列规则也该有 ~+0.2）**被证伪**（+0.083 t0.49 / +0.060 t0.40 ≈ 0），于是必须转向「到底是哪一项在起作用」——`shape`（只开 shape_value）/ `shape-blocks`（shape_value+blocks 排序+门 3）/ `ukeire-hand`（只有 blocks 排序）三个成员各自的名次分都是两种子同向为正（+0.21/+0.11、+0.29/+0.39、+0.23/+0.49），需要用第三个种子把它们**分开**——这是本轮唯一一个「家族内多个成员都同向为正」的族。",
    "hypothesis": "（沿用同臂 s20260927/s771014 的预登记假设，未改）",
-   "kill_criteria": "（沿用同臂的击杀判据，未改）第三种子与另两个种子不同向 ⇒ 不采纳。"
+   "kill_criteria": "（沿用同臂的击杀判据，未改）第三种子与另两个种子不同向 ⇒ 不采纳。",
+   "started_at": "2026-09-29T16:54:58+08:00",
+   "claimed_by": 2590637
   },
   {
    "id": "shape-vs-v3-s31415926",
@@ -4582,10 +4586,25 @@
    "seeds": [
     31415926
    ],
-   "status": "pending",
+   "status": "running",
    "note_seed_extension": "**同臂第三种子的延续，不是新臂**（PROTOCOL §5.6 只约束「新臂」；本条的 treatment / baseline / matches / 假设 / 击杀判据与已登记的 s20260927、s771014 完全相同，只是补第三个种子以提高合并 t）。动机：`seen-tiebreak` 的机制门预期（若并列次序是 `shape-blocks` 的收益来源，那么纯并列规则也该有 ~+0.2）**被证伪**（+0.083 t0.49 / +0.060 t0.40 ≈ 0），于是必须转向「到底是哪一项在起作用」——`shape`（只开 shape_value）/ `shape-blocks`（shape_value+blocks 排序+门 3）/ `ukeire-hand`（只有 blocks 排序）三个成员各自的名次分都是两种子同向为正（+0.21/+0.11、+0.29/+0.39、+0.23/+0.49），需要用第三个种子把它们**分开**——这是本轮唯一一个「家族内多个成员都同向为正」的族。",
    "hypothesis": "（沿用同臂 s20260927/s771014 的预登记假设，未改）",
-   "kill_criteria": "（沿用同臂的击杀判据，未改）第三种子与另两个种子不同向 ⇒ 不采纳。"
+   "kill_criteria": "（沿用同臂的击杀判据，未改）第三种子与另两个种子不同向 ⇒ 不采纳。",
+   "started_at": "2026-09-29T16:54:58+08:00",
+   "claimed_by": 2590637
+  },
+  {
+   "id": "ukeire-deep-vs-v3-s31415926",
+   "treatment": "ukeire-deep",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    31415926
+   ],
+   "status": "pending",
+   "note_seed_extension": "**同臂第三种子，不是新臂**（同 treatment/baseline/matches/假设/判据）。动机：把 shape 族拆开时 `ukeire-deep` 是极差最大的成员（+0.812 t2.20 / +0.044 t0.13），两种子不同向，需要第三种子上才能判定它是真信号还是噪声。",
+   "hypothesis": "（沿用同臂 s20260927/s771014 的预登记假设，未改）",
+   "kill_criteria": "（沿用同臂判据，未改）第三种子与另两种子不同向 ⇒ 不采纳。"
   }
  ]
 }
