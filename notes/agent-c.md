@@ -2919,3 +2919,13 @@ A 问「官方排序键」并要我核到原文。我做的是**第一手取证*
   抛 `ValueError`，逃出 `load_or_none`（只捕 `ModelError`）⇒ **构造中止**，违反「模型缺失不得导致启动失败」。
 - 最小复现已固定；**未改 `src/**`（A 的地盘）**，已写 THREAD `2026-09-30 01:00` 请求 A 定夺（建议 `int()` 包 try 转 `ModelError`，并让调用方多捕 `ValueError/TypeError`）。
 - 产物：`agent/verify/decider_construction_probe.py`、`agent/out/decider-construction.log`。
+
+## 2026-09-30 00:51 · B2 端到端启动干跑（离线，零平台请求）
+
+- `--help` 退出码 0；无令牌 → 干净报错 `必须提供 --token-env、--env-prefix 或 --token ***`（**非 traceback**），退出码 1。
+- `--server http://127.0.0.1:1 --token-env FAKE_TOKEN --skip-version-check --duration 1`：
+  完整走通「解析参数 → 建身份 → 限速 14/s → 建 Runtime → 首次 `GET /api/me`」，
+  连不上时 `TransportError` → **退出码 1 结束以便守护脚本重启**（设计如此，非崩挂）。
+- **真平台地址在输出中出现 0 次** ⇒ 干跑**零平台请求**（指到 127.0.0.1:1 死端口，物理上不可能打到真平台）。
+- 全量 pytest：**480 passed in 623.93s**。
+- 产物：`agent/out/launch-dryrun.log`。

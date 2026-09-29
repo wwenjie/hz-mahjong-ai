@@ -12,7 +12,7 @@
 - [x] B1 **独立复算（00:50 完成：pooled t=-0.33/-4.67/-4.48 与 B' 逐位吻合，内部一致性 0 问题）**  B' 的 unified 三臂 kill 判读**：从 `data/experiments/logs/unified*-vs-v3-*.log`
       重算按房配对（名次分/总得分）的 mean、t，与 B' 22:58 报的（合并 t −0.33 / −4.67 / −4.48）对读；
       差异 >5% 或符号不同 ⇒ 标出并给判读。产物：`agent/verify/recompute_unified_ab.py` + `agent/out/`。
-- [ ] B2 **端到端启动干跑（离线）**：验证 `python -m majiang` 在**不碰平台**的前提下能起来并优雅退出
+- [x] B2 **端到端启动干跑（00:51 完成：启动路径完整走通；无令牌干净报错；连不上时退出码 1 供守护重启；真平台地址出现 0 次）** （离线）**：验证 `python -m majiang` 在**不碰平台**的前提下能起来并优雅退出
       （如 `--help`、或离线/干跑开关）；确认零网络请求。产物：`agent/out/launch-dryrun.log`。
 - [ ] B3 **提交就绪审计扩展**：45 个档位批量构造（构造即验证不崩）+ 模型故障注入
       （损坏 JSON / 空 payload / 特征维数不符 / 版本字段不符）；扩展 `agent/verify/submission_readiness.py`。
