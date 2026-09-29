@@ -43,6 +43,7 @@ VARIANT_FIELDS = (
     "safe_tiebreak",
     "unified_score",
     "feed_ready_increment",
+    "win_table_correction",
     "ukeire_candidates",
     "ukeire_max_shanten",
     "ukeire_order",
@@ -270,6 +271,22 @@ class PolicyConfig:
     # 不叠加量级跳变**，否则一次 A/B 里两个变化混在一起无法归因。
     # 真正的取值应由真机数据标定（`ΔP_opp` 是可测的：见 `tools/verify_occupancy_ceiling.py` 的同族口径）。
     feed_ready_increment: float = 0.05
+    # `P_win` 表的**按向听乘性修正**（`None` = 不修正）。索引 = 向听，值 = 乘到
+    # `routes.win_probability` 输出上的因子。
+    #
+    # **来历（`tools/calibrate_win_table.py` 的实测，25 房 / 17167 个决策点）**：
+    # `WIN_RATE_MELD` 那两张表是**自对弈标定**的（对手＝我们自己），而真机实测**门 2 不通过**——
+    # 斜率（实际~预测）**1.694**（判据 ∈[0.8,1.2]）、整体高估 5.5 个百分点，且**不是均匀偏高**：
+    #   听牌态（s=0）实际 0.339 vs 预测 0.308 ⇒ 轻微**低估**（+0.031）
+    #   s=2/3/4 实际 0.140/0.111/0.098 vs 预测 0.193/0.193/0.188 ⇒ **高估 5~9pp（t −6~−10）**
+    # 病灶是「表太扁平 + `draws_left` 缩放过头」：表从 s=0 到 s≥2 只差 2.3×，实测差 2.9~3.5×；
+    # 而 `scale = clip(draws_left/45, 0.40, 1.35)` 把**早局的高向听手**抬到 1.35×，
+    # 那正是 43% 决策发生的地方。
+    #
+    # 下表就是实测的 `实际/预测` 比值（s=6 无样本，沿用 s=5）。
+    # **只用在我方出牌这一支**（见 `_unified_route_value`），不碰 v3 的听牌机制，
+    # 也不碰碰吃闸门——那两处仍走未修正的表，避免让冠军档静默漂移。
+    win_table_correction: tuple[float, ...] | None = None
     # 实验档位：绝不打出财神（只在无其他可打牌时才打）。
     # 用途是验证一条尚未测过的假设——爆头需要「4 组**自然**面子 + 1 张闲余财神」，
     # 而此前的 0 次爆头是被动观测到的（现有策略会把财神当百搭用掉）。若把财神硬留，
@@ -1034,6 +1051,20 @@ class HeuristicDecider:
                 * risk.visible_need(tile)
                 * meld_route.loss
             )
+            best_value = self._corrected_route_value(best, situation, risks)
+            total = value_scale * best_value - feed_scale * feed - god_penalty
+            return DiscardScore(
+                tile=tile,
+                shanten=meld_route.route_shanten,
+                blocks=block_value,
+                route=best.route.value,
+                pair_value=pair_route.value,
+                meld_value=meld_route.value,
+                route_value=best_value,
+                feed_cost=feed,
+                god_penalty=god_penalty,
+                total=total,
+            )
 
         total = (
             value_scale * best.value
@@ -1052,6 +1083,31 @@ class HeuristicDecider:
             god_penalty=god_penalty,
             total=total,
         )
+
+    def _corrected_route_value(
+        self,
+        route: routes.RouteValuation,
+        situation: Situation,
+        risks: Sequence[risk.OpponentRisk],
+    ) -> float:
+        """把 `P_win` 的按向听乘性修正施加到一条路线的期望值上（无修正时原值返回）。
+
+        **为什么是「重算」而不是「改表」**：`win_probability` 的输出同时被三处消费——
+        出牌评分（本支）、碰吃闸门（`_choose_response`）、路线比较。改表 = 让**冠军档的碰吃行为
+        一起漂移**，那是一次无人察觉的行为变更（本仓踩过：`configure` 丢字段导致真机全跑默认档）。
+        所以修正只在本支重算，其余两处仍走未修正的表。
+
+        重算用 `evaluate` 已经算好的分解量，不重复调 `routes`：
+        `gain = P_win × E_pay` ⇒ `E_pay = gain / reach`；`loss` 就是 `E_loss`。
+        """
+        correction = self.config.win_table_correction
+        if not correction or route.reach <= 0:
+            return route.value
+        index = max(0, min(route.route_shanten, len(correction) - 1))
+        p_win = min(0.95, route.reach * correction[index])
+        e_pay = route.gain / route.reach
+        opponent_win = 1.0 - risk.lap_survival(risks)
+        return p_win * e_pay - (1.0 - p_win) * opponent_win * route.loss
 
     def _god_route_penalty(self, tile: int, pair_route: routes.RouteValuation) -> float:
         """打财神的额外机会成本：它是本平台唯一的链货币，也是七对路线的唯一入口。"""

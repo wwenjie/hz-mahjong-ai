@@ -350,6 +350,43 @@ def test_tenpai_only_tiebreak_keeps_wait_aware_but_yields_shanten1() -> None:
     assert "tiebreak" not in only.last_detail
 
 
+def test_win_table_correction_only_touches_the_discard_branch() -> None:
+    """`P_win` 修正的**作用域边界**：只影响统一得分的出牌评分，不动碰吃闸门。
+
+    这条守的是一个真实事故的同类风险：改 `routes.win_probability` 的**表本身**会让
+    碰吃闸门（`_choose_response`）与路线比较一起漂移 ⇒ **冠军档静默变更行为**。
+    所以修正只在 `_corrected_route_value` 里重算，其余调用点仍走未修正的表。
+    """
+    config = PolicyConfig.for_mode(
+        Mode.QUALIFIER, tiebreak="tenpai-only", wait_aware_tenpai=True,
+        unified_score=True, win_table_correction=(1.0, 1.0, 0.5, 0.5, 0.5, 0.5),
+    )
+    decider = HeuristicDecider(config)
+    obj = situation("1w4w7w2w5w8w3b6b9b1t2t3t白白", drawn="白")
+    actions = legal_actions(obj)
+    chosen = decider.choose(obj, actions, budget_ms=2000)
+    assert chosen is not None
+    no_corr = HeuristicDecider(
+        PolicyConfig.for_mode(Mode.QUALIFIER, tiebreak="tenpai-only", wait_aware_tenpai=True,
+                              unified_score=True)
+    )
+    no_corr.choose(obj, actions, budget_ms=2000)
+    # 缩了向听 ≥2 的 P_win ⇒ 高向听手的「路线期望」被压低 ⇒ 得分必然变化
+    assert decider.last_detail["discards"] != no_corr.last_detail["discards"]
+    # 而碰吃闸门那条路径不读 `win_table_correction`：同一响应局面下两者选择一致
+    offered = situation(
+        "2w2w2w5w6w7w3b4b5b1t2t3t白白",
+        phase="response_peng", offered="2w", responding=(MY_SEAT,), drawn=None,
+    )
+    resp = legal_actions(offered)
+    a = HeuristicDecider(config).choose(offered, resp, budget_ms=2000)
+    b = HeuristicDecider(
+        PolicyConfig.for_mode(Mode.QUALIFIER, tiebreak="tenpai-only", wait_aware_tenpai=True,
+                              unified_score=True)
+    ).choose(offered, resp, budget_ms=2000)
+    assert a is not None and b is not None and a.kind == b.kind and a.tile == b.tile
+
+
 def test_peng_accepted_when_meld_route_wins() -> None:    # 对子很少（七对很远）、副露更近：碰把向听 3 推到 2，副露路线期望反超七对
     obj = situation(
         "2w4w5w5w9w2b5b6b3t4t5t北中",

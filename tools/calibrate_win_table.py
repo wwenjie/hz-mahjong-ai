@@ -75,8 +75,16 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="P_win 表的真机标定（门 2）")
     parser.add_argument("--rooms", type=int, default=30, help="按**房**抽样的房数")
     parser.add_argument("--limit", type=int, default=20000, help="最多看多少个决策点")
+    parser.add_argument(
+        "--correction",
+        default="",
+        help="按向听乘性修正，逗号分隔（例 `1.10,0.96,0.73,0.58,0.52,0.61`）。"
+             "留空 = 用原始表。**重标后要复跑本仪器确认斜率回到 [0.8,1.2]**——"
+             "这是让「重标」这个动作可被证伪的那一步，不能只改不打分。",
+    )
     args = parser.parse_args()
 
+    correction = tuple(float(x) for x in args.correction.split(",") if x.strip())
     rooms = sorted(p for p in glob.glob("data/auto_sessions/*/events") if glob.glob(f"{p}/*.json"))
     chosen = rooms[:: max(1, len(rooms) // args.rooms)][: args.rooms]
     files: list[str] = []
@@ -140,6 +148,9 @@ def main() -> int:
                     continue
                 situation = state.situation_for(mine)
                 pred = routes.win_probability(s, situation.table.draws_left)
+                if correction:
+                    factor = correction[min(s, len(correction) - 1)]
+                    pred = min(0.95, pred * factor)
                 actual = 1 if outcome == mine else 0
                 per_room[room_key][s].append((pred, actual, outcome))
                 seen += 1
@@ -150,6 +161,7 @@ def main() -> int:
         return 1
 
     buckets = sorted({s for room in per_room.values() for s in room})
+    print(f"修正表 {correction or '（无，原始表）'}")
     print(f"决策点 {seen} 个 / 房 {len(per_room)} 个（按房抽样 {len(files)} 文件）")
     print(f"覆盖率交叉核对：顶层 `rounds[]` 缺该局 {missing} 次、与该局赢家不一致 {mismatches} 次"
           f"（PROTOCOL §7.1 记着它对中途流局收录有损 ⇒ 本仪器只认事件流的 `round_ended.data.scores`）\n")

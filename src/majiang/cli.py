@@ -340,6 +340,15 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
                               unified_score=True)
     ),
+    # **重标后的统一期望得分**（A 19:35 的 `tools/calibrate_win_table.py` 门 2 实测）：
+    # 门 2 不通过（斜率 1.694、s=2/3/4 高估 5~9pp、听牌态反轻微低估）⇒ 先用修正因子把
+    # `P_win` 拉到实测水平，再谈结构。修正值 = 实测「实际/预测」比值（s=6 无样本沿用 s=5）。
+    # 只在我方出牌这一支生效，v3 的听牌机制与碰吃闸门不受影响。
+    "unified-recal": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="tenpai-only", wait_aware_tenpai=True,
+                              unified_score=True,
+                              win_table_correction=(1.10, 0.96, 0.73, 0.58, 0.52, 0.61, 0.61))
+    ),
     # 同上的**主测试臂**：`tiebreak="tenpai-only"` ⇒ 只保留 v3 唯一被证过的机制
     # （听牌按可见听口选牌），把向听 ≥1 的次序**交还给统一期望得分**。
     # 理由：`unified`（带完整 `exact-ukeire` 层）与 v3 在真机决策点上分歧只有 **5.5%**
