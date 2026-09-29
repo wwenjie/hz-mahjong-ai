@@ -143,17 +143,20 @@ def scan(rooms: int, cap: int, seed: int):
             if s_disc is None or not (0 <= int(s_disc) < SEATS):
                 continue
             if taken >= cap:
-                break
+                # 训练样本封顶，但**评估点不封顶**（否则只剩前 50 次出牌、样本过少）
+                if int(s_disc) != mine:
+                    continue
             try:
                 sit = state.situation_for(mine, phase=PHASE_DRAW)
             except Exception:
                 continue
             counts14 = list(sit.hand.counts)
             ctx = build_ctx(sit, state, mine, counts14)
-            for w in range(TK):
-                X.append(tile_features(ctx, w))
-                Y.append(float(ctx["opp"][w]))
-            taken += 1
+            if taken < cap:
+                for w in range(TK):
+                    X.append(tile_features(ctx, w))
+                    Y.append(float(ctx["opp"][w]))
+                taken += 1
             if int(s_disc) != mine:
                 continue
             waitsets: dict[int, tuple[int, ...]] = {}
