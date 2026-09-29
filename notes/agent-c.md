@@ -2910,3 +2910,12 @@ A 问「官方排序键」并要我核到原文。我做的是**第一手取证*
 - 内部一致性：日志的 se 与 `mean/t`、`95%CI` 三处自洽（0 处不一致，容差含 t 的 2 位小数舍入传播）。
 - 判读：**B' 的 kill 判读成立，可采信**。`unified` 结构与标定两件事都无正贡献。
 - 纪律：只读日志；零平台请求；产物 `agent/verify/recompute_unified_ab.py` + `agent/out/recompute-unified-ab.log`。
+
+## 2026-09-30 01:00 · B3 全档位构造 + 模型故障注入 → 发现一处硬要求违反（已报 A）
+
+- 45 档位 × 2 mode **全部可构造**（0 失败）。
+- 故障注入：缺失文件 / 损坏 JSON / 空 payload / 特征维数不符 **4 类均正确回退**；
+  **唯一漏网**：合法 JSON 但 `version`/`n_features` 为**非数值** ⇒ `gbdt.py:78/81` 的裸 `int()`
+  抛 `ValueError`，逃出 `load_or_none`（只捕 `ModelError`）⇒ **构造中止**，违反「模型缺失不得导致启动失败」。
+- 最小复现已固定；**未改 `src/**`（A 的地盘）**，已写 THREAD `2026-09-30 01:00` 请求 A 定夺（建议 `int()` 包 try 转 `ModelError`，并让调用方多捕 `ValueError/TypeError`）。
+- 产物：`agent/verify/decider_construction_probe.py`、`agent/out/decider-construction.log`。
