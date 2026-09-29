@@ -49,6 +49,11 @@ METRIC_RE = re.compile(
 )
 INTERESTING = ("总得分", "名次分", "白板数", "胡次数", "番数总和")
 
+# 每个 job 内部开几个进程（ab_test 的 `--jobs`）。**实测依据**：ab_test 是单线程，
+# 16 核机器上原来只跑 workers 个 job、CPU 用不到 1/3。并行与串行的输出**逐位相同**
+# （见 tools/ab_test.py `_run_tasks` 的说明：`run_match` 自建 rng、策略层无全局随机源）。
+DEFAULT_JOBS_PER_RUN = 5
+
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
@@ -78,13 +83,14 @@ def parse_ab_output(text: str) -> dict:
     return metrics
 
 
-def run_job(job: dict, timeout_sec: float) -> dict:
+def run_job(job: dict, timeout_sec: float, default_jobs: int = DEFAULT_JOBS_PER_RUN) -> dict:
     """跑一个 job（可能含多个种子），返回汇总结果。"""
     treatment = job["treatment"]
     baseline = job.get("baseline", "heuristic")
     matches = int(job.get("matches", 300))
     seeds = job.get("seeds") or [20260926]
     field = job.get("field") or ""
+    jobs = max(1, int(job.get("jobs") or default_jobs))
     pooled: dict[str, list[tuple[float, float]]] = {}
     raw: list[str] = []
     commands: list[list[str]] = []
@@ -98,6 +104,7 @@ def run_job(job: dict, timeout_sec: float) -> dict:
             "--baseline", baseline,
             "--matches", str(matches),
             "--seed", str(seed),
+            "--jobs", str(jobs),
         ]
         if field:
             # 换掉「另三座坐谁」。这是评估副露类假设的必要条件：默认 field=baseline
@@ -243,10 +250,10 @@ def main(argv: list[str] | None = None) -> int:
         type=float,
         default=14400,
         help=(
-            "单个 job 的秒级上限。**默认值依据实测**：在三个守护共存、ab_test 被 nice 的"
-            "情况下约 3.5 秒/场（不是理论上的 1.6 秒——CPU 争用很真实）。"
-            "所以 300 场 × 4 座位旋转 ≈ 70 分钟/种子。原先默认 7200（2 小时）会让"
-            "「300 场 × 2 种子」的 job 全部超时作废——曾因此白跑 15 小时。"
+            "单个 job 的秒级上限。**默认值依据实测**：并行前的实测约 3.5 秒/场（CPU 争用很真实），"
+            "所以 300 场 × 4 座位旋转 ≈ 70 分钟/种子。并行后单 job 的墙钟时间约除以 "
+            "`--jobs`，但**预算仍按串行算**——否则一旦 `--jobs` 被调小、或机器被别的负荷占住，"
+            "同一个 job 就会莫名其妙超时作废（曾因此白跑 15 小时）。"
         ),
     )
     parser.add_argument("--loop", action="store_true", help="跑空后不退出，等待新 job 加入")
@@ -254,11 +261,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--workers",
         type=int,
-        default=3,
+        default=2,
         help=(
-            "并行跑几个 job。**依据**：本机 16 核，而 ab_test 是单线程（GIL 受限），"
-            "真机采集基本是 I/O 等待。串行时 21 个 job 要 16 小时；开 3 个降到约 5 小时。"
-            "不要开太大——碰/吃窗口只有 600 ms，CPU 被压满会污染真机数据。"
+            "同时跑几个 job。**依据**：本机 16 核，每个 job 内部现在用 `--jobs` 个进程，"
+            "所以占用核数 ≈ workers × jobs。默认 2×5=10，另留 6 核给真机采集与系统。"
+            "**不要以此超过 12 核**——碰/吃窗口只有 600 ms，CPU 被压满会污染真机数据。"
+        ),
+    )
+    parser.add_argument(
+        "--jobs",
+        type=int,
+        default=DEFAULT_JOBS_PER_RUN,
+        help=(
+            "每个 job 内部并行几个进程（传给 ab_test 的 `--jobs`）。"
+            "job 自己的 `jobs` 字段优先于本参数。"
         ),
     )
     args = parser.parse_args(argv)
@@ -353,7 +369,7 @@ def run_pool(args: argparse.Namespace) -> int:
                 job = pending.pop(0)
                 claim(job["id"])
                 print(f"[{now_iso()}] 开始 {job['id']}（并行 {len(futures) + 1}/{workers}）")
-                futures[pool.submit(run_job_safe, job, args.timeout)] = job["id"]
+                futures[pool.submit(run_job_safe, job, args.timeout, args.jobs)] = job["id"]
             if not futures:
                 continue
             done, _ = wait(list(futures), timeout=30, return_when=FIRST_COMPLETED)
@@ -369,10 +385,10 @@ def run_pool(args: argparse.Namespace) -> int:
                 print(f"[{now_iso()}] {job_id} -> {result['status']}{extra}")
 
 
-def run_job_safe(job: dict, timeout_sec: float) -> dict:
+def run_job_safe(job: dict, timeout_sec: float, default_jobs: int = DEFAULT_JOBS_PER_RUN) -> dict:
     """给线程池用的包装：把超时与异常都转成结果字典，绝不让异常穿出去。"""
     try:
-        return run_job(job, timeout_sec)
+        return run_job(job, timeout_sec, default_jobs)
     except subprocess.TimeoutExpired:
         return {
             "status": "failed",

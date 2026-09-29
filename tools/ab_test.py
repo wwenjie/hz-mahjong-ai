@@ -24,6 +24,7 @@ import argparse
 import math
 import sys
 import time
+from concurrent.futures import ProcessPoolExecutor
 
 from majiang.cli import DECIDERS, make_decider
 from majiang.sim.batch import SEATS, run_match
@@ -77,6 +78,74 @@ def play(
     )
 
 
+def names_for(rotation: int, seat_name: str, field_list: list[str]) -> list[str]:
+    """把 ``seat_name`` 放到 ``rotation`` 座，另三座按升序填 ``field_list``。"""
+    names = list(field_list)
+    others = [seat for seat in range(SEATS) if seat != rotation]
+    row = [""] * SEATS
+    row[rotation] = seat_name
+    for seat, name in zip(others, names):
+        row[seat] = name
+    return row
+
+
+# 并行任务只能传可 pickle 的裸数据（`names` 由 worker 自己重建），绝不能传决策器对象。
+PlayTask = tuple[list[str], int, int, int, int]
+SeatTask = tuple[int, int, str, list[str], int, int, int]
+
+
+def _play_task(task: PlayTask) -> MatchOutcome:
+    """一场完整对局，返回四座产出。用于「另三座＝baseline」的对照侧（一场顶四座）。"""
+    names, index, rounds, base_score, seed = task
+    return play(names, index, rounds=rounds, base_score=base_score, seed=seed)
+
+
+def _seat_task(task: SeatTask) -> tuple[int, int, int, int, int]:
+    """只取 `seat_name` 在 `rotation` 座的产出。
+
+    **一次只算一座不是浪费**：treatment 在每个旋转座坐的都是**不同的一局**
+    （``names_for`` 把另三座填成 field，所以座位排布不同 ⇒ 牌局不同），不存在可复用的重复。
+    拆成 ``4×matches`` 个同粒度任务是为了让**一个进程池**吃饱——
+    原先是每个旋转单独起池、每池只有 ``matches`` 个任务，8 进程时利用率只有 6/8。
+    """
+    index, rotation, seat_name, field_list, rounds, base_score, seed = task
+    outcome = play(
+        names_for(rotation, seat_name, field_list),
+        index,
+        rounds=rounds,
+        base_score=base_score,
+        seed=seed,
+    )
+    return outcome[rotation]  # type: ignore[return-value]
+
+
+def _run_tasks(func, tasks: list, jobs: int) -> list:
+    """按 ``jobs`` 个进程跑 ``tasks``，**返回顺序与输入一致**。
+
+    为什么并行与串行结果必须逐位相同：``run_match`` 自己建 ``random.Random(seed)``，
+    策略层没有任何模块级随机源（``strategy/search.py``、``strategy/rollout.py`` 的 rng
+    都由显式 seed 构造），每场次的决策器也是当场新建的、不跨场携带状态。
+    所以 ``play`` 是 ``(names, index, rounds, base_score, seed)`` 的纯函数 —— 并行只影响
+    谁在哪个核上算，不影响算出来是什么。
+    """
+    if jobs <= 1 or len(tasks) <= 1:
+        return [func(task) for task in tasks]
+    # 每个 worker 拿 4 段：场次耗时相近，分段只是为了摊掉进程启动与调度开销
+    chunk = max(1, len(tasks) // (jobs * 4))
+    with ProcessPoolExecutor(max_workers=jobs) as pool:
+        return list(pool.map(func, tasks, chunksize=chunk))
+
+
+def default_jobs() -> int:
+    """留出余量的默认进程数。
+
+    **余量是给真机采集的**：碰/吃窗口只有 600 ms，采集进程是 ``nice 0`` 而我们 ``nice 15``，
+    内核会立刻抢占，但如果把 16 个核全占满，抢占带来的缓存/内存带宽抖动仍可能让
+    决策算不完 600 ms。所以默认只用到约 3/4 的核，上限 12。
+    """
+    return max(1, min(12, (os.cpu_count() or 4) * 3 // 4))
+
+
 def describe(differences: list[float], label: str) -> None:
     count = len(differences)
     if count < 2:
@@ -106,6 +175,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--base-score", type=int, default=1)
     parser.add_argument("--seed", type=int, default=20260923)
     parser.add_argument(
+        "--jobs",
+        type=int,
+        default=1,
+        help=(
+            "并行进程数。**默认 1（串行）保证与旧版输出逐位相同**；队列用 "
+            "`tools/iterate_loop.py` 显式传值。结果与并行度无关（见 ``_run_tasks`` 的说明）。"
+        ),
+    )
+    parser.add_argument(
         "--field",
         default="",
         help=(
@@ -127,20 +205,11 @@ def main(argv: list[str] | None = None) -> int:
     if len(field_list) != 3:
         raise SystemExit(f"--field 只接受 1 个或 3 个名字，收到 {len(field_list)} 个")
     field = args.field or args.baseline
+    jobs = max(1, args.jobs)
     print(
         f"treatment={args.treatment}  baseline={args.baseline}  场上另三座={field_list}  "
-        f"场数 {args.matches}  每场 {rounds} 局  种子 {args.seed}（四座位旋转）"
+        f"场数 {args.matches}  每场 {rounds} 局  种子 {args.seed}（四座位旋转）  并行 {jobs}"
     )
-
-    def names_for(rotation: int, seat_name: str) -> list[str]:
-        """把 ``seat_name`` 放到 ``rotation`` 座，另三座按升序填 ``field_list``。"""
-        names = list(field_list)
-        others = [seat for seat in range(SEATS) if seat != rotation]
-        row = [""] * SEATS
-        row[rotation] = seat_name
-        for seat, name in zip(others, names):
-            row[seat] = name
-        return row
 
     started = time.perf_counter()
     # 对照侧与试验侧必须在**同一个场**里测，否则差分会混入场强差异。
@@ -148,21 +217,29 @@ def main(argv: list[str] | None = None) -> int:
     # （也省掉 4 倍重复计算）。
     same_field = len(set(field_list)) == 1 and field_list[0] == args.baseline
     if same_field:
-        shared = [
-            play([args.baseline] * SEATS, index, rounds=rounds, base_score=base, seed=args.seed)
-            for index in range(args.matches)
-        ]
+        shared = _run_tasks(
+            _play_task,
+            [
+                ([args.baseline] * SEATS, index, rounds, base, args.seed)
+                for index in range(args.matches)
+            ],
+            jobs,
+        )
         baseline_runs = [[row[seat] for seat in range(SEATS)] for row in shared]
     else:
-        baseline_runs = []
-        for index in range(args.matches):
-            row = []
-            for rotation in range(SEATS):
-                names = names_for(rotation, args.baseline)
-                row.append(
-                    play(names, index, rounds=rounds, base_score=base, seed=args.seed)[rotation]
-                )
-            baseline_runs.append(row)
+        baseline_runs = _run_tasks(
+            _seat_task,
+            [
+                (index, rotation, args.baseline, field_list, rounds, base, args.seed)
+                for index in range(args.matches)
+                for rotation in range(SEATS)
+            ],
+            jobs,
+        )
+        baseline_runs = [  # 与 same_field 分支同形：[[四座], ...] 按场次索引
+            [baseline_runs[index * SEATS + seat] for seat in range(SEATS)]
+            for index in range(args.matches)
+        ]
 
     score_diff: list[float] = []
     place_diff: list[float] = []
@@ -171,11 +248,21 @@ def main(argv: list[str] | None = None) -> int:
     fan_diff: list[float] = []
     collected: list[tuple[float, float, float, float, float]] = []
 
+    # 四个旋转一次性提交给同一个进程池：任务数 4×matches，进程数够多时几乎无空转。
+    plan = [(rotation, index) for index in range(args.matches) for rotation in range(SEATS)]
+    played = _run_tasks(
+        _seat_task,
+        [
+            (index, rotation, args.treatment, field_list, rounds, base, args.seed)
+            for rotation, index in plan
+        ],
+        jobs,
+    )
     for rotation in range(SEATS):
-        names = names_for(rotation, args.treatment)
         mine_total = theirs_total = 0
-        for index in range(args.matches):
-            mine = play(names, index, rounds=rounds, base_score=base, seed=args.seed)[rotation]
+        for (row_rotation, index), mine in zip(plan, played):
+            if row_rotation != rotation:
+                continue
             theirs = baseline_runs[index][rotation]
             score_diff.append(mine[0] - theirs[0])
             place_diff.append(mine[1] - theirs[1])
