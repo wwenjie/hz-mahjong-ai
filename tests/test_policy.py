@@ -282,6 +282,74 @@ def test_safe_tiebreak_cannot_override_a_non_tied_candidate() -> None:
     assert a is not None and b is not None and a.tile == b.tile
 
 
+def test_unified_score_uses_points_and_kills_the_feed_knob() -> None:
+    """统一期望得分（B' 设计说明 / A 实现）的三条结构性断言。
+
+    ① 前两项 `P_win×E_pay − (1−P_win)×P_opp×E_loss` **就是** `routes.evaluate` 的 `value`
+       ⇒ 档位的 `total` 应当≈该 `value` 减喂牌代价，量纲=分；
+    ② `value_weight` 不再参与（拍出来的 10 被去掉）；
+    ③ `feed_weight` 不再参与 —— 改它对 `total` **完全无影响**（喂牌已从旋钮变推导量）。
+    """
+    obj = situation("2w3w4w5w6w7w8w9w5b6b2b2b9b1t", drawn="1t")
+    plain = HeuristicDecider(PolicyConfig.for_mode(Mode.QUALIFIER, unified_score=True))
+    plain.choose(obj, legal_actions(obj), budget_ms=2000)
+    rows = {row.split()[0]: row for row in plain.last_detail["discards"]}
+    assert rows, "应给出候选明细"
+
+    # ③ 换 feed_weight(3.0→9.0) 与 value_weight(10→1) 都不改变统一得分的排序
+    for kwargs in ({"feed_weight": 9.0}, {"value_weight": 1.0}):
+        tweaked = HeuristicDecider(
+            PolicyConfig.for_mode(Mode.QUALIFIER, unified_score=True, **kwargs)
+        )
+        tweaked.choose(obj, legal_actions(obj), budget_ms=2000)
+        assert tweaked.last_detail["discards"] == plain.last_detail["discards"], kwargs
+
+    top = plain.last_detail["discards"][0]
+    assert "合计=" in top
+
+
+def test_unified_score_orders_candidates_differently_from_v3() -> None:
+    """**空干预防线的单元测试部分**：两个档位的排序键必须真的不同（结构性、不靠运气）。
+
+    ⚠ 真正的「改动量」判据是**分歧率**，它必须用真机决策点量（`tools/divergence_gate.py`，
+    判据 <5% 即空干预）——**不要**用少数几个手工构造的局面去充当这道门：
+    初版本测试就是拿 3 个手工局面断言「必须有分歧」，结果 3 个全相同（那些局面本来只有一个
+    合理出牌），测试失败而改动其实有效。手工局面只能验**结构**，不能验**分布**。
+    """
+    v3 = HeuristicDecider(PolicyConfig.for_mode(Mode.QUALIFIER, tiebreak="tenpai-only",
+                                               wait_aware_tenpai=True))
+    uni = HeuristicDecider(
+        PolicyConfig.for_mode(Mode.QUALIFIER, tiebreak="tenpai-only", wait_aware_tenpai=True,
+                              unified_score=True)
+    )
+    obj = situation("1w4w7w2w5w8w3b6b9b1t2t3t白白", drawn="白")
+    actions = legal_actions(obj)
+    v3.choose(obj, actions, budget_ms=2000)
+    uni.choose(obj, actions, budget_ms=2000)
+    # 排序键不同 ⇒ 候选的评分明细必然不同（v3 是 −10×向听+形质−喂牌；统一是分）
+    assert v3.last_detail["discards"] != uni.last_detail["discards"]
+    assert "合计=" in uni.last_detail["discards"][0]
+
+
+def test_tenpai_only_tiebreak_keeps_wait_aware_but_yields_shanten1() -> None:
+    """`tiebreak="tenpai-only"` 的边界：听牌态仍按可见听口选（v3 的机制），向听 ≥1 不重排。"""
+    # 听牌态：与 v3 的听牌选牌一致
+    tenpai = situation("1w2w3w4w5w6w7w8w9w5b6b2b2b9b", drawn="9b")
+    a = HeuristicDecider(PolicyConfig.for_mode(Mode.QUALIFIER, tiebreak="tenpai-only",
+                                               wait_aware_tenpai=True))
+    b = HeuristicDecider(PolicyConfig.for_mode(Mode.QUALIFIER, tiebreak="exact-ukeire",
+                                               wait_aware_tenpai=True))
+    pick_a = a.choose(tenpai, legal_actions(tenpai), budget_ms=2000)
+    pick_b = b.choose(tenpai, legal_actions(tenpai), budget_ms=2000)
+    assert pick_a is not None and pick_b is not None and pick_a.tile == pick_b.tile
+    # 向听 ≥1：不再调用进张次排序（明细里没有 tiebreak 字段）
+    high = situation("1w4w7w2w5w8w3b6b9b1t2t3t白白", drawn="白")
+    only = HeuristicDecider(PolicyConfig.for_mode(Mode.QUALIFIER, tiebreak="tenpai-only",
+                                                  wait_aware_tenpai=True))
+    only.choose(high, legal_actions(high), budget_ms=2000)
+    assert "tiebreak" not in only.last_detail
+
+
 def test_peng_accepted_when_meld_route_wins() -> None:    # 对子很少（七对很远）、副露更近：碰把向听 3 推到 2，副露路线期望反超七对
     obj = situation(
         "2w4w5w5w9w2b5b6b3t4t5t北中",

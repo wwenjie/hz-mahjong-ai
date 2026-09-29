@@ -41,6 +41,8 @@ VARIANT_FIELDS = (
     "meld_tolerance",
     "tiebreak",
     "safe_tiebreak",
+    "unified_score",
+    "feed_ready_increment",
     "ukeire_candidates",
     "ukeire_max_shanten",
     "ukeire_order",
@@ -239,6 +241,35 @@ class PolicyConfig:
     # **喂牌项本身**，于是能压过形质、改变 total 的排序（实测总得分/名次分 2/2 反向）；
     # 这里**只在 total 完全相等的候选之间**起作用，结构上不可能覆盖任何一项，改动面严格更小。
     safe_tiebreak: bool = False
+    # 实验档位：**统一期望得分**（B' 2026-09-29 的设计说明）。
+    #
+    # 把出牌评分从启发式 `total = −10×向听 + 形质 − 3×喂牌 − 财神罚` 换成
+    # **「打完这张牌后本局期望得分」的显式估计**，所有候选在**同一量纲（分）**上可比：
+    #
+    #     score(tile) = P_win × E_pay − (1 − P_win) × P_opp × E_loss − feed_cost
+    #     feed_cost   = ΔP_opp(tile) × E_loss
+    #
+    # **为什么**：现在的 `total` 有两处实测硬伤——① 量纲不可比：同向听组内 total 极差
+    # **97.25% 来自喂牌项**、形质项贡献均值仅 **0.026**（B' 14:05，三路独立复核），
+    # 于是「−10×向听」这个拍出来的 10 和喂牌项谁大谁说了算，形质形同虚设；
+    # ② 并列靠隐式次序：**59.5%** 决策的可见前 4 名 total 完全相同。
+    # 换成分的量纲后，喂牌从「旋钮」变成**推导量**（`ΔP_opp × E_loss`），
+    # `feed_weight` 这个旋钮被消灭——此前 5 个 feed 系臂全是调这个旋钮，全测平或反向。
+    #
+    # **刻意留作第二组件的部分（不在本开关里）**：B' 设计里 `P_win` 的**形质修正**
+    # （「同向听、形质更好 ⇒ P_win 更高」）。它的定标依据是 `shape-blocks` 的 +0.350(t3.19)，
+    # 而那条臂的 **n=10 确认批此刻还在跑** —— 用未结的证据定标，等于把「看着有戏就采信」
+    # 再犯一次（今天 `seen-tiebreak` ≈0 已经教过一次）。所以先落地三因子结构，
+    # 形质修正等 n=10 落地后再作为**独立开关**加进来，两次改动各自可归因。
+    unified_score: bool = False
+    # 喂牌增量：一张「对对手最有吸引力」的牌（中张）被吃碰后，对手**听牌概率的绝对增量**。
+    #
+    # 0.05 的来历（刻意写清楚，免得以后被当成标定值引用）：它不来自拟合，而是**量级对齐**——
+    # 旧的 `feed_weight=3.0` 在典型场面下给 `3.0 × 0.6 × 0.6 ≈ 1.1 分` 的喂牌代价，
+    # 而这里 `ΔP_opp × E_loss ≈ 0.05 × 20 ≈ 1.0 分`。对齐量级是为了让这条臂**只改结构、
+    # 不叠加量级跳变**，否则一次 A/B 里两个变化混在一起无法归因。
+    # 真正的取值应由真机数据标定（`ΔP_opp` 是可测的：见 `tools/verify_occupancy_ceiling.py` 的同族口径）。
+    feed_ready_increment: float = 0.05
     # 实验档位：绝不打出财神（只在无其他可打牌时才打）。
     # 用途是验证一条尚未测过的假设——爆头需要「4 组**自然**面子 + 1 张闲余财神」，
     # 而此前的 0 次爆头是被动观测到的（现有策略会把财神当百搭用掉）。若把财神硬留，
@@ -805,7 +836,16 @@ class HeuristicDecider:
                 reverse=True,
             )
         best = scores[0]
-        if self.config.tiebreak in ("ukeire", "exact-ukeire"):
+        # `exact-ukeire` / `ukeire`：整层进张次排序。`tenpai-only`：**只保留听牌态那一层**
+        # （即 v3 的 `wait_aware_tenpai`），把向听 ≥1 的排序交还给主排序键。
+        #
+        # 为什么要这个中间档：`exact-ukeire` 会拿进张去**重排** top 2，
+        # 于是「统一期望得分」算出来的次序大部分被它覆盖（实测与 v3 的分歧只有 5.5%），
+        # 而统一得分本来就是要**取代**这层补丁——它存在只是因为旧量纲下 59.5% 的决策并列。
+        # 但直接关掉整层会连 v3 唯一被证过的机制（听牌按可见听口选牌）一起丢掉，
+        # 那样测的就不是「统一得分 vs v3」，而是「统一得分 减 一个已知有效组件」。
+        ties = self.config.tiebreak
+        if ties in ("ukeire", "exact-ukeire") or (ties == "tenpai-only" and best.shanten == 0):
             best = self._break_ties_by_ukeire(situation, scores) or best
         self.last_detail["discards"] = [score.describe() for score in scores[:4]]
         self.last_reason = f"出牌：{best.describe()}"
@@ -829,7 +869,7 @@ class HeuristicDecider:
         tied = [score for score in scores if score.shanten == top_shanten]
         if len(tied) < 2:
             return None
-        exact = self.config.tiebreak == "exact-ukeire"
+        exact = self.config.tiebreak in ("exact-ukeire", "tenpai-only")
         if exact and top_shanten > self.config.ukeire_max_shanten:
             return None
         # 听牌档：改比**可见听口张数**，并且不截断候选面。
@@ -940,7 +980,7 @@ class HeuristicDecider:
         ):
             feed_scale *= self.config.dealer_feed_scale
 
-        if not self.config.route_aware and self.config.commitment is Commitment.NONE:
+        if not self.config.unified_score and not self.config.route_aware and self.config.commitment is Commitment.NONE:
             if self.config.natural_route:
                 shanten_value = shanten_module.natural_shanten(counts, hand.meld_count)
             else:
@@ -976,8 +1016,27 @@ class HeuristicDecider:
             best = pair_route if pair_route.value >= meld_route.value else meld_route
         god_penalty += self._god_route_penalty(tile, pair_route)
 
+        # **统一期望得分**（`unified_score`）在这一支只做两处替换，结构其余部分与
+        # `route_aware` 完全相同——这是刻意的：`routes.evaluate` 的 `value` **本来就是**
+        # `P_win × E_pay − (1−P_win) × P_opp × E_loss`（见 `routes.py:181/187`），
+        # 也就是说 B' 设计说明的前两项**早已存在**，缺的只是下面这两处：
+        #
+        #   ① `value_weight=10.0` 是拍出来的倍数（与 `−10×向听` 同一个病：用一个任意常数
+        #      决定「路线期望」和「喂牌」谁大谁小）⇒ 统一得分里取 **1.0**，直接用量纲=分的原值；
+        #   ② `feed` 从 `feed_weight × visible_need × threat`（无量纲的旋钮）换成
+        #      **`ΔP_opp(tile) × E_loss`**（量纲=分）——喂牌从旋钮变成推导量，`feed_weight` 被消灭。
+        value_scale = self.config.value_weight
+        if self.config.unified_score:
+            value_scale = 1.0
+            feed_scale = 1.0
+            feed = (
+                self.config.feed_ready_increment
+                * risk.visible_need(tile)
+                * meld_route.loss
+            )
+
         total = (
-            self.config.value_weight * best.value
+            value_scale * best.value
             - feed_scale * feed
             - god_penalty
         )

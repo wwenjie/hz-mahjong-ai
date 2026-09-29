@@ -330,6 +330,25 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
                               safe_tiebreak=True)
     ),
+    # **统一期望得分**（B' 18:45 设计说明；A 19:20 实现）。三因子：
+    #   score = P_win×E_pay − (1−P_win)×P_opp×E_loss − feed_cost
+    # 前两项**早已存在**于 `routes.evaluate` 的 `value`；本档位只接两处替换：
+    # `value_weight 10.0→1.0`（去掉拍出来的倍数）、`feed_cost` 由旋钮改为
+    # `ΔP_opp(tile) × E_loss`（量纲=分，`feed_weight` 被消灭）。
+    # 刻意**不含** `P_win` 的形质修正：其定标依据 `shape-blocks` 的 n=10 还在跑。
+    "unified": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              unified_score=True)
+    ),
+    # 同上的**主测试臂**：`tiebreak="tenpai-only"` ⇒ 只保留 v3 唯一被证过的机制
+    # （听牌按可见听口选牌），把向听 ≥1 的次序**交还给统一期望得分**。
+    # 理由：`unified`（带完整 `exact-ukeire` 层）与 v3 在真机决策点上分歧只有 **5.5%**
+    # （`tools/divergence_gate.py`，200 点）——那一层把前 2 名又按进张重排、盖住了统一得分。
+    # 而它是旧量纲下 59.5% 并列的**补丁**，统一得分的本意就是取代它。
+    "unified-pure": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="tenpai-only", wait_aware_tenpai=True,
+                              unified_score=True)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 
