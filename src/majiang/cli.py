@@ -299,6 +299,26 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
         PolicyConfig.for_mode(mode, wait_aware_tenpai=True),
         risk_model=load_or_none(OPPONENT_MODEL_PATH),
     ),
+    # 喂牌项乘「还剩几张未现」(4−seen)/4 —— agent-c 复核确证的一条缺陷：
+    # `visible_need` 是牌种静态表、**不含已见张数**，于是已见 3 张（几乎喂不出）的牌仍按满值计罚。
+    # 这条与「threat 水平被放大 1.5 倍」是两个独立缺陷（那条是水平、这条是逐牌种分辨力）。
+    "seen-feed": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              feed_visibility=True)
+    ),
+    # 两条一起：修正后的喂牌项（水平 × 分辨力）叠加修好的形质项
+    "seen-shape-feed": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, feed_visibility=True, feed_weight=2.0)
+    ),
+    # **复测 `ukeire_order="blocks"`**（agent-c 复核的 ② 条）。它当年在 `ukeire-hand` 上
+    # 测平，但那时 `block_value` 恒饱和（77~93% 并列）⇒ **按一个退化键排序 ≈ 随机排序**，
+    # 那次测平不能说明「按形质排序无效」。现在 `shape_value` 给了这个键分辨率，
+    # 这条臂才第一次真正测到「先按形质取候选面、再比进张」这件事。
+    "shape-blocks": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 

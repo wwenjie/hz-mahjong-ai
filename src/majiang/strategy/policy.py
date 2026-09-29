@@ -46,6 +46,7 @@ VARIANT_FIELDS = (
     "wait_aware_tenpai",
     "two_ply_shanten1",
     "shape_value",
+    "feed_visibility",
     "dealer_feed_scale",
     "chase_baotou",
     "route_aware",
@@ -197,6 +198,18 @@ class PolicyConfig:
     # 设计成窄改动：形质修正幅度 < 1，**只打破并列、不覆盖「块数差 1」**。
     # 默认关闭（v1/v2/v3 行为逐位不变）。
     shape_value: bool = False
+    # 喂牌项乘上「该牌种还剩几张未现」因子 `(4 − 已见)/4`。
+    #
+    # **依据（agent-c 独立复核确证的一条缺陷）**：`risk.visible_need(tile)` 是**牌种静态表**
+    # （字牌 0.4 / 中张 1.0 / 边张 0.6），**不含已见张数**——于是**已见 3 张、几乎喂不出去的牌
+    # 仍按满值计罚**，而 4 张全现的牌（不可能喂）也一样罚。正确口径应是
+    # 「还剩几张可能被对手拿到」：`seen` 含本方暗手 + 四家副露 + 四家弃牌，
+    # `4 − seen` 正是仍藏在别处（对手手牌或牌墙）的张数。
+    #
+    # 这条与「喂牌项被放大 1.5 倍」（`tools/calibrate_threat.py`，按房 30 房实测 1.49×）
+    # 是**两个独立缺陷**：那条是 `threat` 水平偏高，这条是**逐牌种的分辨力**缺失。
+    # 默认关闭（v1/v2/v3 行为逐位不变）。
+    feed_visibility: bool = False
     # 同向听候选项之间的次排序键。**默认 "exact-ukeire"**。
     #
     # 历史：原默认是 "blocks"（骨架厚度）。5.4 曾试过 "ukeire" 并记为「无增益」，
@@ -856,6 +869,17 @@ class HeuristicDecider:
         risks = self._risks(situation)
         threat = sum(item.ready_probability for item in risks)
         feed = risk.visible_need(tile) * threat
+        if self.config.feed_visibility:
+            # 乘「还剩几张未现」因子：`seen` = 本方暗手 + 四家副露 + 四家弃牌，
+            # `4 − seen` 是仍可能被对手拿到的张数（藏在对手手牌或牌墙里）。
+            # 这张牌打出去之后自己也会成为可见牌，所以 `seen` 用**打出前**的口径即可——
+            # 我们手里那张本来就在 `hand.counts` 里。
+            seen = shanten_module.visible_counts(
+                situation.hand.counts,
+                [meld.tiles for meld in situation.all_melds],
+                situation.discards,
+            )
+            feed *= max(0.0, tiles.COPIES_PER_KIND - seen[tile]) / tiles.COPIES_PER_KIND
         god_penalty = self.config.god_discard_penalty if tile == GOD else 0.0
         # 庄家局的喂牌权重单独缩放：庄闲赔付是 8 倍不对称，而决策层此前完全不分庄闲。
         feed_scale = self.config.feed_weight
