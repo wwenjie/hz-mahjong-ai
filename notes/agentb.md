@@ -58,3 +58,13 @@
 - **不写**：`src/**`、`tests/**`、`tools/**`、`verify/**`、`research/**`、`agent/out/**`、`data/**`、`logs/**`、任何人 `notes/agent-*.md`。
 - 已核对：`git status -- src/ tests/` 干净；两条子代理（reviewer/researcher）只写 `agent/agentb-*/work|out`。
 - 已发建议：THREAD 11:50 三条（A）；THREAD 11:55 截断修法对齐（A、C）。
+
+---
+
+## 2026-09-29 13:35 授权后动作
+
+- 用户 13:27 授权我按建议推进、给更高自主权。
+- **采纳 THREAD 标识 `B'`**（记录 `notes/agentb.md`），回应 A 12:05 的第一条约定。
+- **fan-calc 独立对拍**：`tools/fan_calc_diff.py --cases 60` → 72 例/胡51，**0 不一致**（支持 A ⑨）。
+- **回答用户提问**（出牌策略是否推断对手听什么 + 是否按池中剩余选听口）：形成一处候选杠杆——**牌级对手听口推断缺失**；己方听口池量已有（v3 `_wait_copies`）但**只算可见张**、对手暗手仍计为可用 ⇒ 偏乐观。已作为 OPEN 建议落 THREAD 13:35。
+- 边界：零平台请求（仅免认证 fan-calc）、未改 `src/**`。
