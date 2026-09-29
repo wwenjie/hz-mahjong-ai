@@ -4781,10 +4781,12 @@
    "seeds": [
     27182818
    ],
-   "status": "pending",
+   "status": "running",
    "note_seed_extension": "**n=10 的确认批，不是新臂**（同 treatment/baseline/matches/假设/判据，只加种子）。用户 18:15 批准「把最好的那一个成员跑到 n=10」。动机：第三种子把家族里三个成员的结论**分开了**——`shape`（只开 shape_value）合并 +0.119(t1.45,n=3)、`ukeire-hand`（只有 blocks 排序）合并 +0.086(t0.66,n=3)**都归零**，而 `shape-blocks`（shape_value + blocks 排序 + 门 3）第三种子 +0.373(t1.99)、合并 **+0.350(t3.19,n=3)、3/3 同向**。⇒ 单个组件都不行、**合起来才有效**，这正是 agent-c 的 ② 说的「先按形质取候选面、再比精确进张」那个**合取**，也说明我 14:22「收益来自并列次序」的归因是错的（`seen-tiebreak` 纯并列规则 ≈0 已证伪）。单种子 se≈0.19 ⇒ n=10 合并 se≈0.060、t≈5.8；这是本项目第一次有臂在三粒子上 t>3。",
    "hypothesis": "（沿用 shape-blocks 已登记假设，未改）",
-   "kill_criteria": "n=10 合并名次分 **t≥2 才采纳，否则永久关闭这个族**（含 `ukeire*` / `shape*` / `feed*` / `seen-tiebreak`）并在 `notes/agent-a.md` 记成「中段微族已穷尽，剩余缺口是结构性的（副露 0.6 vs 1.3、到听摸序 6.2 vs 5.2）」。**同时**：机制门仍由 C 的「`shape_value` 为何有用」仪器独立作答——若仪器显示 `shape_value` 近乎不生效，则即使 t≥2 也要先弄清是什么在起作用再谈采纳（A/B 过门 ≠ 机制对，今天已被 `shape-blocks` 自己的归因绕过一次）。"
+   "kill_criteria": "n=10 合并名次分 **t≥2 才采纳，否则永久关闭这个族**（含 `ukeire*` / `shape*` / `feed*` / `seen-tiebreak`）并在 `notes/agent-a.md` 记成「中段微族已穷尽，剩余缺口是结构性的（副露 0.6 vs 1.3、到听摸序 6.2 vs 5.2）」。**同时**：机制门仍由 C 的「`shape_value` 为何有用」仪器独立作答——若仪器显示 `shape_value` 近乎不生效，则即使 t≥2 也要先弄清是什么在起作用再谈采纳（A/B 过门 ≠ 机制对，今天已被 `shape-blocks` 自己的归因绕过一次）。",
+   "started_at": "2026-09-29T18:16:20+08:00",
+   "claimed_by": 2590637
   },
   {
    "id": "shape-blocks-vs-v3-s16180339",
@@ -4794,10 +4796,12 @@
    "seeds": [
     16180339
    ],
-   "status": "pending",
+   "status": "running",
    "note_seed_extension": "**n=10 的确认批，不是新臂**（同 treatment/baseline/matches/假设/判据，只加种子）。用户 18:15 批准「把最好的那一个成员跑到 n=10」。动机：第三种子把家族里三个成员的结论**分开了**——`shape`（只开 shape_value）合并 +0.119(t1.45,n=3)、`ukeire-hand`（只有 blocks 排序）合并 +0.086(t0.66,n=3)**都归零**，而 `shape-blocks`（shape_value + blocks 排序 + 门 3）第三种子 +0.373(t1.99)、合并 **+0.350(t3.19,n=3)、3/3 同向**。⇒ 单个组件都不行、**合起来才有效**，这正是 agent-c 的 ② 说的「先按形质取候选面、再比精确进张」那个**合取**，也说明我 14:22「收益来自并列次序」的归因是错的（`seen-tiebreak` 纯并列规则 ≈0 已证伪）。单种子 se≈0.19 ⇒ n=10 合并 se≈0.060、t≈5.8；这是本项目第一次有臂在三粒子上 t>3。",
    "hypothesis": "（沿用 shape-blocks 已登记假设，未改）",
-   "kill_criteria": "n=10 合并名次分 **t≥2 才采纳，否则永久关闭这个族**（含 `ukeire*` / `shape*` / `feed*` / `seen-tiebreak`）并在 `notes/agent-a.md` 记成「中段微族已穷尽，剩余缺口是结构性的（副露 0.6 vs 1.3、到听摸序 6.2 vs 5.2）」。**同时**：机制门仍由 C 的「`shape_value` 为何有用」仪器独立作答——若仪器显示 `shape_value` 近乎不生效，则即使 t≥2 也要先弄清是什么在起作用再谈采纳（A/B 过门 ≠ 机制对，今天已被 `shape-blocks` 自己的归因绕过一次）。"
+   "kill_criteria": "n=10 合并名次分 **t≥2 才采纳，否则永久关闭这个族**（含 `ukeire*` / `shape*` / `feed*` / `seen-tiebreak`）并在 `notes/agent-a.md` 记成「中段微族已穷尽，剩余缺口是结构性的（副露 0.6 vs 1.3、到听摸序 6.2 vs 5.2）」。**同时**：机制门仍由 C 的「`shape_value` 为何有用」仪器独立作答——若仪器显示 `shape_value` 近乎不生效，则即使 t≥2 也要先弄清是什么在起作用再谈采纳（A/B 过门 ≠ 机制对，今天已被 `shape-blocks` 自己的归因绕过一次）。",
+   "started_at": "2026-09-29T18:16:20+08:00",
+   "claimed_by": 2590637
   },
   {
    "id": "shape-blocks-vs-v3-s14142135",
@@ -4863,6 +4867,58 @@
    "note_seed_extension": "**n=10 的确认批，不是新臂**（同 treatment/baseline/matches/假设/判据，只加种子）。用户 18:15 批准「把最好的那一个成员跑到 n=10」。动机：第三种子把家族里三个成员的结论**分开了**——`shape`（只开 shape_value）合并 +0.119(t1.45,n=3)、`ukeire-hand`（只有 blocks 排序）合并 +0.086(t0.66,n=3)**都归零**，而 `shape-blocks`（shape_value + blocks 排序 + 门 3）第三种子 +0.373(t1.99)、合并 **+0.350(t3.19,n=3)、3/3 同向**。⇒ 单个组件都不行、**合起来才有效**，这正是 agent-c 的 ② 说的「先按形质取候选面、再比精确进张」那个**合取**，也说明我 14:22「收益来自并列次序」的归因是错的（`seen-tiebreak` 纯并列规则 ≈0 已证伪）。单种子 se≈0.19 ⇒ n=10 合并 se≈0.060、t≈5.8；这是本项目第一次有臂在三粒子上 t>3。",
    "hypothesis": "（沿用 shape-blocks 已登记假设，未改）",
    "kill_criteria": "n=10 合并名次分 **t≥2 才采纳，否则永久关闭这个族**（含 `ukeire*` / `shape*` / `feed*` / `seen-tiebreak`）并在 `notes/agent-a.md` 记成「中段微族已穷尽，剩余缺口是结构性的（副露 0.6 vs 1.3、到听摸序 6.2 vs 5.2）」。**同时**：机制门仍由 C 的「`shape_value` 为何有用」仪器独立作答——若仪器显示 `shape_value` 近乎不生效，则即使 t≥2 也要先弄清是什么在起作用再谈采纳（A/B 过门 ≠ 机制对，今天已被 `shape-blocks` 自己的归因绕过一次）。"
+  },
+  {
+   "id": "unified-vs-v3-s20260927",
+   "treatment": "unified",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    20260927
+   ],
+   "status": "held",
+   "note_held": "**【等 B' 的 §5.6 登记签】**（2026-09-29 14:42 生效的规则：新臂写入本文件前须有签）。A 已完成实现与门 3，签一到即改 pending。带完整 `exact-ukeire` 层（与 v3 分歧 5.5%）",
+   "hypothesis": "**统一期望得分**（B' 18:45 设计说明，A 19:20 实现，commit 310ec42）。三因子：`score = P_win×E_pay − (1−P_win)×P_opp×E_loss − feed_cost`，`feed_cost = ΔP_opp×E_loss`。实现发现：**前两项早已存在**（`routes.evaluate` 的 `value` 就是它），所以改动只有两处——`value_weight 10→1`（去掉与「−10×向听」同病的任意倍数）、喂牌由旋钮改为 `ΔP_opp×E_loss`（量纲=分，`feed_weight` 被消灭）。",
+   "kill_criteria": "**门 3（空干预）先于 A/B，已过**：`tools/divergence_gate.py` 实测与 v3 分歧 `unified` 5.5% / `unified-pure` 9.5%（200 点，按房抽 30 房）⇒ 都过 5% 门槛。A/B 门：n=2 种子 × 120 场，两种子同向且合并 t≥2.0 才采纳（MDE 名次分 ±0.10）。另需 B' 的门 2：`P_win` 的按房配对偏差与斜率 ∈[0.8,1.2]（自对弈表系统性偏高）。"
+  },
+  {
+   "id": "unified-vs-v3-s771014",
+   "treatment": "unified",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    771014
+   ],
+   "status": "held",
+   "note_held": "**【等 B' 的 §5.6 登记签】**（2026-09-29 14:42 生效的规则：新臂写入本文件前须有签）。A 已完成实现与门 3，签一到即改 pending。带完整 `exact-ukeire` 层（与 v3 分歧 5.5%）",
+   "hypothesis": "**统一期望得分**（B' 18:45 设计说明，A 19:20 实现，commit 310ec42）。三因子：`score = P_win×E_pay − (1−P_win)×P_opp×E_loss − feed_cost`，`feed_cost = ΔP_opp×E_loss`。实现发现：**前两项早已存在**（`routes.evaluate` 的 `value` 就是它），所以改动只有两处——`value_weight 10→1`（去掉与「−10×向听」同病的任意倍数）、喂牌由旋钮改为 `ΔP_opp×E_loss`（量纲=分，`feed_weight` 被消灭）。",
+   "kill_criteria": "**门 3（空干预）先于 A/B，已过**：`tools/divergence_gate.py` 实测与 v3 分歧 `unified` 5.5% / `unified-pure` 9.5%（200 点，按房抽 30 房）⇒ 都过 5% 门槛。A/B 门：n=2 种子 × 120 场，两种子同向且合并 t≥2.0 才采纳（MDE 名次分 ±0.10）。另需 B' 的门 2：`P_win` 的按房配对偏差与斜率 ∈[0.8,1.2]（自对弈表系统性偏高）。"
+  },
+  {
+   "id": "unified-pure-vs-v3-s20260927",
+   "treatment": "unified-pure",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    20260927
+   ],
+   "status": "held",
+   "note_held": "**【等 B' 的 §5.6 登记签】**（2026-09-29 14:42 生效的规则：新臂写入本文件前须有签）。A 已完成实现与门 3，签一到即改 pending。`tiebreak=tenpai-only`：只留 v3 的听牌机制，向听 ≥1 交给统一得分（分歧 9.5%）",
+   "hypothesis": "**统一期望得分**（B' 18:45 设计说明，A 19:20 实现，commit 310ec42）。三因子：`score = P_win×E_pay − (1−P_win)×P_opp×E_loss − feed_cost`，`feed_cost = ΔP_opp×E_loss`。实现发现：**前两项早已存在**（`routes.evaluate` 的 `value` 就是它），所以改动只有两处——`value_weight 10→1`（去掉与「−10×向听」同病的任意倍数）、喂牌由旋钮改为 `ΔP_opp×E_loss`（量纲=分，`feed_weight` 被消灭）。",
+   "kill_criteria": "**门 3（空干预）先于 A/B，已过**：`tools/divergence_gate.py` 实测与 v3 分歧 `unified` 5.5% / `unified-pure` 9.5%（200 点，按房抽 30 房）⇒ 都过 5% 门槛。A/B 门：n=2 种子 × 120 场，两种子同向且合并 t≥2.0 才采纳（MDE 名次分 ±0.10）。另需 B' 的门 2：`P_win` 的按房配对偏差与斜率 ∈[0.8,1.2]（自对弈表系统性偏高）。"
+  },
+  {
+   "id": "unified-pure-vs-v3-s771014",
+   "treatment": "unified-pure",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    771014
+   ],
+   "status": "held",
+   "note_held": "**【等 B' 的 §5.6 登记签】**（2026-09-29 14:42 生效的规则：新臂写入本文件前须有签）。A 已完成实现与门 3，签一到即改 pending。`tiebreak=tenpai-only`：只留 v3 的听牌机制，向听 ≥1 交给统一得分（分歧 9.5%）",
+   "hypothesis": "**统一期望得分**（B' 18:45 设计说明，A 19:20 实现，commit 310ec42）。三因子：`score = P_win×E_pay − (1−P_win)×P_opp×E_loss − feed_cost`，`feed_cost = ΔP_opp×E_loss`。实现发现：**前两项早已存在**（`routes.evaluate` 的 `value` 就是它），所以改动只有两处——`value_weight 10→1`（去掉与「−10×向听」同病的任意倍数）、喂牌由旋钮改为 `ΔP_opp×E_loss`（量纲=分，`feed_weight` 被消灭）。",
+   "kill_criteria": "**门 3（空干预）先于 A/B，已过**：`tools/divergence_gate.py` 实测与 v3 分歧 `unified` 5.5% / `unified-pure` 9.5%（200 点，按房抽 30 房）⇒ 都过 5% 门槛。A/B 门：n=2 种子 × 120 场，两种子同向且合并 t≥2.0 才采纳（MDE 名次分 ±0.10）。另需 B' 的门 2：`P_win` 的按房配对偏差与斜率 ∈[0.8,1.2]（自对弈表系统性偏高）。"
   }
  ]
 }
