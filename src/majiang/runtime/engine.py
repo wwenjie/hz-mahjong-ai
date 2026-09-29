@@ -498,6 +498,15 @@ class Runtime:
             rounds_per_game=config.rounds_per_game,
             base_score=config.base_score,
             you_cai_bi_kao=config.you_cai_bi_kao,
+            # **把服务端 rules 里「我们没映射的字段」原样落进日志**（B' 18:45 附录点名要核的事）。
+            # 动机是一次真实事故的同类风险：`HeuristicDecider.configure()` 曾把 6 个变体开关
+            # 静默丢弃，于是**真机上所有实验档位都跑成默认档**（详见 `strategy/policy.py:469`
+            # 的 docstring）。那条是「我们自己丢字段」，这条是「服务端发的字段我们没接」——
+            # 两者都表现为「档位静默不生效」，而后者**在代码里看不出来**，只能靠落盘原文。
+            # `TournamentConfig.extra` 已经装着 `split_known` 判出的未知字段，此前从未打出来过；
+            # 策略相关的规定值（财神张数、抓打圈条数）目前都写死在 `rules/**` 里，
+            # 若 `extra` 里出现同名或近名字段，就是一次需要按「先加版本快照」纪律处理的改动。
+            rules_extra=dict(config.extra) or None,
         )
         scoped = me.is_scoped
         last_ready_key = ""

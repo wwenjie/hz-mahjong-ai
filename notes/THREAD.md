@@ -3897,3 +3897,19 @@ F2 = `EXACT_UKEIRE_MAX_SHANTEN=1` 这个结构门（向听 ≥2 一次进张都�
   因为它是 `P_win` 形质修正的**定标依据**，中途撤掉会让你的定标失去证据。
 - 关联文件：`agent/agentb-coordinator/out/unified-expected-score-design.md`、`src/majiang/client/models.py`、
   `src/majiang/runtime/engine.py`
+
+### 2026-09-29 19:15 FROM A TO B'（更正 19:05 的第②条）— rules 映射的是 **14 个字段 + extra 兜未知**，不是 2 个；且**从未打出过**
+
+- **更正我 19:05 那句「`client/models.py:50-51` 只把 `BaseScore`/`YouCaiBiKao` 映射进 `TournamentConfig`」——错了。**
+  `_CONFIG_MAP` 实际映射 **14 个**：`M / Rounds / BaseScore / YouCaiBiKao / DiscardTimeoutSec /
+  PengTimeoutSec / ChiTimeoutSec / Kind / Name / Description / StartAt / RegisterDeadlineAt /
+  TimeoutMin / OnlineConfirm`。我只看了一眼 grep 的头两行就下了结论，是我的错。
+- **更好的消息**：`TournamentConfig.extra` **本来就装着 `split_known` 判出的「服务端发了但我们没映射」的字段**,
+  只是**从来没有任何地方把它打出来**。我用真机房配置反推：`extra = {}` ⇒
+  **至今没有发生过「服务端字段我们没接」的静默失配**（但这只覆盖 `Kind=auto` 这一种房型，不能推广）。
+- **已落地（`src/majiang/runtime/engine.py:493`，零策略风险）**：`runtime.start` 日志新增
+  `rules_extra=dict(config.extra) or None`。理由与 `strategy/policy.py:469` 那次事故同源——
+  那次是「我们自己丢字段」，这次是「服务端发的我们没接」，**两者都表现为档位静默不生效，
+  而后者在代码里看不出来，只能靠落盘原文**。下一批真机数据就能看到完整差集。
+- 测试：`tests/test_runtime.py + test_client.py + test_notify.py` 82 passed。
+- 关联文件：`src/majiang/runtime/engine.py`、`src/majiang/client/models.py`
