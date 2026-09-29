@@ -3022,3 +3022,15 @@ A 问「官方排序键」并要我核到原文。我做的是**第一手取证*
 - 仪表自查：我的首版探针有两处自造错（把 `frozenset({2..8})` 误判为结算乘数；`from_codes` 误传
   4 码合一的 `"白白白白"`），均按「先怀疑仪表」修掉。
 - 产物：`agent/verify/rule_conformance_probe.py`、`agent/out/rule-conformance.log`。
+
+## 2026-09-30 00:59 · 承重件：`shape_value` 机制仪器（A 17:05 派 / 00:45 升级为承重）
+
+- 背景：A 00:45 换档冠军为 **v3+v4 交错轮换**（commit `1442b51`），依据是 A/B（名次分 +0.2732, t+4.66），
+  但**机制门尚未独立复算** ⇒ 仪器从「补验」升级为「本档是否站得住」的判据。
+- 仪器：`agent/verify/shape_value_mechanism_probe.py`。**唯一变量**是 `PolicyConfig.shape_value`；
+  同一局面、同一候选集，两个只差该开关的 `HeuristicDecider`。口径照 A 原话三问：
+  ① 顶层 `total` 并列 ≥2 的占比；② `shape_value` 能分开其中多少组；③ 方向（独立 ukeire 判更宽/更窄）。
+- 冒烟（3 房/120 决策点，**非最终结论**）：① **45.0%**、② **16.7%**（并列组均值 2.67→2.46）、
+  ③ 主键 argmax 改变 4 次（3.3%），**4/4 独立 ukeire 更宽**；端到端 `choose()` 出牌不同 2.7%。
+  ⇒ 初步形态：**并列常见但可分比例偏低、方向偏正**；全量 60 房跑完再下判读。
+- 产物：`agent/out/shape-value-mechanism.log`（全量在跑）。
