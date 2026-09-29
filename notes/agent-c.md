@@ -2957,3 +2957,29 @@ A 问「官方排序键」并要我核到原文。我做的是**第一手取证*
 - **未发现新缺陷**；上一条 B3 报的 `gbdt.py:78/81` 裸 `int()` 问题仍在 `notes/THREAD.md` 等 A 定夺（`src/**` 非我地盘）。
 - 产物：`agent/verify/model_determinism_boundary_probe.py`、`agent/out/model-determinism-boundary.log`。
 - 纪律：只读 `src/**`；零平台请求。
+
+## 2026-09-30 00:54 · B6 从原始事件流独立复算（自建解析器）
+
+**自建解析器** `agent/verify/recompute_metrics_probe.py`（**不 import** `src/majiang/sim/replay.py`、
+`tools/measure_strength.py`、`verify/**` 的内部实现；只读 `data/`）。
+
+**仪表自检中我自己的两个错**（按「先怀疑仪表」纪律修掉，记录在案）：
+1. 我原以为「四家起手都 13 张」。实际：**庄家起手 14 张**（四家合计 53）；且 14 张那座
+   **恒等于本局首个弃牌者**（实测 160/160 一致）⇒ 这是判断庄家的独立交叉验证。
+   `start_hands` 只为每局**首个** block 填充，续块为 `[None]*4`。
+2. 我原以为副露 `tile` 是列表。实际：`chi` 的 `data.tiles` 是 **3 张（含被吃那张）**，
+   从手牌只该移 **2 张**；`peng` 的 `tile` 是**单张码字符串**（共 3 张，移 2 张）；
+   `gang.kind ∈ {ming, bu, an}`（an=4 张全从手牌，ming=3+1，bu=碰升级只加 1）。
+   按错的形状重放，会**假报「我方弃出的牌不在手」**——正是我修掉的那两条。
+
+**第 1 层不变量（小样本 50 场 / 390 局 → 违规 0）**：
+- 每局 `scores` 四家和为 0；(ii) 非流局的 `winner` = 最大分（流局 `winner=-1`，scores 全 0，已单列）；
+- 顶层 `rounds[k].scores` 与 `round_ended` 事件的 `data.scores` **两处独立记录一致**；
+- 起手 `[13,13,13,14]`、合计 53、14 张座 == 首个弃牌者；
+- 起手跨家每牌种 ≤4；我方全程重放（摸−弃−副露）每牌种 ∈[0,4] 且弃牌当时确在手；
+- 各家「弃牌+副露」每牌种 ≤4。
+
+**第 2 层指标（小样本，口径自定，与 A/B 独立）**：我方总得分 −470、名次分 28、胡局数 92、胡率 23.6%。
+**第 3 层手算对照**：逐局打印 `scores/winner/我方座/得分/名次`，人工可核。
+
+**产物**：`agent/out/recompute-metrics-small.log`（小样本）、`agent/out/recompute-metrics-full.log`（全量，在跑）。
