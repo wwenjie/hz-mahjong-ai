@@ -9976,11 +9976,66 @@
    "seeds": [
     24494897
    ],
-   "status": "running",
+   "status": "done",
    "hypothesis": "**候选面扫描的确认批 + 找最优点**。`v4-cand3`（候选面 2→3）n=8 合并 **+0.538 t7.69（8/8 为正）**、`v4-cand4`（2→4）n=6 **+0.567 t6.93（6/6）**——两者都是 v4 自身效应（+0.273）的**两倍**，且是本项目最强的证据。本轮把两者补到 10+ 种子，并加 `v4-cand6`（2→6，即当年 `ukeire-wide` 测平的那个宽度、但这次叠在 v4 的形质层之上）找最优点。**注意**：`ukeire-wide` 当年测平，而它就是在 v4 的开关**之前**测的 ⇒ 这条线说明「截断位置」这个老主张（agent-c 的 ②）需要叠加形质分辨率才兑现。",
    "kill_criteria": "每臂至少 8 种子；合并 t<2 或种子不同向 ⇒ 不采纳。**延迟红线**：候选面每 +1 张，精确进张要多算一次（42–157ms/张）⇒ 上真机前必须复核出牌相 p99 是否仍 ≤1000ms（v4 现为 851ms，cand3/cand4 大概率会超）。",
    "started_at": "2026-10-01T00:38:50+08:00",
-   "claimed_by": 2590637
+   "result": {
+    "status": "done",
+    "seeds": [
+     24494897
+    ],
+    "matches": 120,
+    "commands": [
+     [
+      "nice",
+      "-n",
+      "15",
+      "uv",
+      "run",
+      "python",
+      "tools/ab_test.py",
+      "--treatment",
+      "v4-cand3",
+      "--baseline",
+      "tenpai-wait",
+      "--matches",
+      "120",
+      "--seed",
+      "24494897",
+      "--jobs",
+      "4"
+     ]
+    ],
+    "metrics": {
+     "总得分": {
+      "mean": 2.869,
+      "se": 1.543,
+      "t": 1.859364873622813
+     },
+     "名次分": {
+      "mean": 0.406,
+      "se": 0.188,
+      "t": 2.1595744680851063
+     },
+     "白板数": {
+      "mean": 0.098,
+      "se": 0.063,
+      "t": 1.5555555555555556
+     },
+     "胡次数": {
+      "mean": 0.10399999999999998,
+      "se": 0.054,
+      "t": 1.9259259259259256
+     },
+     "番数总和": {
+      "mean": 0.14,
+      "se": 0.076,
+      "t": 1.842105263157895
+     }
+    }
+   },
+   "ended_at": "2026-10-01T01:47:12+08:00"
   },
   {
    "id": "v4-cand3-vs-v3-s26457513",
@@ -9990,11 +10045,66 @@
    "seeds": [
     26457513
    ],
-   "status": "running",
+   "status": "done",
    "hypothesis": "**候选面扫描的确认批 + 找最优点**。`v4-cand3`（候选面 2→3）n=8 合并 **+0.538 t7.69（8/8 为正）**、`v4-cand4`（2→4）n=6 **+0.567 t6.93（6/6）**——两者都是 v4 自身效应（+0.273）的**两倍**，且是本项目最强的证据。本轮把两者补到 10+ 种子，并加 `v4-cand6`（2→6，即当年 `ukeire-wide` 测平的那个宽度、但这次叠在 v4 的形质层之上）找最优点。**注意**：`ukeire-wide` 当年测平，而它就是在 v4 的开关**之前**测的 ⇒ 这条线说明「截断位置」这个老主张（agent-c 的 ②）需要叠加形质分辨率才兑现。",
    "kill_criteria": "每臂至少 8 种子；合并 t<2 或种子不同向 ⇒ 不采纳。**延迟红线**：候选面每 +1 张，精确进张要多算一次（42–157ms/张）⇒ 上真机前必须复核出牌相 p99 是否仍 ≤1000ms（v4 现为 851ms，cand3/cand4 大概率会超）。",
    "started_at": "2026-10-01T00:54:31+08:00",
-   "claimed_by": 2590637
+   "result": {
+    "status": "done",
+    "seeds": [
+     26457513
+    ],
+    "matches": 120,
+    "commands": [
+     [
+      "nice",
+      "-n",
+      "15",
+      "uv",
+      "run",
+      "python",
+      "tools/ab_test.py",
+      "--treatment",
+      "v4-cand3",
+      "--baseline",
+      "tenpai-wait",
+      "--matches",
+      "120",
+      "--seed",
+      "26457513",
+      "--jobs",
+      "4"
+     ]
+    ],
+    "metrics": {
+     "总得分": {
+      "mean": 0.8349999999999999,
+      "se": 1.57,
+      "t": 0.5318471337579617
+     },
+     "名次分": {
+      "mean": 0.219,
+      "se": 0.187,
+      "t": 1.1711229946524064
+     },
+     "白板数": {
+      "mean": -0.083,
+      "se": 0.056,
+      "t": -1.4821428571428572
+     },
+     "胡次数": {
+      "mean": 0.06199999999999999,
+      "se": 0.055,
+      "t": 1.1272727272727272
+     },
+     "番数总和": {
+      "mean": -0.021,
+      "se": 0.08,
+      "t": -0.2625
+     }
+    }
+   },
+   "ended_at": "2026-10-01T02:06:06+08:00"
   },
   {
    "id": "v4-cand4-vs-v3-s24494897",
@@ -10004,11 +10114,66 @@
    "seeds": [
     24494897
    ],
-   "status": "running",
+   "status": "done",
    "hypothesis": "**候选面扫描的确认批 + 找最优点**。`v4-cand3`（候选面 2→3）n=8 合并 **+0.538 t7.69（8/8 为正）**、`v4-cand4`（2→4）n=6 **+0.567 t6.93（6/6）**——两者都是 v4 自身效应（+0.273）的**两倍**，且是本项目最强的证据。本轮把两者补到 10+ 种子，并加 `v4-cand6`（2→6，即当年 `ukeire-wide` 测平的那个宽度、但这次叠在 v4 的形质层之上）找最优点。**注意**：`ukeire-wide` 当年测平，而它就是在 v4 的开关**之前**测的 ⇒ 这条线说明「截断位置」这个老主张（agent-c 的 ②）需要叠加形质分辨率才兑现。",
    "kill_criteria": "每臂至少 8 种子；合并 t<2 或种子不同向 ⇒ 不采纳。**延迟红线**：候选面每 +1 张，精确进张要多算一次（42–157ms/张）⇒ 上真机前必须复核出牌相 p99 是否仍 ≤1000ms（v4 现为 851ms，cand3/cand4 大概率会超）。",
    "started_at": "2026-10-01T00:59:51+08:00",
-   "claimed_by": 2590637
+   "result": {
+    "status": "done",
+    "seeds": [
+     24494897
+    ],
+    "matches": 120,
+    "commands": [
+     [
+      "nice",
+      "-n",
+      "15",
+      "uv",
+      "run",
+      "python",
+      "tools/ab_test.py",
+      "--treatment",
+      "v4-cand4",
+      "--baseline",
+      "tenpai-wait",
+      "--matches",
+      "120",
+      "--seed",
+      "24494897",
+      "--jobs",
+      "4"
+     ]
+    ],
+    "metrics": {
+     "总得分": {
+      "mean": 2.404,
+      "se": 1.617,
+      "t": 1.486703772418058
+     },
+     "名次分": {
+      "mean": 0.344,
+      "se": 0.189,
+      "t": 1.82010582010582
+     },
+     "白板数": {
+      "mean": 0.096,
+      "se": 0.06,
+      "t": 1.6
+     },
+     "胡次数": {
+      "mean": 0.106,
+      "se": 0.053,
+      "t": 2.0
+     },
+     "番数总和": {
+      "mean": 0.14,
+      "se": 0.079,
+      "t": 1.7721518987341773
+     }
+    }
+   },
+   "ended_at": "2026-10-01T02:17:08+08:00"
   },
   {
    "id": "v4-cand4-vs-v3-s26457513",
@@ -10018,9 +10183,66 @@
    "seeds": [
     26457513
    ],
-   "status": "pending",
+   "status": "done",
    "hypothesis": "**候选面扫描的确认批 + 找最优点**。`v4-cand3`（候选面 2→3）n=8 合并 **+0.538 t7.69（8/8 为正）**、`v4-cand4`（2→4）n=6 **+0.567 t6.93（6/6）**——两者都是 v4 自身效应（+0.273）的**两倍**，且是本项目最强的证据。本轮把两者补到 10+ 种子，并加 `v4-cand6`（2→6，即当年 `ukeire-wide` 测平的那个宽度、但这次叠在 v4 的形质层之上）找最优点。**注意**：`ukeire-wide` 当年测平，而它就是在 v4 的开关**之前**测的 ⇒ 这条线说明「截断位置」这个老主张（agent-c 的 ②）需要叠加形质分辨率才兑现。",
-   "kill_criteria": "每臂至少 8 种子；合并 t<2 或种子不同向 ⇒ 不采纳。**延迟红线**：候选面每 +1 张，精确进张要多算一次（42–157ms/张）⇒ 上真机前必须复核出牌相 p99 是否仍 ≤1000ms（v4 现为 851ms，cand3/cand4 大概率会超）。"
+   "kill_criteria": "每臂至少 8 种子；合并 t<2 或种子不同向 ⇒ 不采纳。**延迟红线**：候选面每 +1 张，精确进张要多算一次（42–157ms/张）⇒ 上真机前必须复核出牌相 p99 是否仍 ≤1000ms（v4 现为 851ms，cand3/cand4 大概率会超）。",
+   "started_at": "2026-10-01T01:47:12+08:00",
+   "result": {
+    "status": "done",
+    "seeds": [
+     26457513
+    ],
+    "matches": 120,
+    "commands": [
+     [
+      "nice",
+      "-n",
+      "15",
+      "uv",
+      "run",
+      "python",
+      "tools/ab_test.py",
+      "--treatment",
+      "v4-cand4",
+      "--baseline",
+      "tenpai-wait",
+      "--matches",
+      "120",
+      "--seed",
+      "26457513",
+      "--jobs",
+      "4"
+     ]
+    ],
+    "metrics": {
+     "总得分": {
+      "mean": 2.033,
+      "se": 1.638,
+      "t": 1.2411477411477412
+     },
+     "名次分": {
+      "mean": 0.358,
+      "se": 0.193,
+      "t": 1.854922279792746
+     },
+     "白板数": {
+      "mean": -0.060000000000000005,
+      "se": 0.059000000000000004,
+      "t": -1.0169491525423728
+     },
+     "胡次数": {
+      "mean": 0.11,
+      "se": 0.056,
+      "t": 1.9642857142857142
+     },
+     "番数总和": {
+      "mean": 0.054,
+      "se": 0.085,
+      "t": 0.6352941176470588
+     }
+    }
+   },
+   "ended_at": "2026-10-01T03:03:59+08:00"
   },
   {
    "id": "v4-cand6-vs-v3-s20260927",
@@ -10030,9 +10252,36 @@
    "seeds": [
     20260927
    ],
-   "status": "pending",
+   "status": "failed",
    "hypothesis": "**候选面扫描的确认批 + 找最优点**。`v4-cand3`（候选面 2→3）n=8 合并 **+0.538 t7.69（8/8 为正）**、`v4-cand4`（2→4）n=6 **+0.567 t6.93（6/6）**——两者都是 v4 自身效应（+0.273）的**两倍**，且是本项目最强的证据。本轮把两者补到 10+ 种子，并加 `v4-cand6`（2→6，即当年 `ukeire-wide` 测平的那个宽度、但这次叠在 v4 的形质层之上）找最优点。**注意**：`ukeire-wide` 当年测平，而它就是在 v4 的开关**之前**测的 ⇒ 这条线说明「截断位置」这个老主张（agent-c 的 ②）需要叠加形质分辨率才兑现。",
-   "kill_criteria": "每臂至少 8 种子；合并 t<2 或种子不同向 ⇒ 不采纳。**延迟红线**：候选面每 +1 张，精确进张要多算一次（42–157ms/张）⇒ 上真机前必须复核出牌相 p99 是否仍 ≤1000ms（v4 现为 851ms，cand3/cand4 大概率会超）。"
+   "kill_criteria": "每臂至少 8 种子；合并 t<2 或种子不同向 ⇒ 不采纳。**延迟红线**：候选面每 +1 张，精确进张要多算一次（42–157ms/张）⇒ 上真机前必须复核出牌相 p99 是否仍 ≤1000ms（v4 现为 851ms，cand3/cand4 大概率会超）。",
+   "started_at": "2026-10-01T02:06:06+08:00",
+   "result": {
+    "status": "failed",
+    "detail": "ab_test 退出码 1: ed', 'seen-shape-feed', 'seen-tiebreak', 'shape', 'shape-blocks', 'shape-feed-low', 'shape-gate3', 'shape-meld-early', 'shape-meld-equal', 'shape-only', 'tenpai-wait', 'tenpai-wait-6', 'two-ply', 'two-ply-only', 'ukeire', 'ukeire-deep', 'ukeire-early', 'ukeire-exact', 'ukeire-g2', 'ukeire-g5', 'ukeire-hand', 'ukeire-wide', 'unified', 'unified-pure', 'unified-recal', 'v4-cand3', 'v4-cand4', 'v4-gate4', 'v4-gate6', 'v4-twoply', 'v5-cand5', 'v5-twoply', 'value'] 或版本号 ['v1', 'v2', 'v3', 'v4', 'v5']\n",
+    "commands": [
+     [
+      "nice",
+      "-n",
+      "15",
+      "uv",
+      "run",
+      "python",
+      "tools/ab_test.py",
+      "--treatment",
+      "v4-cand6",
+      "--baseline",
+      "tenpai-wait",
+      "--matches",
+      "120",
+      "--seed",
+      "20260927",
+      "--jobs",
+      "4"
+     ]
+    ]
+   },
+   "ended_at": "2026-10-01T02:16:56+08:00"
   },
   {
    "id": "v4-cand6-vs-v3-s771014",
@@ -10042,9 +10291,36 @@
    "seeds": [
     771014
    ],
-   "status": "pending",
+   "status": "failed",
    "hypothesis": "**候选面扫描的确认批 + 找最优点**。`v4-cand3`（候选面 2→3）n=8 合并 **+0.538 t7.69（8/8 为正）**、`v4-cand4`（2→4）n=6 **+0.567 t6.93（6/6）**——两者都是 v4 自身效应（+0.273）的**两倍**，且是本项目最强的证据。本轮把两者补到 10+ 种子，并加 `v4-cand6`（2→6，即当年 `ukeire-wide` 测平的那个宽度、但这次叠在 v4 的形质层之上）找最优点。**注意**：`ukeire-wide` 当年测平，而它就是在 v4 的开关**之前**测的 ⇒ 这条线说明「截断位置」这个老主张（agent-c 的 ②）需要叠加形质分辨率才兑现。",
-   "kill_criteria": "每臂至少 8 种子；合并 t<2 或种子不同向 ⇒ 不采纳。**延迟红线**：候选面每 +1 张，精确进张要多算一次（42–157ms/张）⇒ 上真机前必须复核出牌相 p99 是否仍 ≤1000ms（v4 现为 851ms，cand3/cand4 大概率会超）。"
+   "kill_criteria": "每臂至少 8 种子；合并 t<2 或种子不同向 ⇒ 不采纳。**延迟红线**：候选面每 +1 张，精确进张要多算一次（42–157ms/张）⇒ 上真机前必须复核出牌相 p99 是否仍 ≤1000ms（v4 现为 851ms，cand3/cand4 大概率会超）。",
+   "started_at": "2026-10-01T02:16:56+08:00",
+   "result": {
+    "status": "failed",
+    "detail": "ab_test 退出码 1: ed', 'seen-shape-feed', 'seen-tiebreak', 'shape', 'shape-blocks', 'shape-feed-low', 'shape-gate3', 'shape-meld-early', 'shape-meld-equal', 'shape-only', 'tenpai-wait', 'tenpai-wait-6', 'two-ply', 'two-ply-only', 'ukeire', 'ukeire-deep', 'ukeire-early', 'ukeire-exact', 'ukeire-g2', 'ukeire-g5', 'ukeire-hand', 'ukeire-wide', 'unified', 'unified-pure', 'unified-recal', 'v4-cand3', 'v4-cand4', 'v4-gate4', 'v4-gate6', 'v4-twoply', 'v5-cand5', 'v5-twoply', 'value'] 或版本号 ['v1', 'v2', 'v3', 'v4', 'v5']\n",
+    "commands": [
+     [
+      "nice",
+      "-n",
+      "15",
+      "uv",
+      "run",
+      "python",
+      "tools/ab_test.py",
+      "--treatment",
+      "v4-cand6",
+      "--baseline",
+      "tenpai-wait",
+      "--matches",
+      "120",
+      "--seed",
+      "771014",
+      "--jobs",
+      "4"
+     ]
+    ]
+   },
+   "ended_at": "2026-10-01T02:28:00+08:00"
   },
   {
    "id": "v4-cand6-vs-v3-s31415926",
@@ -10054,9 +10330,36 @@
    "seeds": [
     31415926
    ],
-   "status": "pending",
+   "status": "failed",
    "hypothesis": "**候选面扫描的确认批 + 找最优点**。`v4-cand3`（候选面 2→3）n=8 合并 **+0.538 t7.69（8/8 为正）**、`v4-cand4`（2→4）n=6 **+0.567 t6.93（6/6）**——两者都是 v4 自身效应（+0.273）的**两倍**，且是本项目最强的证据。本轮把两者补到 10+ 种子，并加 `v4-cand6`（2→6，即当年 `ukeire-wide` 测平的那个宽度、但这次叠在 v4 的形质层之上）找最优点。**注意**：`ukeire-wide` 当年测平，而它就是在 v4 的开关**之前**测的 ⇒ 这条线说明「截断位置」这个老主张（agent-c 的 ②）需要叠加形质分辨率才兑现。",
-   "kill_criteria": "每臂至少 8 种子；合并 t<2 或种子不同向 ⇒ 不采纳。**延迟红线**：候选面每 +1 张，精确进张要多算一次（42–157ms/张）⇒ 上真机前必须复核出牌相 p99 是否仍 ≤1000ms（v4 现为 851ms，cand3/cand4 大概率会超）。"
+   "kill_criteria": "每臂至少 8 种子；合并 t<2 或种子不同向 ⇒ 不采纳。**延迟红线**：候选面每 +1 张，精确进张要多算一次（42–157ms/张）⇒ 上真机前必须复核出牌相 p99 是否仍 ≤1000ms（v4 现为 851ms，cand3/cand4 大概率会超）。",
+   "started_at": "2026-10-01T02:17:08+08:00",
+   "result": {
+    "status": "failed",
+    "detail": "ab_test 退出码 1: ed', 'seen-shape-feed', 'seen-tiebreak', 'shape', 'shape-blocks', 'shape-feed-low', 'shape-gate3', 'shape-meld-early', 'shape-meld-equal', 'shape-only', 'tenpai-wait', 'tenpai-wait-6', 'two-ply', 'two-ply-only', 'ukeire', 'ukeire-deep', 'ukeire-early', 'ukeire-exact', 'ukeire-g2', 'ukeire-g5', 'ukeire-hand', 'ukeire-wide', 'unified', 'unified-pure', 'unified-recal', 'v4-cand3', 'v4-cand4', 'v4-gate4', 'v4-gate6', 'v4-twoply', 'v5-cand5', 'v5-twoply', 'value'] 或版本号 ['v1', 'v2', 'v3', 'v4', 'v5']\n",
+    "commands": [
+     [
+      "nice",
+      "-n",
+      "15",
+      "uv",
+      "run",
+      "python",
+      "tools/ab_test.py",
+      "--treatment",
+      "v4-cand6",
+      "--baseline",
+      "tenpai-wait",
+      "--matches",
+      "120",
+      "--seed",
+      "31415926",
+      "--jobs",
+      "4"
+     ]
+    ]
+   },
+   "ended_at": "2026-10-01T02:28:45+08:00"
   },
   {
    "id": "v4-cand6-vs-v3-s27182818",
@@ -10066,9 +10369,36 @@
    "seeds": [
     27182818
    ],
-   "status": "pending",
+   "status": "failed",
    "hypothesis": "**候选面扫描的确认批 + 找最优点**。`v4-cand3`（候选面 2→3）n=8 合并 **+0.538 t7.69（8/8 为正）**、`v4-cand4`（2→4）n=6 **+0.567 t6.93（6/6）**——两者都是 v4 自身效应（+0.273）的**两倍**，且是本项目最强的证据。本轮把两者补到 10+ 种子，并加 `v4-cand6`（2→6，即当年 `ukeire-wide` 测平的那个宽度、但这次叠在 v4 的形质层之上）找最优点。**注意**：`ukeire-wide` 当年测平，而它就是在 v4 的开关**之前**测的 ⇒ 这条线说明「截断位置」这个老主张（agent-c 的 ②）需要叠加形质分辨率才兑现。",
-   "kill_criteria": "每臂至少 8 种子；合并 t<2 或种子不同向 ⇒ 不采纳。**延迟红线**：候选面每 +1 张，精确进张要多算一次（42–157ms/张）⇒ 上真机前必须复核出牌相 p99 是否仍 ≤1000ms（v4 现为 851ms，cand3/cand4 大概率会超）。"
+   "kill_criteria": "每臂至少 8 种子；合并 t<2 或种子不同向 ⇒ 不采纳。**延迟红线**：候选面每 +1 张，精确进张要多算一次（42–157ms/张）⇒ 上真机前必须复核出牌相 p99 是否仍 ≤1000ms（v4 现为 851ms，cand3/cand4 大概率会超）。",
+   "started_at": "2026-10-01T02:28:00+08:00",
+   "result": {
+    "status": "failed",
+    "detail": "ab_test 退出码 1: ed', 'seen-shape-feed', 'seen-tiebreak', 'shape', 'shape-blocks', 'shape-feed-low', 'shape-gate3', 'shape-meld-early', 'shape-meld-equal', 'shape-only', 'tenpai-wait', 'tenpai-wait-6', 'two-ply', 'two-ply-only', 'ukeire', 'ukeire-deep', 'ukeire-early', 'ukeire-exact', 'ukeire-g2', 'ukeire-g5', 'ukeire-hand', 'ukeire-wide', 'unified', 'unified-pure', 'unified-recal', 'v4-cand3', 'v4-cand4', 'v4-gate4', 'v4-gate6', 'v4-twoply', 'v5-cand5', 'v5-twoply', 'value'] 或版本号 ['v1', 'v2', 'v3', 'v4', 'v5']\n",
+    "commands": [
+     [
+      "nice",
+      "-n",
+      "15",
+      "uv",
+      "run",
+      "python",
+      "tools/ab_test.py",
+      "--treatment",
+      "v4-cand6",
+      "--baseline",
+      "tenpai-wait",
+      "--matches",
+      "120",
+      "--seed",
+      "27182818",
+      "--jobs",
+      "4"
+     ]
+    ]
+   },
+   "ended_at": "2026-10-01T02:40:40+08:00"
   },
   {
    "id": "v4-cand3-vs-v4-s20260927",
@@ -10078,9 +10408,66 @@
    "seeds": [
     20260927
    ],
-   "status": "pending",
+   "status": "done",
    "hypothesis": "**候选面 vs v4 的直连对照**。此前只有各自 vs v3（`cand3` +0.538/`cand4` +0.567 对 v4 的 +0.273），「v4→cand3 增量」是**两个独立实验对同一基准作差**的间接估计（+0.265, t2.90）。本条把 baseline 直接设成 `v4`，拿到纯边际——这是回答「v5 比 v4 强多少」的唯一干净口径，也是换档前必须有的那一格（同类错误我今天已犯过一次：`v4-twoply` 原先 baseline 设成 v3）。",
-   "kill_criteria": "两种子不同向或合并 t<2 ⇒ 不采纳；**边际 ≤0.08 判「截断位置与 v4 形质层重叠」**。"
+   "kill_criteria": "两种子不同向或合并 t<2 ⇒ 不采纳；**边际 ≤0.08 判「截断位置与 v4 形质层重叠」**。",
+   "started_at": "2026-10-01T02:28:45+08:00",
+   "result": {
+    "status": "done",
+    "seeds": [
+     20260927
+    ],
+    "matches": 120,
+    "commands": [
+     [
+      "nice",
+      "-n",
+      "15",
+      "uv",
+      "run",
+      "python",
+      "tools/ab_test.py",
+      "--treatment",
+      "v4-cand3",
+      "--baseline",
+      "v4",
+      "--matches",
+      "120",
+      "--seed",
+      "20260927",
+      "--jobs",
+      "4"
+     ]
+    ],
+    "metrics": {
+     "总得分": {
+      "mean": 1.154,
+      "se": 1.182,
+      "t": 0.9763113367174281
+     },
+     "名次分": {
+      "mean": 0.11,
+      "se": 0.146,
+      "t": 0.7534246575342466
+     },
+     "白板数": {
+      "mean": 0.004,
+      "se": 0.043,
+      "t": 0.0930232558139535
+     },
+     "胡次数": {
+      "mean": 0.052,
+      "se": 0.041,
+      "t": 1.268292682926829
+     },
+     "番数总和": {
+      "mean": 0.021000000000000005,
+      "se": 0.064,
+      "t": 0.32812500000000006
+     }
+    }
+   },
+   "ended_at": "2026-10-01T04:31:08+08:00"
   },
   {
    "id": "v4-cand3-vs-v4-s771014",
@@ -10090,9 +10477,66 @@
    "seeds": [
     771014
    ],
-   "status": "pending",
+   "status": "done",
    "hypothesis": "**候选面 vs v4 的直连对照**。此前只有各自 vs v3（`cand3` +0.538/`cand4` +0.567 对 v4 的 +0.273），「v4→cand3 增量」是**两个独立实验对同一基准作差**的间接估计（+0.265, t2.90）。本条把 baseline 直接设成 `v4`，拿到纯边际——这是回答「v5 比 v4 强多少」的唯一干净口径，也是换档前必须有的那一格（同类错误我今天已犯过一次：`v4-twoply` 原先 baseline 设成 v3）。",
-   "kill_criteria": "两种子不同向或合并 t<2 ⇒ 不采纳；**边际 ≤0.08 判「截断位置与 v4 形质层重叠」**。"
+   "kill_criteria": "两种子不同向或合并 t<2 ⇒ 不采纳；**边际 ≤0.08 判「截断位置与 v4 形质层重叠」**。",
+   "started_at": "2026-10-01T02:40:40+08:00",
+   "result": {
+    "status": "done",
+    "seeds": [
+     771014
+    ],
+    "matches": 120,
+    "commands": [
+     [
+      "nice",
+      "-n",
+      "15",
+      "uv",
+      "run",
+      "python",
+      "tools/ab_test.py",
+      "--treatment",
+      "v4-cand3",
+      "--baseline",
+      "v4",
+      "--matches",
+      "120",
+      "--seed",
+      "771014",
+      "--jobs",
+      "4"
+     ]
+    ],
+    "metrics": {
+     "总得分": {
+      "mean": 0.746,
+      "se": 1.212,
+      "t": 0.6155115511551156
+     },
+     "名次分": {
+      "mean": 0.087,
+      "se": 0.146,
+      "t": 0.5958904109589042
+     },
+     "白板数": {
+      "mean": 0.025000000000000005,
+      "se": 0.042,
+      "t": 0.5952380952380953
+     },
+     "胡次数": {
+      "mean": 0.021000000000000005,
+      "se": 0.041,
+      "t": 0.5121951219512196
+     },
+     "番数总和": {
+      "mean": 0.062000000000000006,
+      "se": 0.059000000000000004,
+      "t": 1.0508474576271187
+     }
+    }
+   },
+   "ended_at": "2026-10-01T04:45:36+08:00"
   },
   {
    "id": "v4-cand3-vs-v4-s31415926",
@@ -10102,9 +10546,11 @@
    "seeds": [
     31415926
    ],
-   "status": "pending",
+   "status": "running",
    "hypothesis": "**候选面 vs v4 的直连对照**。此前只有各自 vs v3（`cand3` +0.538/`cand4` +0.567 对 v4 的 +0.273），「v4→cand3 增量」是**两个独立实验对同一基准作差**的间接估计（+0.265, t2.90）。本条把 baseline 直接设成 `v4`，拿到纯边际——这是回答「v5 比 v4 强多少」的唯一干净口径，也是换档前必须有的那一格（同类错误我今天已犯过一次：`v4-twoply` 原先 baseline 设成 v3）。",
-   "kill_criteria": "两种子不同向或合并 t<2 ⇒ 不采纳；**边际 ≤0.08 判「截断位置与 v4 形质层重叠」**。"
+   "kill_criteria": "两种子不同向或合并 t<2 ⇒ 不采纳；**边际 ≤0.08 判「截断位置与 v4 形质层重叠」**。",
+   "started_at": "2026-10-01T03:03:59+08:00",
+   "claimed_by": 2590637
   },
   {
    "id": "v4-cand4-vs-v4-s20260927",
@@ -10114,9 +10560,11 @@
    "seeds": [
     20260927
    ],
-   "status": "pending",
+   "status": "running",
    "hypothesis": "**候选面 vs v4 的直连对照**。此前只有各自 vs v3（`cand3` +0.538/`cand4` +0.567 对 v4 的 +0.273），「v4→cand3 增量」是**两个独立实验对同一基准作差**的间接估计（+0.265, t2.90）。本条把 baseline 直接设成 `v4`，拿到纯边际——这是回答「v5 比 v4 强多少」的唯一干净口径，也是换档前必须有的那一格（同类错误我今天已犯过一次：`v4-twoply` 原先 baseline 设成 v3）。",
-   "kill_criteria": "两种子不同向或合并 t<2 ⇒ 不采纳；**边际 ≤0.08 判「截断位置与 v4 形质层重叠」**。"
+   "kill_criteria": "两种子不同向或合并 t<2 ⇒ 不采纳；**边际 ≤0.08 判「截断位置与 v4 形质层重叠」**。",
+   "started_at": "2026-10-01T04:31:08+08:00",
+   "claimed_by": 2590637
   },
   {
    "id": "v4-cand4-vs-v4-s771014",
@@ -10126,9 +10574,11 @@
    "seeds": [
     771014
    ],
-   "status": "pending",
+   "status": "running",
    "hypothesis": "**候选面 vs v4 的直连对照**。此前只有各自 vs v3（`cand3` +0.538/`cand4` +0.567 对 v4 的 +0.273），「v4→cand3 增量」是**两个独立实验对同一基准作差**的间接估计（+0.265, t2.90）。本条把 baseline 直接设成 `v4`，拿到纯边际——这是回答「v5 比 v4 强多少」的唯一干净口径，也是换档前必须有的那一格（同类错误我今天已犯过一次：`v4-twoply` 原先 baseline 设成 v3）。",
-   "kill_criteria": "两种子不同向或合并 t<2 ⇒ 不采纳；**边际 ≤0.08 判「截断位置与 v4 形质层重叠」**。"
+   "kill_criteria": "两种子不同向或合并 t<2 ⇒ 不采纳；**边际 ≤0.08 判「截断位置与 v4 形质层重叠」**。",
+   "started_at": "2026-10-01T04:45:36+08:00",
+   "claimed_by": 2590637
   },
   {
    "id": "v4-cand4-vs-v4-s31415926",
@@ -10393,6 +10843,45 @@
    "status": "pending",
    "hypothesis": "**v5 时代确认/组合批**（用户 2026-10-01 01:10 的 10 小时自主窗口）。目的有二：① 把 v5 的换档依据（`v4-cand3 − v4` 的配对增量 +0.255 t4.18）用更多种子压误差棒；② 用两个**单开关**探候选面的拐点与可加性（`v5-twoply` 测与两拍值的可加性、`v5-cand5` 定位候选面的拐点——cand3 与 cand4 已打平，边际递减的迹象已出现）。判据：每臂 ≥4 种子、两种子以上同向且合并 t≥2 才采纳；与 v4/v5 的差 ≤0.08 视为该开关无效。",
    "kill_criteria": "每臂 ≥4 种子、两种子以上同向且合并 t≥2 才采纳；与 v4/v5 的差 ≤0.08 视为该开关无效。"
+  },
+  {
+   "id": "cand3-vs-v4-samefield-s20260927",
+   "treatment": "v4-cand3",
+   "baseline": "v4",
+   "field": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    20260927
+   ],
+   "status": "pending",
+   "hypothesis": "**同场增量对照（修正 04:25 发现的 field 混淆）**：`v4-cand3` vs `v4`，但 **`--field=v3` 固定不变**——即两臂的另三座都是 v3。这样量到的是「**同一个场里** cand3 比 v4 多多少」，与那两条「vs v3」的间接作差（都在 v3 场）**同场、可比**。动机：`ab_test` 的 `--field` 默认=baseline，于是 `--baseline v4` 那条把对手场也换成了 v4，量到的是「v4 场里的增量」(+0.098 t0.95)，与「v3 场里的 +0.255」不可比——**两个数都对但量的是不同的场**（我们自己的改进在更强的场里收益会缩水）。",
+   "kill_criteria": "两种子不同向或合并 t<2 ⇒ 不采纳。**判读时与 v3 场的配对估计 +0.255 对照**：若同场直连也接近 +0.255 ⇒ 之前的间接作差没问题、是 field 混淆造成的差；若同场直连仍只有 ~+0.10 ⇒ 间接作差本身有偏（种子分组差异），那条纪律要写得更硬。"
+  },
+  {
+   "id": "cand3-vs-v4-samefield-s771014",
+   "treatment": "v4-cand3",
+   "baseline": "v4",
+   "field": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    771014
+   ],
+   "status": "pending",
+   "hypothesis": "**同场增量对照（修正 04:25 发现的 field 混淆）**：`v4-cand3` vs `v4`，但 **`--field=v3` 固定不变**——即两臂的另三座都是 v3。这样量到的是「**同一个场里** cand3 比 v4 多多少」，与那两条「vs v3」的间接作差（都在 v3 场）**同场、可比**。动机：`ab_test` 的 `--field` 默认=baseline，于是 `--baseline v4` 那条把对手场也换成了 v4，量到的是「v4 场里的增量」(+0.098 t0.95)，与「v3 场里的 +0.255」不可比——**两个数都对但量的是不同的场**（我们自己的改进在更强的场里收益会缩水）。",
+   "kill_criteria": "两种子不同向或合并 t<2 ⇒ 不采纳。**判读时与 v3 场的配对估计 +0.255 对照**：若同场直连也接近 +0.255 ⇒ 之前的间接作差没问题、是 field 混淆造成的差；若同场直连仍只有 ~+0.10 ⇒ 间接作差本身有偏（种子分组差异），那条纪律要写得更硬。"
+  },
+  {
+   "id": "cand3-vs-v4-samefield-s31415926",
+   "treatment": "v4-cand3",
+   "baseline": "v4",
+   "field": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    31415926
+   ],
+   "status": "pending",
+   "hypothesis": "**同场增量对照（修正 04:25 发现的 field 混淆）**：`v4-cand3` vs `v4`，但 **`--field=v3` 固定不变**——即两臂的另三座都是 v3。这样量到的是「**同一个场里** cand3 比 v4 多多少」，与那两条「vs v3」的间接作差（都在 v3 场）**同场、可比**。动机：`ab_test` 的 `--field` 默认=baseline，于是 `--baseline v4` 那条把对手场也换成了 v4，量到的是「v4 场里的增量」(+0.098 t0.95)，与「v3 场里的 +0.255」不可比——**两个数都对但量的是不同的场**（我们自己的改进在更强的场里收益会缩水）。",
+   "kill_criteria": "两种子不同向或合并 t<2 ⇒ 不采纳。**判读时与 v3 场的配对估计 +0.255 对照**：若同场直连也接近 +0.255 ⇒ 之前的间接作差没问题、是 field 混淆造成的差；若同场直连仍只有 ~+0.10 ⇒ 间接作差本身有偏（种子分组差异），那条纪律要写得更硬。"
   }
  ]
 }
