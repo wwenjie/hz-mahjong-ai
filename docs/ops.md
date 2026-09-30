@@ -278,4 +278,43 @@ v4 是 A/B 先行、机制待验。选择这样做是因为真机只能积累、
 ③ 若真机机制量**一条都没动**，说明 A/B 的正号另有来源，需回头重审本档
 （`shape-blocks` 自己就被这样绕过一次：它的机制归因一度被记成「并列次序」，后被 `seen-tiebreak` ≈0 证伪）。
 
+### v5 延迟护栏的定时复测（**任何人可执行**，2026-10-01 01:10 立）
 
+v5 的成本来自候选面 +1 张（每张候选多算一次精确进张，42–157ms）。换档时实测
+**p99 860ms / 预算 1800ms、最大 984ms、零超预算**（n=348），但那个 n 太小、p99 估计噪声大。
+**触发条件**：v5 的出牌相决策样本 ≥ 2000 后复测一次（之后每 24h 一次）。
+**动作**：若 p99 > 1300ms 或出现任何超预算事件 ⇒ 在 THREAD 报警；
+**回退命令**（按 `notes/PROTOCOL.md` §5.2 由持令牌方执行）：
+
+```bash
+set -a; . ./.env; set +a
+MAJIANG_COLLECT_DECIDERS=v4 nohup setsid tools/collector_supervisor.sh \
+  >> /tmp/autoloop.log 2>&1 < /dev/null &
+```
+
+复测命令（只读，按 decider 签名分流，出牌相）：
+
+```bash
+uv run python - <<'EOF'
+import collections, glob, json
+b = collections.defaultdict(list)
+for path in glob.glob("logs/*.jsonl"):
+    for line in open(path, encoding="utf-8", errors="replace"):
+        if '"decision.made"' not in line or '"elapsed_ms"' not in line:
+            continue
+        try: row = json.loads(line)
+        except Exception: continue
+        if row.get("phase") != "draw": continue
+        n = str(row.get("decider", "")); e = row.get("elapsed_ms"); bud = row.get("budget_ms")
+        if e is None: continue
+        key = "v5" if "ukeire-candidates=3" in n else ("v4" if "shape-value=True" in n else None)
+        if key is None: continue
+        b[key].append((e, bud))
+for k in ("v4", "v5"):
+    xs = sorted(b.get(k) or [])
+    if not xs: print(k, "无样本"); continue
+    q = lambda t: xs[min(len(xs)-1, int(len(xs)*t))][0]
+    over = sum(1 for e, bud in xs if bud and e > bud)
+    print(f"{k} n={len(xs)} p50 {q(.5):.1f} p99 {q(.99):.1f} max {xs[-1][0]:.1f} 超预算 {over}")
+EOF
+```
