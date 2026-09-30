@@ -88,12 +88,22 @@ class RoundState:
     turn: int
     catch_play: bool = False
     god_discarder: int = NO_DISCARDER
+    # 局况接线（2026-09-30）：本局**开局时**的四家累计比分与本场总局数，由
+    # ``batch.run_match`` 逐局注入；单局调用（默认）保持空元组 = 「局况未知」，
+    # 消费方必须按未知处理（见 ``TableState.scores`` 的注释）。
+    prior_scores: tuple[int, ...] = ()
+    rounds_total: int = 0
 
     @property
     def table(self) -> TableState:
-        return TableState(
+        kwargs: dict = dict(
             wall_remaining=len(self.wall), dealer_seat=self.dealer, round_no=self.round_no
         )
+        if self.prior_scores:
+            kwargs["scores"] = self.prior_scores
+        if self.rounds_total:
+            kwargs["rounds_total"] = self.rounds_total
+        return TableState(**kwargs)
 
     def hand_of(self, seat: int) -> Hand:
         return Hand.from_counts(self.seats[seat].hand, self.seats[seat].melds)
@@ -116,7 +126,13 @@ def build_wall(rng: random.Random) -> list[int]:
     return wall
 
 
-def deal(rng: random.Random, dealer: int, round_no: int = 1) -> RoundState:
+def deal(
+    rng: random.Random,
+    dealer: int,
+    round_no: int = 1,
+    prior_scores: tuple[int, ...] = (),
+    rounds_total: int = 0,
+) -> RoundState:
     wall = build_wall(rng)
     seats: list[Seat] = []
     for _ in range(SEATS):
@@ -125,7 +141,15 @@ def deal(rng: random.Random, dealer: int, round_no: int = 1) -> RoundState:
         seat_state = Seat(hand=hand)
         seat_state.god_count = hand[GOD]
         seats.append(seat_state)
-    return RoundState(wall=wall, seats=seats, dealer=dealer, round_no=round_no, turn=dealer)
+    return RoundState(
+        wall=wall,
+        seats=seats,
+        dealer=dealer,
+        round_no=round_no,
+        turn=dealer,
+        prior_scores=prior_scores,
+        rounds_total=rounds_total,
+    )
 
 
 def situation_for(
@@ -422,9 +446,17 @@ def run_round(
     base_score: int = 1,
     rng: random.Random | None = None,
     observer: object | None = None,
+    prior_scores: tuple[int, ...] = (),
+    rounds_total: int = 0,
 ) -> RoundResult:
     """发牌并跑完一局，返回番型与四家净分。"""
-    state = deal(rng or random.Random(), dealer, round_no)
+    state = deal(
+        rng or random.Random(),
+        dealer,
+        round_no,
+        prior_scores=prior_scores,
+        rounds_total=rounds_total,
+    )
     return play_round(
         state, deciders, base_score=base_score, observer=observer
     )

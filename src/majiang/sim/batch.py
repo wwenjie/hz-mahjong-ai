@@ -110,14 +110,27 @@ def run_match(
     ]
     result = BatchResult(seats=stats, matches=1)
     dealer = start_dealer
+    # 局况接线（2026-09-30）：逐局把「开局时的累计比分」注入 RoundState，让决策器
+    # 在自对弈里也能看到 standings（此前只有真机路径有，自对弈恒空 ⇒ 局况臂测成空干预）。
+    # ``cumulative[seat]`` 是本局**开局前**的累计净分；流局四家 delta 全 0，自然不改变累计。
+    cumulative = [0] * SEATS
     for index in range(rounds):
-        outcome = run_round(deciders, dealer=dealer, round_no=index + 1, base_score=base_score, rng=rng)
+        outcome = run_round(
+            deciders,
+            dealer=dealer,
+            round_no=index + 1,
+            base_score=base_score,
+            rng=rng,
+            prior_scores=tuple(cumulative),
+            rounds_total=rounds,
+        )
         result.rounds += 1
         result.flows += outcome.is_flow
         if not outcome.is_flow:
             result.details["+".join(outcome.detail) or "?"] += 1
         for seat in range(SEATS):
             stats[seat].total_score += outcome.scores[seat]
+            cumulative[seat] += outcome.scores[seat]
             stats[seat].god_count += outcome.god_counts[seat]
             stats[seat].rounds += 1
             if not outcome.is_flow and outcome.winner == seat:
