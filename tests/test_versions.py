@@ -75,3 +75,17 @@ def test_v3_is_still_addressable_after_v4_was_added() -> None:
     assert v3.ukeire_max_shanten == PolicyConfig().ukeire_max_shanten
     # 两版确实不同（否则这次的「换档」是空的）
     assert versions.build("v4", Mode.QUALIFIER).config != v3
+
+
+def test_v5_is_bit_identical_to_the_arm_that_measured_the_marginal() -> None:
+    """v5 必须与跑出边际的那个档位（`v4-cand3`）逐位一致——否则「配对 t4.18」的证据就挂空了。"""
+    from majiang.strategy.policy import VARIANT_FIELDS
+
+    frozen = versions.build("v5", Mode.QUALIFIER).config
+    tested = make_decider("v4-cand3", Mode.QUALIFIER).config
+    for field in VARIANT_FIELDS:
+        assert getattr(frozen, field) == getattr(tested, field), field
+    # v4 仍然可达且未被 v5 的改动污染（只是多了一个候选面开关）
+    v4 = versions.build("v4", Mode.QUALIFIER).config
+    assert v4.ukeire_candidates == PolicyConfig().ukeire_candidates
+    assert frozen.ukeire_candidates == 3
