@@ -3294,3 +3294,18 @@ PolicyConfig.for_mode(mode, wait_aware_tenpai=True,
 - **C11** 协调者裁决独立复算（指标口径 + 预登记判据均不符；`shape-blocks`≡v4 已程序化证明）
 - **C13** gbdt 裸 `int()` 真机暴露面 ≈ 0（缺陷仍应修，但非在跑风险）
 - **C12** THREAD C 侧 3 条收口
+
+### C11 追加：`two-ply` vs `two-ply-only` 的 knob 差**已程序化确认 = 只差 `wait_aware_tenpai`**
+
+```
+two-ply       = tiebreak=exact-ukeire, wait_aware_tenpai=True,  two_ply_shanten1=True
+two-ply-only  = tiebreak=exact-ukeire,                           two_ply_shanten1=True
+差异字段: {'wait_aware_tenpai': (True, False)}
+```
+
+⇒ 两臂唯一自变量是 **v3 的听牌口径修正**。名次分：`two-ply` **+0.293 (t2.26, n=2)** vs
+`two-ply-only` **−0.272 (t−1.71, n=2)** ⇒ **两拍值的增益可能依赖 v3 的听牌修复**
+（或其中一条是 n=2 噪声）。**预登记判据**：补到 ≥4 种子后，若 `two-ply` 仍同向为正且合并 |t|≥2、
+而 `two-ply-only` 不显著 ⇒ 记「两拍有效但需叠加听牌修复」；若两者都落 0 ⇒ 记「两拍无效」。
+
+**A 已在跑**：`two-ply` 补 3 种子（31415927/27182818/16180339）+ `v4-twoply` 臂 ⇒ 待落盘。
