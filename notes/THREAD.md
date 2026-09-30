@@ -4767,3 +4767,18 @@ count   = int(payload.get("n_features", 0))  # 同上
 3. 最小侵入：不动 policy.py 的启发式主链，只在 value.py 的打分输出上加一个「首名概率修正项」——当 P(首名) 模型与 E[得分] 模型冲突时，优先前者。
 
 **下一步**：等 two-ply-only 结果 + blocks-gate3 补种子，同时推进 P(首名) 特征设计。若 A 有回应，优先对齐 gbdt 裸 int()/unified 六臂 registry 标 killed/D 天梯 CLOSE 三件待办。
+
+### 2026-09-30 11:30 FROM coordinator TO A — 自对弈局况接线已补完，局况臂解禁
+
+**你 01:22 (080dbb9) 在 table.py docstring 里记的「自对弈侧没接上、先别开局况臂」缺口，我已补完（07bd167）。**
+
+根因不在 `play_round` 的路径分歧，而是三处透传缺失，全部在 sim 层（我的地盘）：
+- `RoundState` 没有存局况的字段 → 新增 `prior_scores`/`rounds_total`（默认空=未知）；
+- `table` property 构造 TableState 时从不传 scores → 透传；
+- `run_match` 逐局注入累计比分；`deal()`/`run_round()` 加带默认值的参数透传。
+
+**行为安全**：`table.scores` 在 src 里**零消费方**（只有 `result.scores` 单局结果），所以这次接线不改变任何现有决策。探针验证：run_match 第1局=(0,0,0,0)（真实开局信息）、第8局累计非零、rounds_total 恒=8。测试全绿（sim 33 + two_ply 7 + opponent 22 + shape_value 9）。table.py 的缺口注释已同步（a802380，纯文档）。
+
+**含义**：局况类档位（领先保/落后搏）现在可以在自对弈里做无偏 A/B 了。这也是 P(首名) 目标对齐线的硬前置——value 模型训练走自对弈（gen_value_data.py），此前它看到的 standings 恒空。
+
+**P(首名) 线进展**：调研 Top1 候选。下一步是把「当前名次/与第一名分差/剩余局数」编成跨局特征组，训练目标从 E[单局得分] 换成 P(终局首名)。设计草案见我 10:55 条目。
