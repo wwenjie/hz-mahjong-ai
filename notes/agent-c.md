@@ -3257,3 +3257,40 @@ PolicyConfig.for_mode(mode, wait_aware_tenpai=True,
    是 v4 归因的**正面证据**（门 3 是主项）。
 3. 因此**必须纠正的只有一处措辞**：`shape-gate3` 现被记成 kill —— 它是**同向为正**，
    只能记成「相对 v4 更弱」或「未决」，**不能记成负贡献**。
+
+## 2026-09-30 13:15 · C13 `gbdt.py` 裸 `int()` 的**真机暴露面**量化 + C12 未决项收口
+
+### C13：缺陷仍在（`gbdt.py:78/81` 未修），但**真机暴露面 ≈ 0**
+
+只读核验（不碰 `src/**`）：
+
+1. **缺陷未修**：`version = int(payload.get("version", 0))`、`count = int(payload.get("n_features", 0))`
+   仍是裸 `int()`；合法 JSON + 非数值字段 ⇒ `ValueError` 逃出 `except ModelError`。
+2. **冠军档不加载任何模型**：程序化构造 `versions.build("v3"/"v4")` ⇒
+   `risk_model=None`、`type=HeuristicDecider`。**v3/v4 是纯启发式，不走 `gbdt.TreeEnsemble`。**
+3. **真机实际出现过的 decider 只有 6 种**（从 `logs/*.jsonl` 的 `decider` 字段去重）：
+   `first-legal`、`heuristic`、`heuristic[meld-tolerance=equal]`、`heuristic[tiebreak=exact-ukeire]`、
+   `heuristic[wait-aware-tenpai=True]`、`heuristic[ukeire-max-shanten=3,ukeire-order=blocks,
+   wait-aware-tenpai=True,shape-value=True]`（=v4）。**没有一个是 `value`/`risk`/`risk-v3` 模型档。**
+4. **会走到该路径的档位**：`value`（`_value_decider`）、`risk`、`risk-v3`（后两者 `load_or_none`）。
+   都在 `DECIDERS` 表里，**但真机从未部署过**。
+
+⇒ **结论**：这条违反「模型缺失不得导致启动失败」的缺陷**仍应修**（它是提交审计的硬项、
+且档位一旦启用就会踩），但**不是当前真机的在跑风险**——把严重度从「在跑风险」降为
+「**未启用的档位的提交合规项**」。修法（2 行，转 `ModelError`）已给 A，仍由 A 定夺。
+
+### C12：THREAD 未决项 C 侧 3 条 — 逐条收口
+
+| # | 条目 | 状态 |
+|---|---|---|
+| ① | v4 机制门独立复核 | **已交**（01:55 承重件 + 13:12 C10/C11 继续） |
+| ② | 「01:45 局况表独立复算」 | **本轮完成 = C10**（全量 4090 场，`standings_prior_audit.py`）；B' 亦已独立复算（THREAD:4501）⇒ **双独立** |
+| ③ | v4 真机 p99 独立复核 | **已交**（10:15，v4 832.8 vs A 851.0，差 2.1% 同侧，成立） |
+
+⇒ **C 侧 3 条全部有产物，无遗留。**
+
+### 本轮窗口累计（13:06 起）
+- **C10** 局况/名次先验审计（全量；判读：排序键=总得分 ⇒ 全局换 P(首名) 预判无效）
+- **C11** 协调者裁决独立复算（指标口径 + 预登记判据均不符；`shape-blocks`≡v4 已程序化证明）
+- **C13** gbdt 裸 `int()` 真机暴露面 ≈ 0（缺陷仍应修，但非在跑风险）
+- **C12** THREAD C 侧 3 条收口
