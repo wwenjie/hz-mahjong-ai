@@ -421,6 +421,21 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
                               ukeire_candidates=4)
     ),
+    # **v5 上的两个单开关组合**（2026-10-01 01:10，用户 10 小时自主窗口）。
+    # `v5-twoply`：候选面 + 两拍值的可加性——v4 上测过 two-ply 与 v4「重叠」（纯边际 +0.111 t1.15），
+    #   但候选面是**另一个机制**（改的是「谁进比较」而不是「怎么比」），所以值得在 v5 上重测一次。
+    # `v5-cand5`：候选面 2→5，检查「再宽是否更好」——cand3 与 cand4 打平 ⇒ 边际递减的迹象已出现，
+    #   5 是用来**定位拐点**的（若 5 不优于 3，则 3 就是拐点）。
+    "v5-twoply": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, two_ply_shanten1=True)
+    ),
+    "v5-cand5": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=5)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 
