@@ -3232,3 +3232,28 @@ C 倾向**先 (a)**（~15 分钟、只读、不改档位/源码）；A 不表态
 
 **建议**：① 把裁决口径统一到「名次分为主 + 符号一致性」（PROTOCOL:200 + experiments.json 原文）；
 ② `shape-gate3` 的 `killed` 标记**先别落**，改成「未决」；③ 查 `two-ply` / `two-ply-only` 的 knob 差。
+
+### C11 附：**`shape-blocks` 与 `v4` 是逐字段等价的同一档**（已程序化验证）
+
+上表里 `shape-blocks` 合并名次分 `+0.2732(t+4.66, n=10, 同向10/10)` 与 `versions.py` 里 v4 公布的
+**逐位相同**，我去核了 knob 定义，确认不是巧合：
+
+```python
+# cli.py:318  shape-blocks
+PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                      shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3)
+# versions.py  v4
+PolicyConfig.for_mode(mode, wait_aware_tenpai=True,
+                      shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3)
+```
+
+`tiebreak` 的默认值**就是** `"exact-ukeire"`（`policy.py:64`），所以两条构造**全字段无差异**。
+程序化验证（`dataclasses.asdict` 全字段比对）：`完全相同? True`、`全字段差异：无`。
+
+**含义**：
+1. **`shape-blocks` 臂不是「v4 的子集」，它就是 v4 本身** ⇒ 协调者「`shape-blocks` 不排臂」是**对的**
+   （v4 已部署），但**理由写错了**（说它「证据不足/不稳定」，实际它是 n=10、10/10 同向的最强证据）。
+2. `blocks-gate3` / `shape-gate3` 才是真正的 v4 子集，各 5/6 种子、全同向为正、合并 t 3.24/3.13，
+   是 v4 归因的**正面证据**（门 3 是主项）。
+3. 因此**必须纠正的只有一处措辞**：`shape-gate3` 现被记成 kill —— 它是**同向为正**，
+   只能记成「相对 v4 更弱」或「未决」，**不能记成负贡献**。
