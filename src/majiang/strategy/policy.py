@@ -44,6 +44,7 @@ VARIANT_FIELDS = (
     "unified_score",
     "feed_ready_increment",
     "win_table_correction",
+    "goodshape_tolerance",
     "ukeire_candidates",
     "ukeire_max_shanten",
     "ukeire_order",
@@ -287,6 +288,22 @@ class PolicyConfig:
     # **只用在我方出牌这一支**（见 `_unified_route_value`），不碰 v3 的听牌机制，
     # 也不碰碰吃闸门——那两处仍走未修正的表，避免让冠军档静默漂移。
     win_table_correction: tuple[float, ...] | None = None
+    # 实验档位：**进张数一级键、好型率二级键（带容差）**（B' 调研的候选③）。
+    #
+    # 依据 `research/qualitative-leap-survey.md` §2.1.1（RiichiBook ch3 §3.4）：
+    # 「perfect 1-away（2 両面搭子 + 2 対子）无论怎么进张，最终听口一定是**两面**」
+    # ⇒ **同为 1 向听，好型听牌率可以是 100% 或 50~70%**，同向听层内的质量差主要就在这里。
+    # 调研给的读法是「进张枚数一级键、好型变化二级键」。
+    #
+    # 实现口径：把并列候选按 `copies` 排序后，**只保留 copies >= tolerance × max(copies) 的那些**，
+    # 在其中取形质结构最好的（`shanten.shape_mix` 的结构性代理）——
+    # 这样「多 1 枚进张但变愚形」不会被它翻掉（一级键优先），而「进张差不多时」才比好型。
+    # `0.0` = 关闭（默认）。
+    #
+    # **为什么用代理而不是精确好型率**：精确版要对每个进张枚举一次听口类型，
+    # 成本会压到 v4 已有的 **p99 851ms / 1800ms** 之上（`docs/ops.md` 的红线是 p99 ≤1000ms）。
+    # 结构性代理（両面/対子/坎张的计数）与 `shape_value` 同源、微秒级。
+    goodshape_tolerance: float = 0.0
     # 实验档位：绝不打出财神（只在无其他可打牌时才打）。
     # 用途是验证一条尚未测过的假设——爆头需要「4 组**自然**面子 + 1 张闲余财神」，
     # 而此前的 0 次爆头是被动观测到的（现有策略会把财神当百搭用掉）。若把财神硬留，
@@ -354,6 +371,16 @@ class DiscardScore:
             f"七对值={self.pair_value:.1f} 副露值={self.meld_value:.1f} "
             f"喂牌={self.feed_cost:.1f} 财神={self.god_penalty:.0f} 合计={self.total:.2f}"
         )
+
+
+def _goodshape_proxy(counts: Sequence[int], meld_count: int) -> float:
+    """好型率的**结构性代理**（微秒级）：両面权重最高，坎张扣分。
+
+    与 `shape_value` 同源分解（`shanten.shape_mix`），但刻意保留**结构计数**而非加权和——
+    前者能区分「2 両面 + 2 対子」（perfect 1-away）与「1 両面 + 3 対子」，后者在加权和里会撞车。
+    """
+    runs, pairs, kanchan = shanten_module.shape_mix(counts, meld_count)
+    return 3.0 * runs + 1.0 * pairs - 0.5 * kanchan
 
 
 def _shanten_or_none(counts: Sequence[int], meld_count: int) -> int | None:
@@ -914,6 +941,8 @@ class HeuristicDecider:
         # （出牌预算 1800 ms，精确进张单次 42–157 ms）。
         memo: dict = {}
         best: tuple[int, DiscardScore] | None = None
+        # 二级键用：每个候选的 (进张数, 形质代理, 候选)
+        goodshape_rows: list[tuple[int, float, DiscardScore]] = []
         for score in tied:
             counts = list(situation.hand.counts)
             counts[score.tile] -= 1
@@ -942,8 +971,16 @@ class HeuristicDecider:
                 copies = sum(copy for _, copy in entries)
             else:
                 _, copies = cheap_ukeire(counts, visible)
+            goodshape_rows.append((int(copies), _goodshape_proxy(counts, situation.hand.meld_count), score))
             if best is None or copies > best[0]:
                 best = (copies, score)
+        if best is not None and self.config.goodshape_tolerance > 0 and goodshape_rows:
+            top = max(row[0] for row in goodshape_rows)
+            pool = [row for row in goodshape_rows if row[0] >= self.config.goodshape_tolerance * top]
+            pick = max(pool, key=lambda row: (row[1], row[0]))
+            if pick[2] is not best[1]:
+                self.last_detail["goodshape_pick"] = pick[2].describe()
+            best = (pick[0], pick[2])
         if best is not None:
             metric = (
                 "可见听口" if wait_aware

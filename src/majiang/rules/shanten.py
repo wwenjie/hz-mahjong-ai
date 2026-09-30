@@ -465,3 +465,51 @@ def visible_counts(
         for tile in group:
             seen[tile] += 1
     return seen
+
+
+def shape_mix(counts: Sequence[int], meld_count: int = 0) -> tuple[float, int, int]:
+    """骨架里三类搭子的**数量**：``(两面 对子数, 愚形数)``。
+
+    **为什么需要它**：`shape_value` 把「两面 1.2 / 对子 1.0 / 坎张 0.7」加权成一个标量，
+    于是「2 両面 + 2 対子」（RiichiBook ch3 §3.4 的 **perfect 1-away**，双面听牌率 100%）
+    与「1 両面 + 3 対子」可能得到相近的加权值，但前者的好型率高得多。
+    本函数把**结构**暴露出来，供上层做精确的 perfect n-away 判定。
+
+    **口径与近似**（刻意写清，避免被当精确好型率引用）：
+    这是**结构性代理**，不是「枚举所有进张后统计落到两面听的加权占比」那个精确好型率——
+    后者要对每个进张各算一次听口类型，实测成本会压到 v4 已有的 p99 851ms/1800ms 之上。
+    分解顺序与 `shape_value` 同源（先刻子后顺子、两面优先于对子），所以两者可比。
+    """
+    real = list(counts)
+    real[GOD] = 0
+    runs = pairs = kanchan = 0
+    for start, size in ((0, 9), (9, 9), (18, 9), (27, 7)):
+        group = real[start : start + size]
+        if start == 27:  # 字牌不能成顺
+            for amount in group:
+                pairs += (amount % tiles.SET_LENGTH) // 2
+            continue
+        for index in range(size):
+            while group[index] >= tiles.SET_LENGTH:
+                group[index] -= tiles.SET_LENGTH
+        for index in range(size - tiles.RUN_LENGTH + 1):
+            while group[index] and group[index + 1] and group[index + 2]:
+                group[index] -= 1
+                group[index + 1] -= 1
+                group[index + 2] -= 1
+        for index in range(size - 1):
+            while group[index] and group[index + 1]:
+                group[index] -= 1
+                group[index + 1] -= 1
+                runs += 1
+        for index in range(size):
+            while group[index] >= 2:
+                group[index] -= 2
+                pairs += 1
+        for index in range(size - 2):
+            while group[index] and group[index + 2]:
+                group[index] -= 1
+                group[index + 2] -= 1
+                kanchan += 1
+    need = max(0, tiles.SETS_PER_HAND - meld_count - 0)
+    return float(runs), int(pairs), int(kanchan) if need else int(kanchan)

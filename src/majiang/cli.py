@@ -376,6 +376,15 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
                               ukeire_order="blocks", ukeire_max_shanten=3)
     ),
+    # **进张一级键 + 好型率二级键（带容差）**（B' 调研候选③，2026-09-30 登记）。叠在 **v4** 之上：
+    # 并列候选里只保留 `copies >= 0.95 × max` 的，在其中取 `shape_mix` 结构代理最好的一张。
+    # 依据 RiichiBook ch3 §3.4：perfect 1-away（2 両面 + 2 対子）的两面听牌率 100%，
+    # 而含愚形搭子的同向听只有 50~70% ⇒ 同向听层内的质量差主要在这里。
+    "goodshape": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              goodshape_tolerance=0.95)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 
