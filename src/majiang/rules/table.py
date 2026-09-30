@@ -47,16 +47,11 @@ class TableState:
     # 不得把空元组当成「四家都是 0 分」——那会让所有离线旧路径突然以为自己在并列第一。
     scores: tuple[int, ...] = ()
     rounds_total: int = ROUNDS_PER_GAME_DEFAULT
-    # **自对弈侧还没接上（已知缺口，2026-09-30 02:20）**：真机路径已通并测试覆盖
-    # （`client/snapshot.py:table_state` → `tests/test_snapshot.py`），但自对弈路径没走通——
-    # 试过在 `sim/round.py:run_round` 里把 `prior_scores` 写进 `RoundState.scores`、
-    # `sim/batch.py:run_match` 传累计分，实测探针拿到的仍是全 0，且**不是**「没人胡」造成的
-    # （8 局 0 流局、四家总分 −23/−13/34/2，但 344 条记录里累计分全为 0）。
-    # 线索：`deal()` 之后 `state.table` 会因为牌墙 84 抛 `TableError`（尚未摸第一张牌），
-    # 所以 `play_round` 构造局面的那条路径与 `RoundState.table` **不是同一条**——
-    # 下一步应先定位 `play_round` 实际用哪条路径造 `Situation`。
-    # **影响**：在接上之前，任何「局况类档位」在自对弈里看到的都是空元组 ⇒ 必然测成空干预。
-    # 所以**先别开局况臂**，或者先把这条接线补完。
+    # **自对弈侧已接上（2026-09-30 11:20，`07bd167`）**：`RoundState` 新增
+    # ``prior_scores``/``rounds_total`` 字段，`deal()`/`run_round()` 透传、
+    # ``batch.run_match`` 逐局注入累计比分；探针验证第 1 局=(0,0,0,0)、第 8 局
+    # 累计非零、``rounds_total`` 恒=8。空元组语义不变（单局调用/真机未收到=未知）。
+    # 局况类档位现在可以在自对弈里做无偏 A/B 了。
 
     def __post_init__(self) -> None:
         if not 0 <= self.wall_remaining <= INITIAL_WALL:
