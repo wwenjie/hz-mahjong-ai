@@ -396,6 +396,31 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
                               two_ply_shanten1=True)
     ),
+    # **v4 的门/候选面单开关扫描**（2026-09-30 15:45，用户 7 小时自主窗口）。
+    # 依据两条已证的事实：① shape 族拆解显示**门 3 是主项**（`shape-gate3` +0.214/t3.13，
+    # 与 v4 的差在噪声内）；② C 14:15 的分解显示**缺口 62% 在「到听速度」**、集中在
+    # n=4~10 中巡，而门控制的正是「中段是否按精确进张选牌」。
+    # ⇒ 该试的是「门再开一点会不会更好」（`ukeire-deep` 的门 5 是在**另一种组合**下测的，
+    # 不能直接外推到 v4 之上），以及「候选面放宽到 3/4 张」。
+    # 四个都是**单开关**，零实现风险。
+    "v4-gate4": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=4)
+    ),
+    "v4-gate6": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=6)
+    ),
+    "v4-cand3": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3)
+    ),
+    "v4-cand4": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=4)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 
