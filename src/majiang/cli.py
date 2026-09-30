@@ -385,6 +385,17 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
                               goodshape_tolerance=0.95)
     ),
+    # **v4 + two-ply**（2026-09-30 13:30）：测两个**独立的正面组件**是否可加。
+    # `two-ply`（v3 + 两拍值，n=2 时 +0.293 t2.26）与 v4 的形质层是不同机制：
+    # 前者改**向听 1 的进张口径**（看「下一步还能进多少张」），后者改**形质分辨率与候选面**。
+    # 刚被验证有效的做法就是「拆开算边际、再把边际加起来」——这条就是那个「加」。
+    # ⚠ **成本**：两拍值单候选约 150 ms，叠在 v4 之上（v4 实测 p99 851ms/1800ms）⇒
+    # 本臂**只用于离线 A/B**；若它胜出，上真机前必须先做候选预筛（`docs/ops.md` 红线 p99≤1000ms）。
+    "v4-twoply": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              two_ply_shanten1=True)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 
