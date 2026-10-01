@@ -85,22 +85,12 @@ def ukeire(after: list[int], meld_n: int, s: int, vis: list[int], memo: dict) ->
     return total
 
 
-def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description="同向听层 ukeire 对照")
-    ap.add_argument("--rooms", type=int, default=0)
-    args = ap.parse_args(argv)
-
-    files = sorted(glob.glob(str(ROOT / "data/auto_sessions/*/events/*.json")))
-    if args.rooms:
-        step = max(1, len(files) // args.rooms)
-        files = files[::step][: args.rooms]
-
-    memo: dict = {}
-    # 分桶聚合：key = (grp, shanten_bucket, god, n_bucket) -> [n, sum_gap, n_max, sum_ukeire, sum_best]
+def process_batch(batch, chunk_path, memo):
+    """处理一批文件 → 聚合结果原子落盘 chunk_path。返回 (rooms, agg_dict, gaps_lists)。"""
     agg: dict = collections.defaultdict(lambda: [0, 0, 0, 0, 0])
     gaps = {"our": [], "opp": []}
     rooms = 0
-    for path in files:
+    for path in batch:
         try:
             doc = json.loads(Path(path).read_text(encoding="utf-8"))
         except Exception:  # noqa: BLE001
@@ -140,19 +130,15 @@ def main(argv: list[str] | None = None) -> int:
                 meld_n = len(state.seats[seat].melds)
                 if sum(before) != tiles.HAND_SIZE + 1 - tiles.MELD_SLOTS * meld_n:
                     continue
-                # 实际出牌后向听
                 try:
                     s_actual = shanten_mod.shanten(list(after_actual), meld_n, memo=memo)
                 except Exception:  # noqa: BLE001
                     continue
                 if s_actual <= 0:
-                    continue  # 已听牌：ukeire=0 无信息量
+                    continue
                 vis = visible_counts(state)
-                # 实际出牌前把实际切的那张从 vis 补回（它刚入舍牌堆，但本决策时点它还在手里）；
-                # 简化：舍牌可见性以决策时点为准——此时实际弃牌已进 discards，把它减回去。
                 vis[diff[0]] -= 1
                 u_actual = ukeire(list(after_actual), meld_n, s_actual, vis, memo)
-                # 同向听层候选
                 best = u_actual
                 for t, c in enumerate(before):
                     if c <= 0 or t == diff[0]:
@@ -181,6 +167,56 @@ def main(argv: list[str] | None = None) -> int:
                 a[3] += u_actual
                 a[4] += best
                 gaps[grp].append(best - u_actual)
+    # 序列化 agg：key tuple → 字符串
+    agg_ser = {"||".join(str(x) for x in k): v for k, v in agg.items()}
+    payload = {"rooms": rooms, "agg": agg_ser, "gaps": gaps}
+    tmp = chunk_path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(payload), encoding="utf-8")
+    tmp.replace(chunk_path)  # 原子落盘
+    return rooms, agg, gaps
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description="同向听层 ukeire 对照（分块幂等续跑）")
+    ap.add_argument("--rooms", type=int, default=0)
+    ap.add_argument("--chunk-size", type=int, default=100)
+    args = ap.parse_args(argv)
+
+    files = sorted(glob.glob(str(ROOT / "data/auto_sessions/*/events/*.json")))
+    if args.rooms:
+        step = max(1, len(files) // args.rooms)
+        files = files[::step][: args.rooms]
+
+    chunk_root = ROOT / "agent" / "out" / "c31-chunks"
+    chunk_dir = chunk_root / f"cs{args.chunk_size}-n{len(files)}"
+    chunk_dir.mkdir(parents=True, exist_ok=True)
+    done_marker = chunk_dir / "DONE"
+    n_chunks = (len(files) + args.chunk_size - 1) // args.chunk_size
+
+    memo: dict = {}
+    for ci in range(n_chunks):
+        chunk_path = chunk_dir / f"chunk-{ci:04d}.json"
+        if chunk_path.exists():
+            continue  # 幂等：已完成块跳过
+        batch = files[ci * args.chunk_size:(ci + 1) * args.chunk_size]
+        rooms, _, _ = process_batch(batch, chunk_path, memo)
+        print(f"[chunk {ci+1}/{n_chunks}] rooms={rooms} 落盘", file=sys.stderr, flush=True)
+
+    # 合并全部 chunk
+    agg: dict = collections.defaultdict(lambda: [0, 0, 0, 0, 0])
+    gaps = {"our": [], "opp": []}
+    rooms = 0
+    for ci in range(n_chunks):
+        chunk_path = chunk_dir / f"chunk-{ci:04d}.json"
+        payload = json.loads(chunk_path.read_text(encoding="utf-8"))
+        rooms += payload["rooms"]
+        for k_str, v in payload["agg"].items():
+            k = tuple(k_str.split("||"))
+            a = agg[k]
+            for i in range(5):
+                a[i] += v[i]
+        gaps["our"].extend(payload["gaps"]["our"])
+        gaps["opp"].extend(payload["gaps"]["opp"])
 
     print(f"房={rooms}")
     print(f"\n{'组':>4} {'向听':>4} {'财神':>6} {'摸序':>6} {'决策数':>7} {'均ukeire':>9} {'均最优':>7} {'均gap':>7} {'最优率':>7}")
@@ -193,6 +229,8 @@ def main(argv: list[str] | None = None) -> int:
     t, p = welch(gaps["our"], gaps["opp"])
     print(f"\n全体：我方均gap={st.mean(gaps['our']):.3f} 对手均gap={st.mean(gaps['opp']):.3f} "
           f"差={st.mean(gaps['our'])-st.mean(gaps['opp']):+.3f} (t={t:+.2f}, p={p:.4f})")
+    done_marker.write_text("done\n", encoding="utf-8")
+    print("PROBE_DONE", flush=True)
     return 0
 
 
