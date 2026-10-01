@@ -496,6 +496,19 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
                               ukeire_candidates=3, edge_partial_weight=0.8)
     ),
+    # **弃胡阈值方向性测试**（B' 01:59 第 4 层）：`piao_threshold_scale` 调大＝更保守。
+    # 目标口袋：弃胡后别人胡的 165 次让出 1696 番（整体弃胡仍是赚的，所以这是一次「条件化」的前置方向测试，
+    # 不是一刀切收紧）。判读要看**弃胡次数与让出番数两个量**，不能只看总得分。
+    "v5-piao13": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, piao_threshold_scale=1.3)
+    ),
+    "v5-piao12": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, piao_threshold_scale=1.2)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 
