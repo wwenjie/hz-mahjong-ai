@@ -953,13 +953,14 @@ class HeuristicDecider:
         )
         if self.config.ukeire_preselect > 0 and len(tied) > self.config.ukeire_preselect:
             # 廉价代理预筛：只保留代理口径的前 N 张去算精确进张。
-            def _proxy(score) -> int:  # noqa: ANN001
-                after = list(situation.hand.counts)
-                after[score.tile] -= 1
-                _, copies = cheap_ukeire(after, visible)
-                return copies
-
-            tied = sorted(tied, key=lambda item: -_proxy(item))[: self.config.ukeire_preselect]
+            #
+            # **代理必须真的是零成本**（2026-10-01 19:40 实测教训）：初版用 `cheap_ukeire`，
+            # 实测单场墙钟 **158s vs cand10 的 144s** ⇒ **比不算预筛还贵**，核心指标不达标
+            # （`cheap_ukeire` 内部对每个牌种跑一次 `quick_shanten`，是 ms 级、不是 μs 级）。
+            # 现在改用 **`blocks`**——它是 `_score_discard` **早就算好**的骨架厚度，
+            # 所以排序**零额外计算**。代价是代理更粗，但预筛只需要「把真·最优圈进前 N」（召回率），
+            # 不需要代理排序正确。
+            tied = sorted(tied, key=lambda item: -item.blocks)[: self.config.ukeire_preselect]
             self.last_detail["preselect"] = (
                 f"廉价预筛到 {len(tied)} 张（原并列 {len(scores)} 张同级）"
             )
