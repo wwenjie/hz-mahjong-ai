@@ -436,6 +436,29 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
                               ukeire_candidates=5)
     ),
+    # **候选面继续放宽 + 与两拍值组合**（2026-10-01 18:58，用户「继续推进」）。
+    # 依据当天的结果：`v5-cand5` (+0.639 t6.33 n4) 明显高于 `v5-cand3` (+0.451 t8.68 n14)
+    # ⇒ **候选面在 3 处还没到拐点**；而 `v5-twoply` (+0.651 t4.48 n4) 高于 `v5` (+0.451)
+    # ⇒ 两拍值在候选面之上**是可加的**（此前在 v4 上测出「重叠」，那是被 field 混淆咬的：
+    # 那条的 `--field` 默认＝baseline＝v4，量的是「v4 场」里的增量）。
+    # `cand5-twoply` 是两者的组合，用来测「更宽的面 + 两拍值」是否继续叠加。
+    # ⚠ 延迟：候选面每 +1 张多算一次精确进张（42–157ms）。v5(cand3) 实测 p99 860ms/1800ms
+    # ⇒ cand7/cand10 大概率需要候选预筛才能上真机。**这几条只用于离线 A/B。**
+    "v5-cand7": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=7)
+    ),
+    "v5-cand10": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=10)
+    ),
+    "v5-cand5-twoply": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=5, two_ply_shanten1=True)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 
