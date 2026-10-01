@@ -466,6 +466,23 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
                               ukeire_candidates=10, ukeire_preselect=5)
     ),
+    # **预筛的 N 由 B' 的召回率表定**（2026-10-01 21:40，n=1703 真机决策点）：
+    #   N=5 → recall@3 0.799（**向听3 只有 0.422，过半概率丢掉「真·前 3」**）⇒ 太激进
+    #   N=6 → 0.890（向听3 0.705）；N=8 → **0.975**（向听3 0.910）⇒ 达标
+    # ⇒ `v5-presel5` 保留作「省但丢」的参照，另加 6/8 两档。
+    # **注意**：预筛开启时 `ukeire_candidates` 被绕过 ⇒ **有效候选面＝全部同向听并列候选**，
+    # 只对 `blocks` 排序的前 N 张算精确进张。所以 presel8 的成本≈cand8，
+    # 但它的**有效面比 cand8 宽得多**（不被 8 截断）——这才是预筛的真正价值形态。
+    "v5-presel6": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=10, ukeire_preselect=6)
+    ),
+    "v5-presel8": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=10, ukeire_preselect=8)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 
