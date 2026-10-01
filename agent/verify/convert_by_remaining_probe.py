@@ -74,13 +74,15 @@ def main() -> int:
     ap.add_argument("--rooms", type=int, default=0)
     ap.add_argument("--chunk-size", type=int, default=0,
                     help=">0 时按文件序分块落盘（幂等续跑）；0=一次性内存聚合（仅小规模用）")
+    ap.add_argument("--cross", action="store_true",
+                    help="同时聚合 首次到听摸序×剩余摸数 交叉桶（写入 c30x-chunks 独立目录，不撞旧块）")
     args = ap.parse_args()
 
     files = sorted(glob.glob(str(REPO / "data" / "auto_sessions" / "*" / "events" / "*.json")))
     if args.rooms:
         files = files[:: max(1, len(files) // args.rooms)][: args.rooms]
 
-    chunk_dir = REPO / "agent" / "out" / "c30-chunks"
+    chunk_dir = REPO / "agent" / "out" / ("c30x-chunks" if args.cross else "c30-chunks")
     if args.chunk_size > 0:
         return main_chunked(files, args.chunk_size, chunk_dir)
 
@@ -102,8 +104,10 @@ def main() -> int:
 
 def new_agg():
     return {
-        "our": {"first": collections.defaultdict(lambda: [0, 0]), "rem": collections.defaultdict(lambda: [0, 0]), "tot": [0, 0]},
-        "opp": {"first": collections.defaultdict(lambda: [0, 0]), "rem": collections.defaultdict(lambda: [0, 0]), "tot": [0, 0]},
+        "our": {"first": collections.defaultdict(lambda: [0, 0]), "rem": collections.defaultdict(lambda: [0, 0]),
+                "cross": collections.defaultdict(lambda: [0, 0]), "tot": [0, 0]},
+        "opp": {"first": collections.defaultdict(lambda: [0, 0]), "rem": collections.defaultdict(lambda: [0, 0]),
+                "cross": collections.defaultdict(lambda: [0, 0]), "tot": [0, 0]},
     }
 
 
@@ -165,6 +169,10 @@ def process_file(path):
                 agg[grp][key][val][0] += 1
                 if won:
                     agg[grp][key][val][1] += 1
+            ck = f"{bucket_first_n(first[seat])}|{bucket_remaining(rem)}"
+            agg[grp]["cross"][ck][0] += 1
+            if won:
+                agg[grp]["cross"][ck][1] += 1
             agg[grp]["tot"][0] += 1
             if won:
                 agg[grp]["tot"][1] += 1
@@ -173,7 +181,7 @@ def process_file(path):
 
 def merge_into(dst, src):
     for grp in ("our", "opp"):
-        for key in ("first", "rem"):
+        for key in ("first", "rem", "cross"):
             for bucket, (n, w) in src[grp][key].items():
                 dst[grp][key][bucket][0] += n
                 dst[grp][key][bucket][1] += w
@@ -187,6 +195,7 @@ def agg_to_json(agg):
         out[grp] = {
             "first": {k: list(v) for k, v in agg[grp]["first"].items()},
             "rem": {k: list(v) for k, v in agg[grp]["rem"].items()},
+            "cross": {k: list(v) for k, v in agg[grp]["cross"].items()},
             "tot": list(agg[grp]["tot"]),
         }
     return out
@@ -200,6 +209,8 @@ def agg_from_json(data):
             agg[grp]["first"][k] = list(v)
         for k, v in (g.get("rem") or {}).items():
             agg[grp]["rem"][k] = list(v)
+        for k, v in (g.get("cross") or {}).items():
+            agg[grp]["cross"][k] = list(v)
         agg[grp]["tot"] = list(g.get("tot") or [0, 0])
     return agg
 
@@ -241,7 +252,7 @@ def main_chunked(files, chunk_size, chunk_root) -> int:
         rounds += data["rounds"]
         merge_into(agg, agg_from_json(data["agg"]))
 
-    log_path = REPO / "agent" / "out" / "convert-by-remaining.log"
+    log_path = REPO / "agent" / "out" / ("convert-cross.log" if chunk_dir.name.startswith("c30x") else "convert-by-remaining.log")
     tmp = log_path.with_suffix(".log.tmp")
     with tmp.open("w", encoding="utf-8") as fh:
         report(agg, rooms, rounds, fh)
@@ -278,6 +289,17 @@ def report(agg, rooms, rounds_seen, out):
     an, aw = agg["our"]["tot"]
     on, ow = agg["opp"]["tot"]
     p(f"\n③ 总体（到听者中）：我方 {aw}/{an} = {aw / an:.1%}；对手 {ow}/{on} = {ow / on:.1%}；z={two_prop_z(aw, an, ow, on):+.2f}")
+
+    if agg["our"]["cross"] or agg["opp"]["cross"]:
+        p("\n④ 首次到听摸序 × 剩余摸数 交叉（到听后胡率）")
+        p(f"   {'到听':>6} {'rem':>7} {'我方 n':>8} {'我方胡':>7} {'我方率':>8} {'对手 n':>8} {'对手胡':>8} {'对手率':>8} {'z':>7}")
+        for fk in ("n≤4", "n5-8", "n9-12", "n≥13"):
+            for rk in ("rem≥8", "rem5-7", "rem2-4", "rem≤1"):
+                ck = f"{fk}|{rk}"
+                an2, aw2, ar2 = line(agg["our"]["cross"], ck)
+                on2, ow2, orr2 = line(agg["opp"]["cross"], ck)
+                z = two_prop_z(aw2, an2, ow2, on2)
+                p(f"   {fk:>6} {rk:>7} {an2:8d} {aw2:7d} {ar2:8.1%} {on2:8d} {ow2:8d} {orr2:8.1%} {z:7.2f}")
     return 0
 
 
