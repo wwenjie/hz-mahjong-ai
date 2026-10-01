@@ -483,6 +483,19 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
                               ukeire_candidates=10, ukeire_preselect=8)
     ),
+    # **边张搭单独计权**（agent-c 22:20 机制信号 → 2026-10-02 量化确认）：
+    # `shape_value` 原先把 12/89 也当两面（1.2），而它们只等到 4 张（与坎张同）。
+    # 两档分别给 0.7（与坎张同权）与 0.8（介于坎张与两面之间）——用来定位该给多少。
+    "v5-edge7": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, edge_partial_weight=0.7)
+    ),
+    "v5-edge8": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, edge_partial_weight=0.8)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 

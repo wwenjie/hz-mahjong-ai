@@ -46,6 +46,7 @@ VARIANT_FIELDS = (
     "win_table_correction",
     "goodshape_tolerance",
     "ukeire_preselect",
+    "edge_partial_weight",
     "ukeire_candidates",
     "ukeire_max_shanten",
     "ukeire_order",
@@ -322,6 +323,11 @@ class PolicyConfig:
     # 这也是为什么当年「用廉价口径替代精确」失败、而「用廉价口径预筛」可能成立。
     # **取值待 B' 的「召回率 @ N」表定**；启用本开关时 `ukeire_candidates` 会被绕过。
     ukeire_preselect: int = 0
+    # 实验档位：**边张搭（12 / 89）单独计权**（agent-c 22:20 的机制信号，2026-10-02 量化确认）。
+    # 实测：`8w9w` 与真两面 `4w5w` 在 `shape_value` 里**同值**（都 1.2），而进张是 **4 vs 8 张**；
+    # 坎张 `1w3w`（同样 4 张）只有 0.7 ⇒ **边张搭被高估一倍**。
+    # `0.0` = 关闭（保持旧行为）；0.7 = 与坎张同权；0.8 = 介于坎张与真两面之间。
+    edge_partial_weight: float = 0.0
     # 实验档位：绝不打出财神（只在无其他可打牌时才打）。
     # 用途是验证一条尚未测过的假设——爆头需要「4 组**自然**面子 + 1 张闲余财神」，
     # 而此前的 0 次爆头是被动观测到的（现有策略会把财神当百搭用掉）。若把财神硬留，
@@ -1037,7 +1043,13 @@ class HeuristicDecider:
         counts = list(hand.counts)
         counts[tile] -= 1
         if self.config.shape_value:
-            block_value = shanten_module.shape_value(counts, hand.meld_count)
+            block_value = shanten_module.shape_value(
+                counts,
+                hand.meld_count,
+                edge_partial_weight=(
+                    self.config.edge_partial_weight or None
+                ),
+            )
         else:
             blocks = shanten_module.quick_blocks(counts)
             block_value = 2 * blocks[0] + blocks[1]

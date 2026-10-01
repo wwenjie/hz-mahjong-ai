@@ -364,7 +364,12 @@ def quick_blocks(counts: Sequence[int]) -> tuple[int, int, int]:
     return sets, partials, min(1, pairs)
 
 
-def shape_value(counts: Sequence[int], meld_count: int = 0) -> float:
+def shape_value(
+    counts: Sequence[int],
+    meld_count: int = 0,
+    *,
+    edge_partial_weight: float | None = None,
+) -> float:
     """骨架的**加权形质值**（微秒级），用于替代 ``2×面子 + 搭子`` 的次排序。
 
     **为什么需要它**：``quick_blocks`` 把「两面 / 对子 / 坎张」都记作 1 个搭子，
@@ -421,7 +426,17 @@ def shape_value(counts: Sequence[int], meld_count: int = 0) -> float:
             while group[index] and group[index + 1]:
                 group[index] -= 1
                 group[index + 1] -= 1
-                weights.append(1.2)
+                # **边张搭（12 / 89）不是两面**：它只等到 1 张牌种（4 张），与坎张同量级，
+                # 而真两面（如 45）等到 2 个牌种（8 张）。2026-10-02 实测：
+                # `8w9w` 与 `4w5w` 在本函数里**同值**（都算 1.2），进张却是 4 vs 8 ⇒ 边张搭高估一倍。
+                # 这是 agent-c 22:20 的机制信号（「排序键对边张/边搭取舍疑似反了」）量化后的形态：
+                # 不是反了，是**没有区分**。`edge_partial_weight=None` 保持旧行为；
+                # 给 0.7 就与坎张同权，给 0.8 则介于坎张与真两面之间。
+                is_edge = index == 0 or index == size - 2  # 组内 rank 1-2 或 8-9
+                if edge_partial_weight is not None and is_edge:
+                    weights.append(edge_partial_weight)
+                else:
+                    weights.append(1.2)
         for index in range(size):
             while group[index] >= 2:
                 group[index] -= 2
