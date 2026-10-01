@@ -459,6 +459,13 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
                               ukeire_candidates=5, two_ply_shanten1=True)
     ),
+    # **候选面 + 廉价预筛**（① 的实现）：有效候选面 10 张，但只对代理口径的前 5 张算精确进张。
+    # 目的＝「拿到 cand10 量级的收益、付出 cand5 量级的成本」，以便上真机。
+    "v5-presel5": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=10, ukeire_preselect=5)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 

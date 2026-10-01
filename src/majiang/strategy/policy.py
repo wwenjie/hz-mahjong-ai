@@ -45,6 +45,7 @@ VARIANT_FIELDS = (
     "feed_ready_increment",
     "win_table_correction",
     "goodshape_tolerance",
+    "ukeire_preselect",
     "ukeire_candidates",
     "ukeire_max_shanten",
     "ukeire_order",
@@ -304,6 +305,23 @@ class PolicyConfig:
     # 成本会压到 v4 已有的 **p99 851ms / 1800ms** 之上（`docs/ops.md` 的红线是 p99 ≤1000ms）。
     # 结构性代理（両面/対子/坎张的计数）与 `shape_value` 同源、微秒级。
     goodshape_tolerance: float = 0.0
+    # 实验档位：**候选面的廉价预筛**（2026-10-01 19:20，用户批准的 ①）。
+    #
+    # **要解决的问题**：候选面加宽的价值已证（`v5-cand5` +0.639 > `v5-cand3` +0.451），
+    # 但**真机延迟卡住**——候选面每 +1 张多算一次精确进张（42–157ms），
+    # v5(cand3) 的真机 p99 已 **860ms / 预算 1800ms** ⇒ cand7/cand10 上不了平台。
+    # ⇒ 离线收益进不了冠军档，这条线就停在这儿。
+    #
+    # **做法**：用**廉价代理**（`cheap_ukeire`，微秒级）先把并列候选排序，只取前
+    # `ukeire_preselect` 张去算精确进张。这样「有效候选面」可以是 8~10 张，
+    # 而精确计算只做 N 次 ⇒ **成本回到 cand-N 的量级，收益接近 cand-10 的量级**。
+    #
+    # **为什么代理够用**：`cheap_ukeire` 与精确口径的「选出同一张」只有 14.7% 一致
+    # （`tools/analyze_ukeire_fidelity.py`），但预筛不需要它**排序正确**，
+    # 只需要它把**真·最优圈进前 N 名**（召回率）。这两个要求差很远——
+    # 这也是为什么当年「用廉价口径替代精确」失败、而「用廉价口径预筛」可能成立。
+    # **取值待 B' 的「召回率 @ N」表定**；启用本开关时 `ukeire_candidates` 会被绕过。
+    ukeire_preselect: int = 0
     # 实验档位：绝不打出财神（只在无其他可打牌时才打）。
     # 用途是验证一条尚未测过的假设——爆头需要「4 组**自然**面子 + 1 张闲余财神」，
     # 而此前的 0 次爆头是被动观测到的（现有策略会把财神当百搭用掉）。若把财神硬留，
@@ -926,13 +944,25 @@ class HeuristicDecider:
         if exact:
             if self.config.ukeire_order == "blocks":
                 tied = sorted(tied, key=lambda item: -item.blocks)
-            if not wait_aware and not two_ply:
+            if not wait_aware and not two_ply and self.config.ukeire_preselect <= 0:
                 tied = tied[: max(1, self.config.ukeire_candidates)]
         visible = shanten_module.visible_counts(
             situation.hand.counts,
             [meld.tiles for meld in situation.all_melds],
             situation.discards,
         )
+        if self.config.ukeire_preselect > 0 and len(tied) > self.config.ukeire_preselect:
+            # 廉价代理预筛：只保留代理口径的前 N 张去算精确进张。
+            def _proxy(score) -> int:  # noqa: ANN001
+                after = list(situation.hand.counts)
+                after[score.tile] -= 1
+                _, copies = cheap_ukeire(after, visible)
+                return copies
+
+            tied = sorted(tied, key=lambda item: -_proxy(item))[: self.config.ukeire_preselect]
+            self.last_detail["preselect"] = (
+                f"廉价预筛到 {len(tied)} 张（原并列 {len(scores)} 张同级）"
+            )
         deadline = time.monotonic() + EXACT_UKEIRE_BUDGET_SEC if exact else None
         # **一次决策共用一个 memo**：`ukeire` 内部对 34 个牌种各做一次 best_shanten，
         # 而同一决策里的各个候选共用同一副手牌，子问题大量重叠。`ukeire` 早就支持
