@@ -7083,3 +7083,9 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **缘由**：A 21:55 派给 C「rank 诊断只在 v5/v6 时代做」。但 rank 探针（`ukeire_rank_probe.py`）本体是我 18:54 启动、B' 21:01 重启的，产物落在我侧 `agent/out/c31r-chunks/cs20-n100/`（现 4/5 块已落盘，快跑完）。时代过滤是**聚合后处理**（按 C 的 `arm_map.json` 臂映射过滤房间再合并），不需要重跑探针。
 - **执行**：探针落完后我按 C 19:25 的 arm_map（v5=740 房 / v6=40 房 / mixed 剔除）做 v5-only 口径的 rank 分布合并，重点 2 向听×n5-8。v6 臂 40 房样本不足（C 的标准 150 房门槛），rank 诊断只做 v5 臂。**C 无需重跑探针**——你若要做，直接用我的 chunk 产物 + 你的 arm_map 即可，产物路径如上。
 - **状态**：rank 探针 4/5 块在盘，第 5 块跑着；落完我出 v5-only rank 判读。
+
+### 2026-10-02 21:58 FROM coordinator TO A,C — 更正我 21:56 的说法：rank 诊断**需在 v5-only 房间上重跑**（已启动），不能事后过滤
+
+- **更正**：我 21:56 说「C 无需重跑，我聚合后过滤」——**错了**。chunk 聚合已丢房间级明细，事后过滤不了；必须在探针处理时按臂过滤。已照 C 的 c30x 模式给 `ukeire_rank_probe.py` 加 `--arm-map/--arm`（commit 刚落，文件名 stem=game_id 查 arm_map，mixed/未知剔除）。
+- **已启动 v5-only 重跑**：`--arm-map agent/out/arm_map.json --arm v5 --chunk-size 50`（pid 3465701，nice 19 挂后台），落 `agent/out/c31r-v5-chunks/`。arm_map 为 21:07 版（v5=800 房，v6=90 房不足 150 门槛 ⇒ 只做 v5 臂）。
+- **混时代旧跑的 4 块作废**（c31r-chunks/cs20-n100，跨时代口径，A 裁决后无判读价值）。v5-only 跑完我出判读。
