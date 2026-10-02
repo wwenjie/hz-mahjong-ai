@@ -346,3 +346,21 @@ MAJIANG_COLLECT_DECIDERS=v5,v6 nohup setsid tools/collector_supervisor.sh \
 **换档后必须做的护栏**（见本文件「v5 延迟护栏的定时复测」一节，判据同样适用于 v6）：
 `piao13` 零额外计算、预筛已把成本压到 cand5 档（离线 128s/2场 ≈ cand5 127s < cand10 144s）
 ⇒ 预期 v6 的真机 `elapsed_ms` 与 v5 同量级。**若 p99 > 1300ms 或出现任何超预算事件 ⇒ 回退成 `--decider v5`。**
+
+### 2026-10-02 16:15 队列并发默认 3→2（治「采集被自己人压到卡顿」）
+
+**依据**：真机 `decision.made` 里发现 **14 次超预算**，其中 **3 条集中在 2026-10-01T23:43:40 同一秒、
+耗时 27.7~29.4 秒**（另 4 条 2.6~4.0s）。**29 秒不是算贵、是进程被饿死/冻结**，
+而那个时段正是离线队列满载（3 job × 4 进程 = 12 核）+ C 的作业同时压着（load 16~19 / 16 核）。
+`GuardedDecider` 把 14 次**全部兜住**（`decision.fallback` = 14，无非法提交），
+但那 14 个出牌点由 FirstLegal 代打、**不是我们的策略** ⇒ 白丢决策质量。
+
+**改动**：`tools/queue_supervisor.sh` 的 `WORKERS` 默认 3→2 ⇒ 核预算 3×4=12 → **2×4=8**，
+**常留 8 核给采集**。**在跑的 job 不打断**（下一个自然重启周期生效）。
+
+**判据（可复核）**：改后按下面命令看 `elapsed_ms` 的最大值——
+```bash
+grep -h '"decision.made"' logs/*.jsonl | uv run python -c "import sys,json;[print(json.loads(l)['elapsed_ms']) for l in sys.stdin]" | sort -rn | head -3
+```
+**若仍出现 >5000ms，就说明瓶颈不是核数**（那是环境对长跑进程的冻结或长 GC），
+那时要换方向：给采集进程更高优先级，或把重活挪到与采集错峰的时间窗。

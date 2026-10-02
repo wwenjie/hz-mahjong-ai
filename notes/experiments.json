@@ -16484,6 +16484,126 @@
    "status": "pending",
    "hypothesis": "**v6 相对 v5 的直连增量**（用户 2026-10-02 16:04 直接问「v6 比 v5 强多少」）。现有只是**配对估计**：4 个共同种子上 `v6a − v5` = **+0.370（se 0.121、t3.07、4/4 为正）≈ 胡率 +1.32pp**，而间接差（两个 vs-v3 结果相减）是 +0.283 —— 两者同为「间接」口径。按今天两次教训（`ab_test` 的 `--field` 默认=baseline ⇒ 会同时换掉对手场），本条**固定 `--field=v3`**，让两臂的另三座都是 v3，量到的才是**同一个场里的纯增量**。",
    "kill_criteria": "两种子不同向或合并 t<2 ⇒ 增量不成立（那 v6 的采纳依据要降级为「与 v5 等价、但成本更低」）。**对照口径**：本条结果应与配对估计 +0.370 一致；若显著更小 ⇒ 配对估计被场混淆抬高（今天在 cand3-vs-v4 上已见过一次）。"
+  },
+  {
+   "id": "v6a-vs-v3-s24494897",
+   "treatment": "v6a",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    24494897
+   ],
+   "status": "pending",
+   "hypothesis": "**v6 时代的确认与组合批**（用户 2026-10-02 16:04「按你判断继续」）。已有：`v6a` +0.734(t7.27,n4,4/4)、配对 v6−v5 +0.370(t3.07)/胡率+1.32pp、`presel5`≈`presel6`≈`presel8`≈`cand5`（⇒ N=5 丢的召回无害）、`piao13` +0.647。本批：① 把 v6a 补到 10 种子；② 测「v6a × two-ply」（两拍值在候选面之上一直显示可加，但在 v6 的阈值调整之后是否仍可加未测）；③ 补 `piao13`/`presel5` 种子以钉住两项边际。",
+   "kill_criteria": "每臂 ≥4 种子；两种子以上同向且合并 t≥2 才采纳。**增量一律用固定场直连**（`--field` 默认=baseline 的坑今天踩过两次）。"
+  },
+  {
+   "id": "v6a-vs-v3-s26457513",
+   "treatment": "v6a",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    26457513
+   ],
+   "status": "pending",
+   "hypothesis": "**v6 时代的确认与组合批**（用户 2026-10-02 16:04「按你判断继续」）。已有：`v6a` +0.734(t7.27,n4,4/4)、配对 v6−v5 +0.370(t3.07)/胡率+1.32pp、`presel5`≈`presel6`≈`presel8`≈`cand5`（⇒ N=5 丢的召回无害）、`piao13` +0.647。本批：① 把 v6a 补到 10 种子；② 测「v6a × two-ply」（两拍值在候选面之上一直显示可加，但在 v6 的阈值调整之后是否仍可加未测）；③ 补 `piao13`/`presel5` 种子以钉住两项边际。",
+   "kill_criteria": "每臂 ≥4 种子；两种子以上同向且合并 t≥2 才采纳。**增量一律用固定场直连**（`--field` 默认=baseline 的坑今天踩过两次）。"
+  },
+  {
+   "id": "v6a-twoply-vs-v3-s20260927",
+   "treatment": "v6a-twoply",
+   "baseline": "tenpai-wait",
+   "matches": 60,
+   "seeds": [
+    20260927
+   ],
+   "status": "pending",
+   "hypothesis": "**v6 时代的确认与组合批**（用户 2026-10-02 16:04「按你判断继续」）。已有：`v6a` +0.734(t7.27,n4,4/4)、配对 v6−v5 +0.370(t3.07)/胡率+1.32pp、`presel5`≈`presel6`≈`presel8`≈`cand5`（⇒ N=5 丢的召回无害）、`piao13` +0.647。本批：① 把 v6a 补到 10 种子；② 测「v6a × two-ply」（两拍值在候选面之上一直显示可加，但在 v6 的阈值调整之后是否仍可加未测）；③ 补 `piao13`/`presel5` 种子以钉住两项边际。",
+   "kill_criteria": "每臂 ≥4 种子；两种子以上同向且合并 t≥2 才采纳。**增量一律用固定场直连**（`--field` 默认=baseline 的坑今天踩过两次）。"
+  },
+  {
+   "id": "v6a-twoply-vs-v3-s771014",
+   "treatment": "v6a-twoply",
+   "baseline": "tenpai-wait",
+   "matches": 60,
+   "seeds": [
+    771014
+   ],
+   "status": "pending",
+   "hypothesis": "**v6 时代的确认与组合批**（用户 2026-10-02 16:04「按你判断继续」）。已有：`v6a` +0.734(t7.27,n4,4/4)、配对 v6−v5 +0.370(t3.07)/胡率+1.32pp、`presel5`≈`presel6`≈`presel8`≈`cand5`（⇒ N=5 丢的召回无害）、`piao13` +0.647。本批：① 把 v6a 补到 10 种子；② 测「v6a × two-ply」（两拍值在候选面之上一直显示可加，但在 v6 的阈值调整之后是否仍可加未测）；③ 补 `piao13`/`presel5` 种子以钉住两项边际。",
+   "kill_criteria": "每臂 ≥4 种子；两种子以上同向且合并 t≥2 才采纳。**增量一律用固定场直连**（`--field` 默认=baseline 的坑今天踩过两次）。"
+  },
+  {
+   "id": "v6a-twoply-vs-v3-s31415926",
+   "treatment": "v6a-twoply",
+   "baseline": "tenpai-wait",
+   "matches": 60,
+   "seeds": [
+    31415926
+   ],
+   "status": "pending",
+   "hypothesis": "**v6 时代的确认与组合批**（用户 2026-10-02 16:04「按你判断继续」）。已有：`v6a` +0.734(t7.27,n4,4/4)、配对 v6−v5 +0.370(t3.07)/胡率+1.32pp、`presel5`≈`presel6`≈`presel8`≈`cand5`（⇒ N=5 丢的召回无害）、`piao13` +0.647。本批：① 把 v6a 补到 10 种子；② 测「v6a × two-ply」（两拍值在候选面之上一直显示可加，但在 v6 的阈值调整之后是否仍可加未测）；③ 补 `piao13`/`presel5` 种子以钉住两项边际。",
+   "kill_criteria": "每臂 ≥4 种子；两种子以上同向且合并 t≥2 才采纳。**增量一律用固定场直连**（`--field` 默认=baseline 的坑今天踩过两次）。"
+  },
+  {
+   "id": "v6a-twoply-vs-v3-s27182818",
+   "treatment": "v6a-twoply",
+   "baseline": "tenpai-wait",
+   "matches": 60,
+   "seeds": [
+    27182818
+   ],
+   "status": "pending",
+   "hypothesis": "**v6 时代的确认与组合批**（用户 2026-10-02 16:04「按你判断继续」）。已有：`v6a` +0.734(t7.27,n4,4/4)、配对 v6−v5 +0.370(t3.07)/胡率+1.32pp、`presel5`≈`presel6`≈`presel8`≈`cand5`（⇒ N=5 丢的召回无害）、`piao13` +0.647。本批：① 把 v6a 补到 10 种子；② 测「v6a × two-ply」（两拍值在候选面之上一直显示可加，但在 v6 的阈值调整之后是否仍可加未测）；③ 补 `piao13`/`presel5` 种子以钉住两项边际。",
+   "kill_criteria": "每臂 ≥4 种子；两种子以上同向且合并 t≥2 才采纳。**增量一律用固定场直连**（`--field` 默认=baseline 的坑今天踩过两次）。"
+  },
+  {
+   "id": "v5-piao13-vs-v3-s24494897",
+   "treatment": "v5-piao13",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    24494897
+   ],
+   "status": "pending",
+   "hypothesis": "**v6 时代的确认与组合批**（用户 2026-10-02 16:04「按你判断继续」）。已有：`v6a` +0.734(t7.27,n4,4/4)、配对 v6−v5 +0.370(t3.07)/胡率+1.32pp、`presel5`≈`presel6`≈`presel8`≈`cand5`（⇒ N=5 丢的召回无害）、`piao13` +0.647。本批：① 把 v6a 补到 10 种子；② 测「v6a × two-ply」（两拍值在候选面之上一直显示可加，但在 v6 的阈值调整之后是否仍可加未测）；③ 补 `piao13`/`presel5` 种子以钉住两项边际。",
+   "kill_criteria": "每臂 ≥4 种子；两种子以上同向且合并 t≥2 才采纳。**增量一律用固定场直连**（`--field` 默认=baseline 的坑今天踩过两次）。"
+  },
+  {
+   "id": "v5-piao13-vs-v3-s26457513",
+   "treatment": "v5-piao13",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    26457513
+   ],
+   "status": "pending",
+   "hypothesis": "**v6 时代的确认与组合批**（用户 2026-10-02 16:04「按你判断继续」）。已有：`v6a` +0.734(t7.27,n4,4/4)、配对 v6−v5 +0.370(t3.07)/胡率+1.32pp、`presel5`≈`presel6`≈`presel8`≈`cand5`（⇒ N=5 丢的召回无害）、`piao13` +0.647。本批：① 把 v6a 补到 10 种子；② 测「v6a × two-ply」（两拍值在候选面之上一直显示可加，但在 v6 的阈值调整之后是否仍可加未测）；③ 补 `piao13`/`presel5` 种子以钉住两项边际。",
+   "kill_criteria": "每臂 ≥4 种子；两种子以上同向且合并 t≥2 才采纳。**增量一律用固定场直连**（`--field` 默认=baseline 的坑今天踩过两次）。"
+  },
+  {
+   "id": "v5-presel5-vs-v3-s17320508",
+   "treatment": "v5-presel5",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    17320508
+   ],
+   "status": "pending",
+   "hypothesis": "**v6 时代的确认与组合批**（用户 2026-10-02 16:04「按你判断继续」）。已有：`v6a` +0.734(t7.27,n4,4/4)、配对 v6−v5 +0.370(t3.07)/胡率+1.32pp、`presel5`≈`presel6`≈`presel8`≈`cand5`（⇒ N=5 丢的召回无害）、`piao13` +0.647。本批：① 把 v6a 补到 10 种子；② 测「v6a × two-ply」（两拍值在候选面之上一直显示可加，但在 v6 的阈值调整之后是否仍可加未测）；③ 补 `piao13`/`presel5` 种子以钉住两项边际。",
+   "kill_criteria": "每臂 ≥4 种子；两种子以上同向且合并 t≥2 才采纳。**增量一律用固定场直连**（`--field` 默认=baseline 的坑今天踩过两次）。"
+  },
+  {
+   "id": "v5-presel5-vs-v3-s22360679",
+   "treatment": "v5-presel5",
+   "baseline": "tenpai-wait",
+   "matches": 120,
+   "seeds": [
+    22360679
+   ],
+   "status": "pending",
+   "hypothesis": "**v6 时代的确认与组合批**（用户 2026-10-02 16:04「按你判断继续」）。已有：`v6a` +0.734(t7.27,n4,4/4)、配对 v6−v5 +0.370(t3.07)/胡率+1.32pp、`presel5`≈`presel6`≈`presel8`≈`cand5`（⇒ N=5 丢的召回无害）、`piao13` +0.647。本批：① 把 v6a 补到 10 种子；② 测「v6a × two-ply」（两拍值在候选面之上一直显示可加，但在 v6 的阈值调整之后是否仍可加未测）；③ 补 `piao13`/`presel5` 种子以钉住两项边际。",
+   "kill_criteria": "每臂 ≥4 种子；两种子以上同向且合并 t≥2 才采纳。**增量一律用固定场直连**（`--field` 默认=baseline 的坑今天踩过两次）。"
   }
  ]
 }

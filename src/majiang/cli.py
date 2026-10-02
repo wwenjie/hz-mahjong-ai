@@ -523,6 +523,12 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               ukeire_candidates=3, ukeire_preselect=5, edge_partial_weight=0.8,
                               piao_threshold_scale=1.3)
     ),
+    "v6a-twoply": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, ukeire_preselect=5, piao_threshold_scale=1.3,
+                              two_ply_shanten1=True)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 
