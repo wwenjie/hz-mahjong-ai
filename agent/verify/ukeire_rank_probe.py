@@ -192,8 +192,10 @@ def main(argv: list[str] | None = None) -> int:
     chunk_dir.mkdir(parents=True, exist_ok=True)
     n_chunks = (len(files) + args.chunk_size - 1) // args.chunk_size
 
-    memo: dict = {}
+    # memo 按块清空：shanten memo 全量运行会膨胀到 12GB+（850 房三次起跑两次疑似 OOM 夭折），
+    # 每块 50 房内命中率足够，跨块缓存不划算。
     for ci in range(n_chunks):
+        memo: dict = {}
         chunk_path = chunk_dir / f"chunk-{ci:04d}.json"
         if chunk_path.exists():
             continue
