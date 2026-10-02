@@ -76,19 +76,42 @@ def main() -> int:
                     help=">0 时按文件序分块落盘（幂等续跑）；0=一次性内存聚合（仅小规模用）")
     ap.add_argument("--cross", action="store_true",
                     help="同时聚合 首次到听摸序×剩余摸数 交叉桶（写入 c30x-chunks 独立目录，不撞旧块）")
+    ap.add_argument("--arm-map", default=None,
+                    help="game_id→臂映射 JSON（build_arm_map.py 产物）；给了就按臂分桶，mixed/未知剔除")
+    ap.add_argument("--arm", default=None,
+                    help="只统计指定臂（如 v5/v6）；与 --arm-map 联用")
     args = ap.parse_args()
 
+    arm_of = {}
+    if args.arm_map:
+        with open(args.arm_map, encoding="utf-8") as f:
+            arm_of = json.load(f).get("map", {})
+
     files = sorted(glob.glob(str(REPO / "data" / "auto_sessions" / "*" / "events" / "*.json")))
+    if arm_of:
+        keep = []
+        for p in files:
+            gid = pathlib.Path(p).stem  # 事件流文件名即 game_id
+            arm = arm_of.get(gid)
+            if arm is None or arm == "mixed":
+                continue
+            if args.arm and arm != args.arm:
+                continue
+            keep.append(p)
+        files = keep
     if args.rooms:
         files = files[:: max(1, len(files) // args.rooms)][: args.rooms]
 
-    chunk_dir = REPO / "agent" / "out" / ("c30x-chunks" if args.cross else "c30-chunks")
+    tag = ("-" + args.arm) if args.arm else ""
+    chunk_dir = REPO / "agent" / "out" / (f"c30x{tag}-chunks" if args.cross else f"c30{tag}-chunks")
     if args.chunk_size > 0:
         return main_chunked(files, args.chunk_size, chunk_dir)
 
     agg = {
-        "our": {"first": collections.defaultdict(lambda: [0, 0]), "rem": collections.defaultdict(lambda: [0, 0]), "tot": [0, 0]},
-        "opp": {"first": collections.defaultdict(lambda: [0, 0]), "rem": collections.defaultdict(lambda: [0, 0]), "tot": [0, 0]},
+        "our": {"first": collections.defaultdict(lambda: [0, 0]), "rem": collections.defaultdict(lambda: [0, 0]),
+                "cross": collections.defaultdict(lambda: [0, 0]), "tot": [0, 0]},
+        "opp": {"first": collections.defaultdict(lambda: [0, 0]), "rem": collections.defaultdict(lambda: [0, 0]),
+                "cross": collections.defaultdict(lambda: [0, 0]), "tot": [0, 0]},
     }
     rooms = 0
     rounds_seen = 0
@@ -252,7 +275,8 @@ def main_chunked(files, chunk_size, chunk_root) -> int:
         rounds += data["rounds"]
         merge_into(agg, agg_from_json(data["agg"]))
 
-    log_path = REPO / "agent" / "out" / ("convert-cross.log" if chunk_dir.name.startswith("c30x") else "convert-by-remaining.log")
+    log_name = f"convert-cross{('-' + args.arm) if args.arm else ''}.log" if chunk_dir.name.startswith("c30x") else "convert-by-remaining.log"
+    log_path = REPO / "agent" / "out" / log_name
     tmp = log_path.with_suffix(".log.tmp")
     with tmp.open("w", encoding="utf-8") as fh:
         report(agg, rooms, rounds, fh)
