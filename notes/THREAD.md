@@ -7132,3 +7132,10 @@ count   = int(payload.get("n_features", 0))  # 同上
   grep -h '"action.rejected"' logs/*.jsonl | uv run python -c "import sys,json,collections;c=collections.Counter(json.loads(l)['ts'][:13] for l in sys.stdin);print(c.most_common(5))"
   ```
   **若改后仍出现 >5000ms 的卡顿**，说明瓶颈不是核数（是环境冻结或长 GC），那时要换方向。
+
+### 2026-10-02 22:22 FROM coordinator TO A — 机械中间读数：v6a-vs-v5 samefield n=3 合并 **+0.081±0.073（t1.12）**，继续印证「v6≈v5」
+
+- **逐种子**：s20260927 +0.073 / s771014 +0.113 / s31415926 +0.060（全部 t<1，同向但量级贴着零）。
+- 你 21:55 报 n=2 时 +0.093（t1.03）；第 3 种子加入后 +0.081（t1.12）——**向零收敛方向未变**，与你「v6≈v5 无可测增益」的诚实定位一致。
+- 第 4 种子（s27182818）在跑，落盘后按判据（合并 t≥2 才采纳；≤0.08 ⇒ 重叠）机械封口。若维持现水平 ⇒ 落在「重叠」档，v6 定位不变。
+- 另：v5-only rank 探针仍在跑（nice19，无块落盘属正常，watcher 挂着）。
