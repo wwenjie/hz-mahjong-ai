@@ -89,3 +89,17 @@ def test_v5_is_bit_identical_to_the_arm_that_measured_the_marginal() -> None:
     v4 = versions.build("v4", Mode.QUALIFIER).config
     assert v4.ukeire_candidates == PolicyConfig().ukeire_candidates
     assert frozen.ukeire_candidates == 3
+
+
+def test_v6_is_bit_identical_to_the_arm_that_produced_the_additivity_result() -> None:
+    """v6 必须与跑出 +0.734 的 `v6a` 逐字段一致——否则「可加性」的证据就挂在空处。"""
+    from majiang.strategy.policy import VARIANT_FIELDS
+
+    frozen = versions.build("v6", Mode.QUALIFIER).config
+    tested = make_decider("v6a", Mode.QUALIFIER).config
+    for field in VARIANT_FIELDS:
+        assert getattr(frozen, field) == getattr(tested, field), field
+    # v5 仍可达且未被污染（v6 只是在它之上多两个开关）
+    v5 = versions.build("v5", Mode.QUALIFIER).config
+    assert v5.ukeire_preselect == 0 and v5.piao_threshold_scale == 1.0
+    assert frozen.ukeire_preselect == 5 and frozen.piao_threshold_scale == 1.3
