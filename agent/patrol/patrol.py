@@ -159,8 +159,13 @@ def read_supervisor(sup_log):
 
 
 def scan_logs(st, log_dir):
-    """只读新增字节，统计事件增量。返回 (最新 mtime, 增量计数字典, 文件数)。"""
+    """只读新增字节，统计事件增量 + 采集相决策耗时超阈。返回 (最新 mtime, 增量计数字典, 文件数)。
+
+    decision.made 行逐条解析 elapsed_ms（A 16:10 派活：采集被压时会出现 >3s 卡顿，
+    最坏实测 29.4s——29s 不是算贵是饿死/冻结，超 3s 即值得告警）。
+    """
     delta = {"decision": 0, "error": 0, "timeout": 0}
+    slow = []  # (elapsed_ms, ts, decider_tag)
     newest, nfiles = 0.0, 0
     seen = st.setdefault("logs", {})
     live = set()
@@ -187,11 +192,24 @@ def scan_logs(st, log_dir):
                     chunk = f.read(size - offset).decode("utf-8", errors="replace")
             except OSError:
                 continue
-            for ev in delta:
+            for ev in ("error", "timeout"):
                 delta[ev] += chunk.count(f'"event":"{ev}"') + chunk.count(f'"event": "{ev}"')
+            for line in chunk.splitlines():
+                if '"decision.made"' not in line:
+                    continue
+                delta["decision"] += 1
+                try:
+                    ev = json.loads(line)
+                    ms = ev.get("elapsed_ms")
+                    if isinstance(ms, (int, float)) and ms > 3000:
+                        dec = str(ev.get("decider", ""))[:24]
+                        slow.append((round(ms), ev.get("ts", "?"), dec))
+                except (json.JSONDecodeError, AttributeError):
+                    continue
             rec["offset"] = size
     for gone in set(seen) - live:
         seen.pop(gone, None)
+    delta["slow"] = slow
     return newest, delta, nfiles
 
 
@@ -259,6 +277,18 @@ def one_cycle(st, args, verbose=True):
         emit(st, "MED", "timeout-rate",
              f"本轮 timeout {delta['timeout']} 条（阈值 {args.timeout_threshold}）")
 
+    # 3b. 采集相决策卡顿（A 2026-10-02 16:10 派活）：decision.made elapsed_ms >3s。
+    # 29s 级卡顿不是算贵是饿死/冻结（load 16-19/16 核压满）；>3s 即报、>10s 升级。
+    slow = delta.get("slow") or []
+    if slow:
+        worst = max(slow)
+        summary["slow_decisions"] = f"{len(slow)} 条, 最坏 {worst[0]}ms"
+        level = "HIGH" if worst[0] > 10000 else "MED"
+        detail = "; ".join(f"{ms}ms@{ts}[{dec}]" for ms, ts, dec in sorted(slow, reverse=True)[:5])
+        emit(st, level, "decision-slow",
+             f"采集相决策卡顿 {len(slow)} 条 >3s（最坏 {worst[0]}ms）——机器被压满的信号",
+             extra=detail)
+
     # 4. 守护熔断
     if sup["breaker"] and not sup["stale"]:
         emit(st, "MANUAL", "breaker",
@@ -317,6 +347,7 @@ def one_cycle(st, args, verbose=True):
             print(f"状态: 进程 {summary.get('process')} / 日志新鲜度 {fresh_sec}s / "
                   f"文件 {nfiles} 个 / 本轮 decision={delta['decision']} "
                   f"error={delta['error']} timeout={delta['timeout']} / "
+                  f"卡顿={summary.get('slow_decisions', '无')} / "
                   f"熔断={sup['breaker'] and not sup['stale']}"
                   f"{'（陈旧标记已忽略）' if sup['stale'] else ''} "
                   f"快速失败={summary.get('fast_fail', '-')} / "
@@ -388,7 +419,7 @@ def main():
     ap.add_argument("--list-acks", action="store_true")
     ap.add_argument("--audit", action="store_true")
     args = ap.parse_args()
-    args.target = args.target or ["python -m majiang"]
+    args.target = args.target or ["auto_session.py", "python -m majiang"]
 
     if args.audit:
         sys.exit(audit())
