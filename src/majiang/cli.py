@@ -509,6 +509,20 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
                               ukeire_candidates=3, piao_threshold_scale=1.2)
     ),
+    # **组合臂**（2026-10-02 12:50）：三个单开关各自独立为正，且都落在 +0.51~+0.65 带里
+    # （基准 `v5`=+0.451）⇒ 下一步是测**可加性**：`presel5`（成本与召回）∪ `piao13`（弃胡口袋）。
+    # 若可加，就是 v6 的形态；若重叠（≈max 而非 sum），说明它们动的是同一处（中段出牌质量）。
+    "v6a": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, ukeire_preselect=5, piao_threshold_scale=1.3)
+    ),
+    "v6b": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, ukeire_preselect=5, edge_partial_weight=0.8,
+                              piao_threshold_scale=1.3)
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 
