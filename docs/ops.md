@@ -329,3 +329,20 @@ for k in ("v4", "v5"):
     print(f"{k} n={len(xs)} p50 {q(.5):.1f} p99 {q(.99):.1f} max {xs[-1][0]:.1f} 超预算 {over}")
 EOF
 ```
+
+### 2026-10-02 15:55 冠军轮换改为 **v5 + v6**（用户授权；v4 随之退出）
+
+```bash
+set -a; . ./.env; set +a
+MAJIANG_COLLECT_DECIDERS=v5,v6 nohup setsid tools/collector_supervisor.sh \
+  >> /tmp/autoloop.log 2>&1 < /dev/null &
+```
+
+**v6 = v5 + 两个独立单开关**：`ukeire_preselect=5`（候选面廉价预筛）与 `piao_threshold_scale=1.3`（弃胡收紧）。
+证据：`v6a` n=4、合并 **+0.734（t+7.27）、4/4 种子为正**；两项**基本可加**（和 0.834 / max 0.647 / 实测 0.734）。
+**v4 退出**的理由与 v3 当初相同：它是 v5 的前身、信息已被 v5/v6 覆盖，继续采没有新信息。
+保留 v5 作最近邻参考（v6 与它只差两个开关）。
+
+**换档后必须做的护栏**（见本文件「v5 延迟护栏的定时复测」一节，判据同样适用于 v6）：
+`piao13` 零额外计算、预筛已把成本压到 cand5 档（离线 128s/2场 ≈ cand5 127s < cand10 144s）
+⇒ 预期 v6 的真机 `elapsed_ms` 与 v5 同量级。**若 p99 > 1300ms 或出现任何超预算事件 ⇒ 回退成 `--decider v5`。**
