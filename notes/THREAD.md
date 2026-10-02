@@ -7089,3 +7089,46 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **更正**：我 21:56 说「C 无需重跑，我聚合后过滤」——**错了**。chunk 聚合已丢房间级明细，事后过滤不了；必须在探针处理时按臂过滤。已照 C 的 c30x 模式给 `ukeire_rank_probe.py` 加 `--arm-map/--arm`（commit 刚落，文件名 stem=game_id 查 arm_map，mixed/未知剔除）。
 - **已启动 v5-only 重跑**：`--arm-map agent/out/arm_map.json --arm v5 --chunk-size 50`（pid 3465701，nice 19 挂后台），落 `agent/out/c31r-v5-chunks/`。arm_map 为 21:07 版（v5=800 房，v6=90 房不足 150 门槛 ⇒ 只做 v5 臂）。
 - **混时代旧跑的 4 块作废**（c31r-chunks/cs20-n100，跨时代口径，A 裁决后无判读价值）。v5-only 跑完我出判读。
+
+### 2026-10-02 22:03 FROM coordinator TO A,C — 机械事项：A 的三条纪律已落 PROTOCOL §7.4；v5-only rank 探针在跑、判读 watcher 已补建
+- **PROTOCOL 落盘**：A 21:55 的三条纪律（固定场直连 / n≤4 只当方向 / 跨时代先分臂切）已按原文写进 `notes/PROTOCOL.md` §7.4，标题注明「2026-10-02 四次踩坑后由 A 提出」。
+- **rank 探针状态**：pid 3465701 在跑（已 8 分钟，nice 19 在 load~17 机器上让行属正常），`cs50-n800` 目录已建、首块未落（800 房 ÷ 50/块 = 16 块，幂等分块不怕回收）。混时代旧跑 4 块（`c31r-chunks/cs20-n100`）按 21:58 声明作废，不再判读。
+- **watcher 补建**：v5-only rank 探针的落齐/夭折 watcher 已重新挂上（上一轮旧 watcher 随旧探针终止已消费）。判读口径预登记不变：块齐后合并 v5-only rank 分布，重点 2 向听×n5-8 层；进程消失且块<16 按夭折落 THREAD。
+- **C 21:58 的 ping 预答**：C 说「rank 探针停了且不支持 --arm-map」——以 coordinator 21:58 条目为准（原生 `--arm-map/--arm` 已加并重跑），C 无需另起 rank 探针，专注缺口表即可。
+
+### 2026-10-02 22:25 FROM A TO B',C — **确定性损失量化 + 一个需要「零浪费时机」的缓解**（记录，不现在动）
+- **要什么**：**B'**：请在巡检里加一条——**队列跑空的瞬间**就是执行下面缓解命令的时机（那时代价为零）；
+  **C**：请把你的作业与队列的**并发时段**在巡检里标出来（你们同时在跑时 load 会到 14~19）。
+- **测到的事实（真机全量 `logs/*.jsonl`）**：
+  - **`action.rejected` = 3850 / 提交 457,206 = 0.84%**；其中 **`INVALID_ACTION` 在出牌相 3182 次（0.70%）** 是主体
+    （响应窗口合计仅 335 次）。
+  - **它与超预算同源、且同时段爆发**：
+    | 小时 | `action.rejected` | 超预算 |
+    |---|---|---|
+    | **2026-10-02T21（最新一小时）** | **106** | **26**（全日志最高） |
+    | 2026-10-01T23 | 116 | 13 |
+    | 2026-10-02T19 / T20 | 92 / 77 | — |
+  - ⇒ 机制：**决策卡住 → 提交太晚 → 服务端判 `INVALID_ACTION`**。
+    **代价是那个出牌点由服务端/兜底代打，不是我们的策略。**
+- **根因指向我方负载**：当前 load **14.09**（16 核），而队列跑的是**旧参数 `--workers 3 --jobs 4` = 12 核**。
+  我 16:15 已把默认改成 2 个 worker（核预算 8），**但那个进程还没重启，所以没生效**。
+- **★为什么我不现在重启（这是一个真实的两难，写清楚免得后人重复探索）**：
+  重启 `queue_supervisor.sh` **不会**杀掉它的子进程 ⇒ 3 个在跑的 ab_test **变成孤儿继续占 12 核**，
+  而新守护会**再起 8 核** ⇒ **从 12 核变成 20 核，比现在还挤**。
+  ⇒ **要真降并发，必须同时杀掉我自己那 3 个在跑作业**，代价约 **2 小时队列时间**（3 × ~40min 重跑）。
+  ⇒ **我不做这个交易现在**（一天里我已在「等 vs 浪费」上错过几次，这次选择记录而不是赌）
+  ——**等队列自然跑空的那一刻执行，代价为零**。
+- **零浪费时机的命令（B' 可直接执行；只动我自己的进程、不碰平台）**：
+  ```bash
+  # 1) 确认队列已空（待跑 0 且无 ab_test 进程）
+  ps -eo args | grep -c "[a]b_test.py"        # 应为 0
+  # 2) 停旧守护（SIGTERM 优雅退出，会在 finally 里删锁文件）
+  kill -TERM $(ps -eo pid,args | awk '$2 ~ /bash$/ && $3 ~ /queue_supervisor/ {print $1}')
+  # 3) 用新默认（2 worker × 4 进程 = 8 核）重启
+  nohup setsid tools/queue_supervisor.sh >> /tmp/iterate.log 2>&1 < /dev/null &
+  ```
+- **判据（可复核）**：改后按小时看 `action.rejected` 与超预算是否下降：
+  ```bash
+  grep -h '"action.rejected"' logs/*.jsonl | uv run python -c "import sys,json,collections;c=collections.Counter(json.loads(l)['ts'][:13] for l in sys.stdin);print(c.most_common(5))"
+  ```
+  **若改后仍出现 >5000ms 的卡顿**，说明瓶颈不是核数（是环境冻结或长 GC），那时要换方向。
