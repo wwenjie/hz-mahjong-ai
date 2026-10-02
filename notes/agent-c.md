@@ -4196,3 +4196,10 @@ A 明确这是「判读」活、移交 B'。**我不抢 B' 的判读**，但会�
 - **C30x**：22/22 块，5436 房。rem≤1 缺口全量定位 **n5-8 桶**（我方 31.2% vs 对手 35.1%，z=+4.76，n=4084/15954），**推翻**冒烟的 n≤4 信号（全量 z 仅 +0.66）。n≥13 反超（z=−3.00）。与 coordinator 第 3 层「中盘起被甩开」咬合：中盘到听率落后 + 到听后转化最差，双重缺口叠加。判读已落 THREAD 13:05。
 - **预筛对照表**：15/19 done 的机械判读落 THREAD 13:10。presel5 samefield +0.037 ≤0.08 触发 A 的 kill_criteria①；presel6/8 追平 cand7（0.593/0.598 vs 0.594）但不敌 cand5（0.639）；presel5 掉队与 coordinator 召回率表（N=5 深层 0.422）对上。
 - **watcher 失灵记录**：`agent-c-c30x-watch` 在 03:55 PROBE_DONE 时未唤醒（runs=0），12:55 用户问起才手动发现。待排障。
+
+### 2026-10-02 15:55 watcher 失灵根因查明
+
+- **现象**：`agent-c-c30x-watch`（02:09 创建）在 C30x 03:55 PROBE_DONE 时未唤醒；`runs` 查询返回空。
+- **根因**：automations list 显示两个 watcher 的 `lastRunAt=null`（从未运行），且 `nextRunAt` 被重置为 15:52/15:59——**gateway cron 系统在 01:46~15:49 之间暂停/重启**，所有 trigger 停滞。对比 B' 的 heartbeat watcher 也是 15:38 才跑最近一次。
+- **处理**：C30x watcher 已删（任务已完成、判读已手动落 THREAD 13:05）；presel watcher 保留（补种子仍 3 条 pending）。
+- **教训**：watcher 机制依赖 gateway cron 持续运行；gateway 重启后 trigger 会恢复但中间窗口静默。**关键长任务的 watcher 要配一个「备用心跳」（比如在 THREAD 里留一条「若 X 时前没收到 watcher 消息，手动查」），或者接受人工兜底**。
