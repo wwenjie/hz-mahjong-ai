@@ -39,9 +39,28 @@ OUR = "u_a7f7c67bb14a"
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--rooms", type=int, default=0)
+    ap.add_argument("--arm-map", default=None,
+                    help="game_id→臂映射 JSON（build_arm_map.py 产物）；给了就按臂过滤")
+    ap.add_argument("--arm", default=None, help="只统计指定臂（如 v5/v6）；与 --arm-map 联用")
     args = ap.parse_args()
 
+    arm_of = {}
+    if args.arm_map:
+        with open(args.arm_map, encoding="utf-8") as f:
+            arm_of = json.load(f).get("map", {})
+
     files = sorted(glob.glob(str(REPO / "data" / "auto_sessions" / "*" / "events" / "*.json")))
+    if arm_of:
+        keep = []
+        for p in files:
+            gid = pathlib.Path(p).stem
+            arm = arm_of.get(gid)
+            if arm is None or arm == "mixed":
+                continue
+            if args.arm and arm != args.arm:
+                continue
+            keep.append(p)
+        files = keep
     if args.rooms:
         files = files[:: max(1, len(files) // args.rooms)][: args.rooms]
 

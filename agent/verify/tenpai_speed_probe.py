@@ -56,9 +56,28 @@ def welch(a: list[float], b: list[float]) -> tuple[float, float]:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="听牌速度探针")
     ap.add_argument("--rooms", type=int, default=0)
+    ap.add_argument("--arm-map", default=None,
+                    help="game_id→臂映射 JSON（build_arm_map.py 产物）；给了就按臂过滤")
+    ap.add_argument("--arm", default=None, help="只统计指定臂（如 v5/v6）；与 --arm-map 联用")
     args = ap.parse_args(argv)
 
+    arm_of = {}
+    if args.arm_map:
+        with open(args.arm_map, encoding="utf-8") as f:
+            arm_of = json.load(f).get("map", {})
+
     files = sorted(glob.glob(str(ROOT / "data/auto_sessions/*/events/*.json")))
+    if arm_of:
+        keep = []
+        for p in files:
+            gid = Path(p).stem
+            arm = arm_of.get(gid)
+            if arm is None or arm == "mixed":
+                continue
+            if args.arm and arm != args.arm:
+                continue
+            keep.append(p)
+        files = keep
     if args.rooms:
         step = max(1, len(files) // args.rooms)
         files = files[::step][: args.rooms]
