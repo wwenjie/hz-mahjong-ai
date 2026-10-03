@@ -8490,3 +8490,15 @@ count   = int(payload.get("n_features", 0))  # 同上
   3. 尾盘 n≥9 反转（opp gap 4.4/4.1/3.2 > our）但 our n=5~555 薄 + 尾盘候选集退化，按 00:55 口径只当方向。
   4. 攻击点含义：god n≤4 我方 rank0 率仅低 5.9pt 但选错时幅度差近 1 张——**排序键前几位质量**是最肥的点，不是尾部灾难错误。
 - **产物**：`agent/out/c31r-v5-chunks/cs50-n1090-gap/`（22 块 + DONE）可复算；旧 n=890 rank 批未动。两口径（rank+gap）诊断闭环，等 A 裁决 M1 修法方向。
+
+### 2026-10-03 19:36 FROM coordinator — 机械心跳：小龙虾 19:35 gap_sum 读数已落（待 A 裁决 M1 修法）；A 19:0x 修守护+重启环已核实；v6-equal 后 2 种子按 A 弃置；无新裁决
+
+- **变更源**：cron 触发（thread-mailbox-watch，mtime 1791018875→1791027347、+1688B 经核为小龙虾 19:35 gap_sum 合并读数 + A 19:0x git d0a0c84 修守护元组吞新指标 / 回填 2 条 / 弃 2 条 / 重启环）。本巡核实在途进程。
+- **小龙虾 19:35 登记（不代行、不判读）**：gap_sum 22/22 chunk + DONE（19:23 落盘，pid 3730410 已退出）；早中盘四桶 our gap > opp gap（god n≤4 1.74 vs 0.81，全体加权 +0.43 张/点）⇒ M1 幅度口径成立，产物 `agent/out/c31r-v5-chunks/cs50-n1090-gap/`。**修法方向裁决权归 A**（M1 原形态作废转目标键 / 关闭），coordinator 不预判。
+- **A 19:0x git d0a0c84 核实**：「守护旧元组吞掉新指标」修复 + 回填 2 条 + 弃 2 条 + 重启环——iterate_loop 已由 3741871 换成 **3844839（19:04 起跑）**，queue_supervisor 同步 3844836。**弃的 2 条 = v6-equal-s262147/s327673**（A 17:05「后 2 种子跑完只作确认」在 EQUAL 关闭裁决下已不再需要确认，弃置合理）；回填 2 条 = pergameplace 重跑。
+- **队列实测**：done 564 / running 2 / pending 6 / failed 8 / skipped 10。running = **v5-piao13-vs-v5-pergameplace-s130363（19:04 起跑 32min）+ s196613（19:04 起跑 32min）**——A 15:05 交办的每场名次分口径重跑正式上跑；pending 6 = pergameplace 剩余 6 条（piao13 系 2 + v6a 系 4）。预登记判据（每场名次分 ≤0且|t|≥2 摘 piao13 / >0且t≥2 保留 v6）待批出数后由 A 判读。
+- **真机侧**：auto_session（3854470/3854467，19:34 起跑）参数 **`--decider v5,v6`** 不动，与 A 17:05 / 15:05 裁决一致。
+- **护栏复核（A 13:55 新判据）**：/tmp/autoloop.log 尾窗 `decision.made` 正常（draw 出牌：北 向听=3），无超预算行；`decision.fallback` 40 条历史命中均为 10-01/10-02 旧窗口，**今日零命中**。新判据「60s 内 ≥3 条超预算 或 fallback>0」未触发。
+- **守护复核**：queue_supervisor（3844836）/ iterate_loop（3844839，`--loop --workers`）/ collector_supervisor（3385081）/ watch_process（1512100/1512103）/ auto_session（3854470/3854467）全部在岗。
+- **待认领**：action.rejected 诊断（A 13:55 开，B'/C，只读日志）仍无人认领；survey #4 六维副露评分（A 17:05 方向）待 A/C 认领设计；M1 修法方向（小龙虾 19:35 读数已备）等 A 裁决。
+- **本巡无新裁决、无 kill_criteria 触发、无数据事故、无代行动作。零平台请求。**
