@@ -28,6 +28,14 @@ class SeatStats:
     label: str = ""
     total_score: int = 0
     place_points: int = 0
+    # **平台口径**的名次分：按**整场**（默认 8 局）累计总得分给四家排 +3/+1/−1/−3。
+    #
+    # 与 `place_points` 的区别是致命的：`place_points` 是**每局**名次之和（`run_match` 里逐局累加），
+    # 而平台的战绩是**每场按累计分排名**（`client/collector` 的 `our_rank` 就是按每场累计分算的）。
+    # 2026-10-03 发现这个口径错位时，正好解释了一个反直觉读数：`piao13` 让**每局**名次分 +0.057(t4.99)
+    # 同时让**累计**总得分 −0.886(t−6.89)——单局名次与累计分本来就不单调。
+    # 新增字段**不动** `place_points`：后者是全部历史对照的基准，改了会让历史实验不可比。
+    game_place_points: int = 0
     god_count: int = 0
     rounds: int = 0
     wins: int = 0
@@ -139,6 +147,11 @@ def run_match(
         for seat, points in enumerate(place_points_of(outcome.scores)):
             stats[seat].place_points += points
         dealer = next_dealer(dealer, outcome)
+    # 每场一次：按**本场累计总得分**排名（平台口径，见 `SeatStats.game_place_points` 的说明）。
+    for seat, points in enumerate(
+        place_points_of([stat.total_score for stat in stats])
+    ):
+        stats[seat].game_place_points += points
     return result
 
 
@@ -177,6 +190,7 @@ def run_batch(
         for seat in range(SEATS):
             stats[seat].total_score += result.seats[seat].total_score
             stats[seat].place_points += result.seats[seat].place_points
+            stats[seat].game_place_points += result.seats[seat].game_place_points
             stats[seat].god_count += result.seats[seat].god_count
             stats[seat].rounds += result.seats[seat].rounds
             stats[seat].wins += result.seats[seat].wins

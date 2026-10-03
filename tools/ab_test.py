@@ -73,7 +73,14 @@ def play(
         start_dealer=match_index % SEATS,
     )
     return tuple(
-        (stat.total_score, stat.place_points, stat.god_count, stat.wins, stat.fan_total)
+        (
+            stat.total_score,
+            stat.place_points,
+            stat.god_count,
+            stat.wins,
+            stat.fan_total,
+            stat.game_place_points,
+        )
         for stat in result.seats
     )
 
@@ -100,7 +107,7 @@ def _play_task(task: PlayTask) -> MatchOutcome:
     return play(names, index, rounds=rounds, base_score=base_score, seed=seed)
 
 
-def _seat_task(task: SeatTask) -> tuple[int, int, int, int, int]:
+def _seat_task(task: SeatTask) -> tuple[int, int, int, int, int, int]:
     """只取 `seat_name` 在 `rotation` 座的产出。
 
     **一次只算一座不是浪费**：treatment 在每个旋转座坐的都是**不同的一局**
@@ -246,6 +253,7 @@ def main(argv: list[str] | None = None) -> int:
     god_diff: list[float] = []
     win_diff: list[float] = []
     fan_diff: list[float] = []
+    game_place_diff: list[float] = []
     collected: list[tuple[float, float, float, float, float]] = []
 
     # 四个旋转一次性提交给同一个进程池：任务数 4×matches，进程数够多时几乎无空转。
@@ -269,6 +277,7 @@ def main(argv: list[str] | None = None) -> int:
             god_diff.append(mine[2] - theirs[2])
             win_diff.append(mine[3] - theirs[3])
             fan_diff.append(mine[4] - theirs[4])
+            game_place_diff.append(mine[5] - theirs[5])
             collected.append((mine[0], theirs[0], mine[3], theirs[3]))
             mine_total += mine[0]
             theirs_total += theirs[0]
@@ -292,10 +301,15 @@ def main(argv: list[str] | None = None) -> int:
 
     print("\n逐场配对差分（treatment − baseline，正值表示 treatment 更好）")
     describe(score_diff, "总得分")
+    describe(game_place_diff, "每场名次分")
     describe(place_diff, "名次分")
     describe(god_diff, "白板数")
     describe(win_diff, "胡次数")
     describe(fan_diff, "番数总和")
+    print(
+        "  （口径：`每场名次分` = 按**整场累计总得分**给四家排 +3/+1/−1/−3，**与平台战绩同口径**；"
+        "`名次分` = **逐局**名次之和，是历史对照口径，两者不可混用）"
+    )
     print(f"  （每场 {rounds} 局，胡次数均差 0.10 ≈ 胡率差 {0.1 / rounds:.2%}）")
     return 0
 

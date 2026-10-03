@@ -207,6 +207,33 @@ def test_batch_rotates_the_starting_dealer() -> None:
     assert result.rounds == 4
 
 
+def test_game_place_points_is_the_per_match_rank_and_differs_from_per_round() -> None:
+    """`game_place_points` 必须是**每场**按累计分排名——平台战绩的口径。
+
+    为什么单独立一条：`place_points` 是**逐局**名次之和，两者不是同一个量，
+    而 2026-10-03 的 `piao13` 读数正是「逐局名次 +0.057(t4.99) 而累计分 −0.886(t−6.89)」
+    ⇒ 用错口径就会把同一个臂判成好坏相反。这里同时钉住「两者可以不相等」。
+    """
+    from majiang.sim.batch import place_points_of
+
+    def heuristic_deciders():
+        return [GuardedDecider(HeuristicDecider(PolicyConfig())) for _ in range(4)]
+
+    differs = False
+    for seed in (11, 12, 13):
+        result = run_match(heuristic_deciders(), rounds=4, seed=seed, labels=["a"] * 4)
+        totals = [stat.total_score for stat in result.seats]
+        assert [stat.game_place_points for stat in result.seats] == list(
+            place_points_of(totals)
+        )
+        assert sum(stat.game_place_points for stat in result.seats) == 0
+        if [stat.place_points for stat in result.seats] != [
+            stat.game_place_points for stat in result.seats
+        ]:
+            differs = True
+    assert differs, "三个种子里两个口径都相同，说明这条测试没有区分度，请换种子"
+
+
 def test_heuristic_beats_baseline_head_to_head() -> None:
     """策略应当显著优于「永远打最小那张」的基线。"""
     heuristic = lambda: GuardedDecider(HeuristicDecider(PolicyConfig()))
