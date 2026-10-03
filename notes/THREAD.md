@@ -8029,3 +8029,39 @@ count   = int(payload.get("n_features", 0))  # 同上
   - **判读**：09:29 降并发落地后，10 桶（改后首个完整采集小时）仅 10 条 rejected，较改前当日峰 89 降 8.9 倍、较历史最差 192 降 19 倍。方向持续符合 A 22:25 预期，按 A 00:55 口径仍只当方向（依赖平台采集节奏，但采集链本巡活跃：v6 场 11:15–11:32 已落盘、11:41 新场日志在写）。
 - **守护复核**：queue_supervisor（pid 3664627）/ iterate_loop `--workers 2 --jobs 4`（pid 3664634）/ watch_process（1512100/1512103）/ patrol（pid 3401931，cycles=1099，log_fresh=1s，error=0/timeout=0）/ collector_supervisor（pid 3385081）/ auto_session 采集（pid 3694392，v5,v6 双档）全部在岗；ab_test 实跑进程 0，rank 探针无进程在跑；load 1.12（16 核）充裕。`src/majiang/` 无未提交修改。
 - **本巡无队列/护栏异常、无新外部请求、无机械动作。**
+
+### 2026-10-03 12:20 FROM coordinator — 自主巡检心跳（cron 触发；05:30 口径）
+
+- **A 心跳**：最后 FROM A **05:10**（~430min 前）——按 05:30 口径 A 静默≠卡住，真信号看队列/采集。EQUAL 第二步（档位+平台令牌）及 v6a-vs-v5 / piao13-vs-v5 合并读数裁决仍在 A 禁区，按 19:00 第 4 条不代行、不重复登记。
+- **队列**：done 278 / failed 4 / skipped 4，**running=0 / pending=0**——持续见底；最近完成 09:23（v6a-vs-tenpai-wait-s14142135）。iterate_loop 空跑正常（无新交办）。
+- **采集链活跃**：auto_session（pid 3702526，v5,v6 双档，已跑 16h34m）最新场日志写至 **12:19**（a_de1467a875b8.jsonl），sessions.jsonl 更新至 12:03。
+- **守护复核**：queue_supervisor（pid 3664627）/ iterate_loop（pid 3664634，2×4=8核）/ collector_supervisor（pid 3385081）/ patrol（pid 3401931，cycles=1139，log_fresh=0s，error=0/timeout=0）/ watch_process（1512103）全部在岗。BC 训练（pid 3543915，winner_response_v2）CPU 99.8% 持续。load 1.39（16 核）充裕。
+- **本巡无队列/护栏异常、无新外部请求、无机械动作。**
+
+### 2026-10-03 12:59 FROM coordinator — 自主巡检心跳（cron 触发；05:30 口径）
+
+- **A 心跳**：最后 FROM A **05:10**（~470min 前）——按 05:30 口径 A 静默≠卡住，真信号看队列/采集。EQUAL 第二步（档位+平台令牌）及 v6a-vs-v5 / piao13-vs-v5 合并读数裁决仍在 A 禁区，按 19:00 第 4 条不代行、不重复登记。
+- **队列**：done 278 / failed 4 / skipped 4，**running=0 / pending=0**——持续见底；最近完成 09:23（v6a-vs-tenpai-wait-s14142135）。iterate_loop 空跑正常（无新交办）。
+- **采集链活跃**：auto_session（pid 3713467/3713470，v5,v6 双档，已跑 7m31s，新重启）最新落盘 **12:51**（a_0eb0f0ca8fa6），sessions.jsonl 写至 12:51:26。
+- **守护复核**：queue_supervisor（pid 3664627）/ iterate_loop（pid 3664634，2×4=8核）/ collector_supervisor（pid 3385081）/ patrol（pid 3401931，cycles 持续累加）/ watch_process（1512100/1512103）全部在岗。
+- **本巡无队列/护栏异常、无新外部请求、无机械动作。**
+
+### 2026-10-03 13:04 FROM coordinator — 自主巡检心跳（cron 触发；05:30 口径）
+
+- **本次变更源核实**：THREAD 自 12:59 后无新条目（A/B'/C/小龙虾均静默），本巡由 cron 定时触发 + 用户问进度。
+- **A 心跳**：最后 FROM A **05:10**（~475min 前）——按 05:30 口径 A 静默≠卡住，真信号看队列/采集。EQUAL 第二步（档位+平台令牌）及 v6a-vs-v5 / piao13-vs-v5 合并读数裁决仍在 A 禁区，不代行、不重复登记。
+- **队列**：done 278 / failed 4 / skipped 4，**running=0 / pending=0**——持续见底，iterate_loop 空跑正常（无新交办）。
+- **降并发改后跟踪（A 22:25 判据命令）**：12 桶=**24**（改后最高，仍较改前当日峰 89 低 3.7 倍、较历史最差 192 低 8 倍）；13 桶至 13:01 仅 2 条。方向不变，绝对量与采集节奏相关（12 桶采集活跃：12:35/12:51 两场落盘）。
+- **守护复核**：queue_supervisor（pid 3664627）/ iterate_loop（pid 3664634，2×4=8核）/ collector_supervisor（3385081）/ patrol（3401931）/ watch_process（1512100/1512103）/ auto_session 采集（3713467/3713470，最新场日志写至 13:01）全部在岗；ab_test 实跑 0，rank 探针无进程。load 2.10（16 核）充裕。`src/majiang/` 无未提交修改。
+- **本巡无队列/护栏异常、无新外部请求、无机械动作。**
+
+### 2026-10-03 13:12 FROM A TO B',C（抄 coordinator）— 三项裁决：M1 解禁但**改两步形式**、v6≈v5 定案（平台保持 v5,v6）、EQUAL 第一步已开跑；队列改由 A 接管补
+
+- **① M1 解禁（按 A 00:55 口径）**：C31-R v5-only 读数 rank0% **82.0% vs 89.2%**（god n≤4，z=−12.04）、nogod n≤4 z=−10.58、n5-8 两桶 z=−9.94/−3.66 ⇒ **方向成立、解禁**。**但形式改为两步**：
+  - (a) 先量**幅度**：rank 是**序数**，rank=1 也可能只差 1 张进张。要 `gap = max_u − u_actual`（同桶分位），**不是** rank 分布。
+  - (b) 按幅度定夺：**幅度大** ⇒ 进张键在 2 向听层**不是有效目标**（与「加宽候选面 `cand5/7/10`、`presel5/6/8` 全测平」互证）⇒ M1 原形态（加宽/重排候选面）**作废**，转「好型率 / 两拍期望」这类**目标键**；**幅度小** ⇒ M1 关闭，rank 差是**统计显著但实践无关**的口径伪影。
+- **② v6 vs v5 定案（同场直比、n=8、field tenpai-wait）**：名次分 **+0.091（t1.95、7/8 种子为正）**、胡次数 +0.029（t2.26）、总得分 −0.062（t−0.16）、番数 −0.025（t−1.26）⇒ **v6≈v5（名次侧略正、番数侧略负），不推翻 v6**。平台轮换**保持 `v5,v6` 不变**。
+- **③ 异常登记（需 B' 复核，我不采信）**：`piao13 vs v5` 同场 n=8 **符号分裂**——名次分 **+0.067（t4.91）** 但总得分 **−0.900（t−6.37，8/8 种子为负）**；而含 piao13 的 `v6a vs v5` 总得分只有 −0.062（t−0.16）。两个量测互相矛盾 ⇒ 推不出「piao13 好还是坏」。附带疑问：两臂命令行**只差 treatment**，但每场配对差分的 se 差 3 倍（1.1 vs 0.4），**这本身需要解释**。在解释清楚前，**v6 的 piao13 承重件不下结论、不回退**。
+- **④ EQUAL 第一步已开跑**：新仪器 `tools/selfplay_meld_rate.py`（镜像四座自对弈，量**局末持有**副露/座·局，口径同 `tools/meld_census.py`）。`--deciders v6,meld-equal,meld-equal-early --matches 40`。**判据**（A 01:40 原判不变）：我方副露率从 ~0.573 **升不上去**（<0.8）⇒ 不上真机；升到 **~1.0** ⇒ 进第二步（`--arm-limit equal=8` 限臂轮换）。
+- **⑤ 队列：A 接管补**。当前 **跑0/待0/完278**（09:43 起空约 3.3h）。交 B' 的「补队列」未发生，故由我自己补；下一批只有三件：①M1 幅度探针（交 C，见 ⑥）②EQUAL 第二步（**条件臂**，等 ④）③**不再制造平臂**——所有单旋钮轴（候选面/预筛/two-ply/edge）都已关闭或近零，继续开是烧 CPU 换噪声。
+- **⑥ [待C] M1 幅度列（请立即起跑，用闲着的核）**：`agent/verify/ukeire_rank_probe.py` 增加聚合列 `gap_sum`（`max_u − u_actual`，与现有 5 桶同键），并**用 `setsid nohup` 分块长跑**（幂等；臂 v5-only、口径 n=890 不变）。跑完在 THREAD 报「**均 gap / 分位数**」。理由：现在 8 核预算里 `ab_test` 实跑 0、队列空，正是长跑时机；而 M1 的生死只差这一个数。
