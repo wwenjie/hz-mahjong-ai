@@ -11,7 +11,12 @@ ukeire = 使手牌向听下降的牌张数（4 − 全场可见）。新增：
   rank = #{候选 ukeire > u_actual}（严格更优的候选数，0 基）。
 
 分桶聚合（our/opp × 向听 × 财神 × 摸序段）：
-  [n, rank_sum, rank0_count, rank_le1_count, rank_ge3_count]
+  [n, rank_sum, rank0_count, rank_le1_count, rank_ge3_count, gap_sum]
+
+2026-10-03 A 13:12 ⑥：新增 gap_sum —— gap = max_u − u_actual（同向听候选中精确进张
+最大值减实际所选牌的进张）。rank 是序数（rank=1 可能只差 1 张），gap 量的是幅度。
+判 M1 形态：幅度大 ⇒ 进张键在 2 向听层不是有效目标 ⇒ M1 转目标键；幅度小 ⇒ M1 关闭
+（rank 差是统计显著但实践无关的口径伪影）。
 
 抗回收：沿用 C31 的分块幂等落盘（agent/out/c31r-chunks/）。
 
@@ -67,8 +72,8 @@ def ukeire(after: list[int], meld_n: int, s: int, vis: list[int], memo: dict) ->
     return total
 
 
-def process_batch(batch, chunk_path, memo):
-    agg: dict = collections.defaultdict(lambda: [0, 0, 0, 0, 0])
+def process_batch(batch, chunk_path):
+    agg: dict = collections.defaultdict(lambda: [0, 0, 0, 0, 0, 0])
     rooms = 0
     for path in batch:
         try:
@@ -110,17 +115,23 @@ def process_batch(batch, chunk_path, memo):
                 meld_n = len(state.seats[seat].melds)
                 if sum(before) != tiles.HAND_SIZE + 1 - tiles.MELD_SLOTS * meld_n:
                     continue
+                # A 00:55 裁决：memo 生命周期挪到每个决策点（用完即弃），
+                # 否则手牌无关的全局缓存在单块 20 房内就膨胀到 7GB+。
+                memo: dict = {}
                 try:
                     s_actual = shanten_mod.shanten(list(after_actual), meld_n, memo=memo)
                 except Exception:  # noqa: BLE001
                     continue
-                if s_actual <= 0:
+                # A 00:55 退一步方案：只对向听==2 的决策点算 rank（M1 靶子层），
+                # 其余跳过——CPU 砍到 ~1/5，保留 M1 裁决所需的全部信息。
+                if s_actual != 2:
                     continue
                 vis = visible_counts(state)
                 vis[diff[0]] -= 1
                 u_actual = ukeire(list(after_actual), meld_n, s_actual, vis, memo)
                 rank = 0
                 n_cand = 0
+                max_u = u_actual  # A 13:12 ⑥：gap 幅度 = max_u − u_actual
                 for t, c in enumerate(before):
                     if c <= 0 or t == diff[0]:
                         continue
@@ -134,8 +145,11 @@ def process_batch(batch, chunk_path, memo):
                         continue
                     n_cand += 1
                     u_c = ukeire(cand, meld_n, s_actual, vis, memo)
+                    if u_c > max_u:
+                        max_u = u_c
                     if u_c > u_actual:
                         rank += 1
+                gap = max_u - u_actual
                 grp = "our" if ids[seat] == OUR else "opp"
                 n = draw_idx[seat]
                 n_bucket = "n≤4" if n <= 4 else ("n5-8" if n <= 8 else ("n9-12" if n <= 12 else "n≥13"))
@@ -148,6 +162,7 @@ def process_batch(batch, chunk_path, memo):
                 a[2] += 1 if rank == 0 else 0
                 a[3] += 1 if rank <= 1 else 0
                 a[4] += 1 if rank >= 3 else 0
+                a[5] += gap
     agg_ser = {"||".join(str(x) for x in k): v for k, v in agg.items()}
     payload = {"rooms": rooms, "agg": agg_ser}
     tmp = chunk_path.with_suffix(".tmp")
@@ -188,38 +203,38 @@ def main(argv: list[str] | None = None) -> int:
         files = files[::step][: args.rooms]
 
     tag = ("-" + args.arm) if args.arm else ""
-    chunk_dir = ROOT / "agent" / "out" / f"c31r{tag}-chunks" / f"cs{args.chunk_size}-n{len(files)}"
+    # A 13:12 ⑥：gap_sum 改变了 chunk 落盘格式（5 列→6 列），与旧 n=890 批（5 列）不兼容。
+    # 用独立目录（-gap 后缀）重跑，保旧产物（rank 分布）可复算、不覆盖。
+    chunk_dir = ROOT / "agent" / "out" / f"c31r{tag}-chunks" / f"cs{args.chunk_size}-n{len(files)}-gap"
     chunk_dir.mkdir(parents=True, exist_ok=True)
     n_chunks = (len(files) + args.chunk_size - 1) // args.chunk_size
 
-    # memo 按块清空：shanten memo 全量运行会膨胀到 12GB+（850 房三次起跑两次疑似 OOM 夭折），
-    # 每块 50 房内命中率足够，跨块缓存不划算。
+    # memo 生命周期已挪进 process_batch 的每个决策点（A 00:55 裁决：一行级修法）。
     for ci in range(n_chunks):
-        memo: dict = {}
         chunk_path = chunk_dir / f"chunk-{ci:04d}.json"
         if chunk_path.exists():
             continue
         batch = files[ci * args.chunk_size : (ci + 1) * args.chunk_size]
-        rooms = process_batch(batch, chunk_path, memo)
+        rooms = process_batch(batch, chunk_path)
         print(f"chunk {ci:04d}: {rooms} rooms -> {chunk_path}", flush=True)
 
-    # 合并
-    merged: dict = collections.defaultdict(lambda: [0, 0, 0, 0, 0])
+    # 合并（6 列：n, rank_sum, rank0, rank_le1, rank_ge3, gap_sum）
+    merged: dict = collections.defaultdict(lambda: [0, 0, 0, 0, 0, 0])
     total_rooms = 0
     for cp in sorted(chunk_dir.glob("chunk-*.json")):
         d = json.loads(cp.read_text(encoding="utf-8"))
         total_rooms += d["rooms"]
         for k, v in d["agg"].items():
             m = merged[k]
-            for i in range(5):
+            for i in range(6):
                 m[i] += v[i]
     print(f"rooms={total_rooms}")
-    print(f"{'grp':>4} {'向听':>4} {'财神':>6} {'摸序':>6} {'n':>6} {'均rank':>7} {'rank0%':>7} {'≤1%':>6} {'≥3%':>6}")
+    print(f"{'grp':>4} {'向听':>4} {'财神':>6} {'摸序':>6} {'n':>6} {'均rank':>7} {'rank0%':>7} {'≤1%':>6} {'≥3%':>6} {'均gap':>7}")
     for k in sorted(merged):
-        n, rs, r0, r1, r3 = merged[k]
+        n, rs, r0, r1, r3, gs = merged[k]
         if not n:
             continue
-        print(f"{k.replace('||',' '):>22} {n:>6} {rs/n:>7.2f} {r0/n*100:>6.1f}% {r1/n*100:>5.1f}% {r3/n*100:>5.1f}%")
+        print(f"{k.replace('||',' '):>22} {n:>6} {rs/n:>7.2f} {r0/n*100:>6.1f}% {r1/n*100:>5.1f}% {r3/n*100:>5.1f}% {gs/n:>7.2f}")
     (chunk_dir / "DONE").write_text("ok\n", encoding="utf-8")
     print("PROBE_DONE", flush=True)
     return 0
