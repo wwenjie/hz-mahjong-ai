@@ -529,6 +529,17 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               ukeire_candidates=3, ukeire_preselect=5, piao_threshold_scale=1.3,
                               two_ply_shanten1=True)
     ),
+    # **EQUAL 臂的正确形态**（A 2026-10-03 13:2x 裁决）：副露闸门的对照臂必须**只差闸门**。
+    # 已注册的 `meld-equal` 是 `for_mode` 默认档 + `meld_tolerance="equal"`，即 **legacy 基座**——
+    # 它既没有 `wait_aware_tenpai`/`shape_value`/`exact-ukeire`，也**不是冠军**。
+    # 拿它上真机做「放开闸门的行为验证」，等于同时换掉基座，副露的行为变化无法归因。
+    # 本档 = **v6 的全部旋钮 + `meld_tolerance="equal"`**，逐位可复现（见 tests/test_versions.py）。
+    "v6-equal": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, ukeire_preselect=5, piao_threshold_scale=1.3,
+                              meld_tolerance="equal")
+    ),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 

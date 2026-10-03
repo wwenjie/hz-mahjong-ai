@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from majiang.cli import DECIDERS, make_decider
 from majiang.strategy import versions
-from majiang.strategy.policy import HeuristicDecider, Mode, PolicyConfig
+from majiang.strategy.policy import HeuristicDecider, MeldTolerance, Mode, PolicyConfig
 
 
 def test_version_ids_are_unique_and_addressable() -> None:
@@ -103,3 +103,25 @@ def test_v6_is_bit_identical_to_the_arm_that_produced_the_additivity_result() ->
     v5 = versions.build("v5", Mode.QUALIFIER).config
     assert v5.ukeire_preselect == 0 and v5.piao_threshold_scale == 1.0
     assert frozen.ukeire_preselect == 5 and frozen.piao_threshold_scale == 1.3
+
+
+def test_v6_equal_differs_from_the_champion_only_in_the_meld_gate() -> None:
+    """EQUAL 对照臂必须**只差闸门**：`v6-equal` = v6 的每个变体字段 + `meld_tolerance="equal"`。
+
+    为什么单独钉这条：已注册的 `meld-equal` 是 `for_mode` 默认档 + equal 容差，
+    即 **legacy 基座**（没有 `wait_aware_tenpai`/`shape_value`/`exact-ukeire`）。
+    拿它上真机验证「放开闸门」的行为，等于同时换了基座，副露变化无法归因。
+    """
+    from majiang.strategy.policy import VARIANT_FIELDS
+
+    champion = make_decider("v6a", Mode.QUALIFIER).config
+    equal = make_decider("v6-equal", Mode.QUALIFIER).config
+    for field in VARIANT_FIELDS:
+        if field == "meld_tolerance":
+            continue
+        assert getattr(champion, field) == getattr(equal, field), field
+    assert equal.meld_tolerance == MeldTolerance.EQUAL
+    assert champion.meld_tolerance == MeldTolerance.STRICT
+    # legacy 基座确认与冠军不同（否则上面这条测试是空话）
+    legacy = make_decider("meld-equal", Mode.QUALIFIER).config
+    assert legacy.wait_aware_tenpai is False and legacy.shape_value is False

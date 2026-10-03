@@ -18120,6 +18120,58 @@
    "status": "pending",
    "hypothesis": "**符号分裂复现检验**（A 2026-10-03 13:12 裁决）：上一批该臂 8/8 种子总得分为负（合并 −0.900, t−6.37）但名次分为正（+0.067, t4.91）。本 job 用新种子同设计重跑：若两个符号都复现 ⇒ 这是 piao13 的真实性质（弃胡收紧＝高分低番、名次升总分降），需按平台结算口径定取舍；若符号翻转 ⇒ 前一批的「显著」是口径伪影。",
    "kill_criteria": "总得分符号翻转且 |t|<2 ⇒ 判「前一批显著为伪影」，piao13 退回未定状态；两符号均复现 ⇒ 进入「按平台结算口径定取舍」的裁决，不再重跑。"
+  },
+  {
+   "id": "v6-equal-vs-v6a-samefield-s130363",
+   "treatment": "v6-equal",
+   "baseline": "v6a",
+   "matches": 120,
+   "seeds": [
+    130363
+   ],
+   "field": "v6a",
+   "status": "pending",
+   "hypothesis": "**EQUAL 臂第二步的前置：离线 A/B（A 2026-10-03 13:2x 裁决）**。第一步（自对弈副露率）三源一致通过：strict→equal 副露率 +0.39~+0.47/局（0.82→1.27、1.00→1.47），即**闸门是副露少的主因**。但那只是机制量，没证明「放开闸门能赢」。本臂 = `v6-equal`（v6 全部旋钮 + `meld_tolerance=equal`，逐位测试在 tests/test_versions.py）vs `v6a`（=v6，冠军），**同场**、四座位旋转、field=`v6a`（对手=冠军本身，副露互动密度最高的一档）。为何 field 不取 v3：副露的价值全靠对手互动，弱场会把它测平。",
+   "kill_criteria": "4 种子合并名次分 **≤0 或 t<2** ⇒ 判「放开闸门只增副露不增胜率」，**不上真机第二步**，转 survey 候选 #4（六维副露评分：向听 delta×听口质量 delta×打点 delta×役锁定×安牌×局况）；名次分 ≥0 且 t≥2 ⇒ 起真机限臂 `v6-equal`（8 会话，仅行为验证、不判胜负）。"
+  },
+  {
+   "id": "v6-equal-vs-v6a-samefield-s196613",
+   "treatment": "v6-equal",
+   "baseline": "v6a",
+   "matches": 120,
+   "seeds": [
+    196613
+   ],
+   "field": "v6a",
+   "status": "pending",
+   "hypothesis": "**EQUAL 臂第二步的前置：离线 A/B（A 2026-10-03 13:2x 裁决）**。第一步（自对弈副露率）三源一致通过：strict→equal 副露率 +0.39~+0.47/局（0.82→1.27、1.00→1.47），即**闸门是副露少的主因**。但那只是机制量，没证明「放开闸门能赢」。本臂 = `v6-equal`（v6 全部旋钮 + `meld_tolerance=equal`，逐位测试在 tests/test_versions.py）vs `v6a`（=v6，冠军），**同场**、四座位旋转、field=`v6a`（对手=冠军本身，副露互动密度最高的一档）。为何 field 不取 v3：副露的价值全靠对手互动，弱场会把它测平。",
+   "kill_criteria": "4 种子合并名次分 **≤0 或 t<2** ⇒ 判「放开闸门只增副露不增胜率」，**不上真机第二步**，转 survey 候选 #4（六维副露评分：向听 delta×听口质量 delta×打点 delta×役锁定×安牌×局况）；名次分 ≥0 且 t≥2 ⇒ 起真机限臂 `v6-equal`（8 会话，仅行为验证、不判胜负）。"
+  },
+  {
+   "id": "v6-equal-vs-v6a-samefield-s262147",
+   "treatment": "v6-equal",
+   "baseline": "v6a",
+   "matches": 120,
+   "seeds": [
+    262147
+   ],
+   "field": "v6a",
+   "status": "pending",
+   "hypothesis": "**EQUAL 臂第二步的前置：离线 A/B（A 2026-10-03 13:2x 裁决）**。第一步（自对弈副露率）三源一致通过：strict→equal 副露率 +0.39~+0.47/局（0.82→1.27、1.00→1.47），即**闸门是副露少的主因**。但那只是机制量，没证明「放开闸门能赢」。本臂 = `v6-equal`（v6 全部旋钮 + `meld_tolerance=equal`，逐位测试在 tests/test_versions.py）vs `v6a`（=v6，冠军），**同场**、四座位旋转、field=`v6a`（对手=冠军本身，副露互动密度最高的一档）。为何 field 不取 v3：副露的价值全靠对手互动，弱场会把它测平。",
+   "kill_criteria": "4 种子合并名次分 **≤0 或 t<2** ⇒ 判「放开闸门只增副露不增胜率」，**不上真机第二步**，转 survey 候选 #4（六维副露评分：向听 delta×听口质量 delta×打点 delta×役锁定×安牌×局况）；名次分 ≥0 且 t≥2 ⇒ 起真机限臂 `v6-equal`（8 会话，仅行为验证、不判胜负）。"
+  },
+  {
+   "id": "v6-equal-vs-v6a-samefield-s327673",
+   "treatment": "v6-equal",
+   "baseline": "v6a",
+   "matches": 120,
+   "seeds": [
+    327673
+   ],
+   "field": "v6a",
+   "status": "pending",
+   "hypothesis": "**EQUAL 臂第二步的前置：离线 A/B（A 2026-10-03 13:2x 裁决）**。第一步（自对弈副露率）三源一致通过：strict→equal 副露率 +0.39~+0.47/局（0.82→1.27、1.00→1.47），即**闸门是副露少的主因**。但那只是机制量，没证明「放开闸门能赢」。本臂 = `v6-equal`（v6 全部旋钮 + `meld_tolerance=equal`，逐位测试在 tests/test_versions.py）vs `v6a`（=v6，冠军），**同场**、四座位旋转、field=`v6a`（对手=冠军本身，副露互动密度最高的一档）。为何 field 不取 v3：副露的价值全靠对手互动，弱场会把它测平。",
+   "kill_criteria": "4 种子合并名次分 **≤0 或 t<2** ⇒ 判「放开闸门只增副露不增胜率」，**不上真机第二步**，转 survey 候选 #4（六维副露评分：向听 delta×听口质量 delta×打点 delta×役锁定×安牌×局况）；名次分 ≥0 且 t≥2 ⇒ 起真机限臂 `v6-equal`（8 会话，仅行为验证、不判胜负）。"
   }
  ]
 }
