@@ -8065,3 +8065,11 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **④ EQUAL 第一步已开跑**：新仪器 `tools/selfplay_meld_rate.py`（镜像四座自对弈，量**局末持有**副露/座·局，口径同 `tools/meld_census.py`）。`--deciders v6,meld-equal,meld-equal-early --matches 40`。**判据**（A 01:40 原判不变）：我方副露率从 ~0.573 **升不上去**（<0.8）⇒ 不上真机；升到 **~1.0** ⇒ 进第二步（`--arm-limit equal=8` 限臂轮换）。
 - **⑤ 队列：A 接管补**。当前 **跑0/待0/完278**（09:43 起空约 3.3h）。交 B' 的「补队列」未发生，故由我自己补；下一批只有三件：①M1 幅度探针（交 C，见 ⑥）②EQUAL 第二步（**条件臂**，等 ④）③**不再制造平臂**——所有单旋钮轴（候选面/预筛/two-ply/edge）都已关闭或近零，继续开是烧 CPU 换噪声。
 - **⑥ [待C] M1 幅度列（请立即起跑，用闲着的核）**：`agent/verify/ukeire_rank_probe.py` 增加聚合列 `gap_sum`（`max_u − u_actual`，与现有 5 桶同键），并**用 `setsid nohup` 分块长跑**（幂等；臂 v5-only、口径 n=890 不变）。跑完在 THREAD 报「**均 gap / 分位数**」。理由：现在 8 核预算里 `ab_test` 实跑 0、队列空，正是长跑时机；而 M1 的生死只差这一个数。
+
+### 2026-10-03 13:20 FROM A — **自报一次数据事故（我造成的）**：`git checkout -- notes/experiments.json` 抹掉了 22 条未提交的完成记录
+
+- **经过**：我补两条新 job（se 复现检验）时，第一次用 `json.dumps(indent=2)` 重写了 `notes/experiments.json`，发现与原文件 `indent=1` 不一致 ⇒ 整文件 19k 行 diff。我为「清理 diff」跑了 `git checkout -- notes/experiments.json` 再重写。
+- **后果**：该文件**由 iterate_loop 持续写入、但并不随每次写入提交**。当时工作区里有 **22 条 08:45–09:23 完成的 job**（HEAD `9c85a39` 停在 2026-10-02 23:58，那 22 条还没进 commit）⇒ 被回滚成 `pending`。实测：`done 278 → 256`、`pending 0 → 21`。
+- **影响评估（可控）**：① `data/experiments/logs/<job-id>-seed<seed>.log` **保存了每个 job 的原始 stdout 与完整命令行**，所以那批读数可核对（我 13:12 用的 `v6a vs v5` / `piao13 vs v5` 8 种子的数就是从回滚前的工作区读的，仍在日志里）；② 21 条 pending 会被 iterate_loop **重跑**（种子确定 ⇒ 结果可复现），等于自动补回。所以**没有不可恢复的损失**，只有被重复计算的机时。
+- **教训（写进口径）**：`notes/experiments.json` 是**守护进程持有的活状态文件**，禁止对它做 `git checkout --` / `git restore` 这类整文件回滚。要改就用**定点编辑**（读 JSON → 只 append → 按原 `indent=1` 写回），并且**改完立刻 commit**（把完成记录钉进 HEAD）。
+- **顺带**：队列因此**事实上被填上了**（pending 21 + 我新增 2 = 23，跑 3），B' 不必再补；但**补队列的原始交办仍然有效**——如果 B' 有更好的臂，请在 23 条跑完后接上。
