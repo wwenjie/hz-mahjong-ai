@@ -15,10 +15,10 @@
   - 数据源 = data/auto_sessions/*/events/*.json，arm_map 过滤 v5 臂（同一批房）。
   - 决策点 = 我方座位 tile_discarded，且打出后向听 == 2（M1 靶子层，同 C31-R）。
   - 好型定义：听牌形中去掉雀头后，剩余搭子含至少一个两面（嵌/边/单钓/对碰=非好型）。
-    用 win.winning_draws 判听口，用搭子分解判两面（见 _has_ryanmen）。
+    财神在手一律算好型（财神可补成任意搭子，听口至少等价两面）。
   - 分桶键与 gap 批同构：(grp, god, n_bucket)，grp ∈ {our, opp}，god = 打出前手含财神。
 
-抗回收：分块幂等落盘 agent/out/s4-perfect-chunks/cs<N>-n<M>/，DONE 标记收尾。
+抗回收：分块幂等落盘 agent/out/s4-perfect-v5-chunks/cs<N>-n<M>/，DONE 标记收尾。
 单核 ~1h 预估（2 向听点 × 候选 × 进张 × 打出枚举，memo 每决策点用完即弃）。
 
 用法：`.venv/bin/python agent/verify/s4_perfect_rate_probe.py [--rooms N] [--chunk-size N]`
@@ -37,7 +37,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from majiang.rules import shanten as shanten_mod  # noqa: E402
 from majiang.rules import tiles  # noqa: E402
-from majiang.rules import win as win_mod  # noqa: E402
+from majiang.rules import win as win_mod  # noqa: E402  # (保留引用，听口判定备用)
 from majiang.sim import replay  # noqa: E402
 
 OUR = "u_a7f7c67bb14a"
@@ -58,22 +58,19 @@ def visible_counts(state) -> list[int]:
 
 
 def _has_ryanmen(counts: list[int], meld_n: int) -> bool:
-    """听牌形（0 向听）是否含两面搭子：去掉雀头后存在一组 m-n 相邻同色对子形。
+    """听牌形（0 向听）是否含两面搭子：去掉雀头后存在同花色相邻对 (t,t+1) 各≥1。
 
-    实现：对暗手计数（剔财神后财神仍可当任意牌——财神在手一律算好型，因可补成两面）。
-    粗口径但稳定：枚举去掉一对雀头（含财神顶替），剩余块若存在 (t,t+1) 同色相邻对 ⇒ 好型。
+    粗口径但稳定：财神在手一律算好型（财神可补成任意搭子）。
     """
     c = list(counts)
     if c[tiles.GOD] > 0:
-        return True  # 财神可补成任意搭子，听口至少等价两面
+        return True
     suits = [(0, 9), (9, 18), (18, 27)]
-    # 枚举雀头位置
     for head in range(tiles.TILE_KINDS):
         if c[head] < 2:
             continue
         c[head] -= 2
         try:
-            # 剩余块中找两面搭子（同花色相邻两牌各≥1，或单张+相邻缺位可由摸牌补——此处只看现存搭子形）
             for lo, hi in suits:
                 for t in range(lo, hi - 1):
                     if c[t] >= 1 and c[t + 1] >= 1:
@@ -104,7 +101,6 @@ def perfect_rate(after: list[int], meld_n: int, s: int, vis: list[int], memo: di
             after[t] -= 1
             continue
         total += remaining
-        # 摸入 t 后能否达到听牌（0 向听），且听口含两面
         reached_tenpai = False
         for d in range(tiles.TILE_KINDS):
             if after[d] <= 0:
@@ -141,85 +137,93 @@ def process_batch(batch, chunk_path):
         if len(ids) != 4:
             continue
         rooms += 1
-        state = replay.initial_state(doc)
-        draw_idx = [0, 0, 0, 0]
-        for ev in doc.get("events") or []:
-            et = ev.get("type")
-            seat = ev.get("seat")
-            if seat is None or not (0 <= seat < 4):
-                continue
-            if et == DRAWN:
-                draw_idx[seat] += 1
+        try:
+            rounds = list(replay.iter_rounds(doc))
+        except Exception:  # noqa: BLE001
+            continue
+        for state, events in rounds:
+            draw_idx = [0, 0, 0, 0]
+            for ev in events:
+                et = ev.get("type")
+                seat = ev.get("seat")
+                if not isinstance(seat, int) or not (0 <= seat < 4):
+                    try:
+                        replay.apply_event(state, ev)
+                    except Exception:  # noqa: BLE001
+                        break
+                    continue
+                if et == DRAWN:
+                    draw_idx[seat] += 1
+                    try:
+                        replay.apply_event(state, ev)
+                    except Exception:  # noqa: BLE001
+                        break
+                    continue
+                if et != DISCARDED:
+                    try:
+                        replay.apply_event(state, ev)
+                    except Exception:  # noqa: BLE001
+                        break
+                    continue
+                before = list(state.seats[seat].hand)
                 try:
                     replay.apply_event(state, ev)
                 except Exception:  # noqa: BLE001
                     break
-                continue
-            if et != DISCARDED:
+                after_actual = state.seats[seat].hand
+                diff = [t for t in range(tiles.TILE_KINDS) if before[t] - after_actual[t] == 1]
+                if len(diff) != 1:
+                    continue
+                meld_n = len(state.seats[seat].melds)
+                if sum(before) != tiles.HAND_SIZE + 1 - tiles.MELD_SLOTS * meld_n:
+                    skipped["hand_size"] += 1
+                    continue
+                memo: dict = {}
                 try:
-                    replay.apply_event(state, ev)
+                    s_actual = shanten_mod.shanten(list(after_actual), meld_n, memo=memo)
                 except Exception:  # noqa: BLE001
-                    break
-                continue
-            before = list(state.seats[seat].hand)
-            try:
-                replay.apply_event(state, ev)
-            except Exception:  # noqa: BLE001
-                break
-            after_actual = state.seats[seat].hand
-            diff = [t for t in range(tiles.TILE_KINDS) if before[t] - after_actual[t] == 1]
-            if len(diff) != 1:
-                continue
-            meld_n = len(state.seats[seat].melds)
-            if sum(before) != tiles.HAND_SIZE + 1 - tiles.MELD_SLOTS * meld_n:
-                skipped["hand_size"] += 1
-                continue
-            memo: dict = {}
-            try:
-                s_actual = shanten_mod.shanten(list(after_actual), meld_n, memo=memo)
-            except Exception:  # noqa: BLE001
-                skipped["shanten"] += 1
-                continue
-            if s_actual != 2:
-                continue
-            vis = visible_counts(state)
-            vis[diff[0]] -= 1
-            # 全体同向听候选（含实际所选）
-            cands: list[tuple[int, int, int]] = []  # (tile, perfect, total)
-            for t, c in enumerate(before):
-                if c <= 0:
+                    skipped["shanten"] += 1
                     continue
-                cand = list(before)
-                cand[t] -= 1
-                try:
-                    s_c = shanten_mod.shanten(cand, meld_n, memo=memo)
-                except Exception:  # noqa: BLE001
+                if s_actual != 2:
                     continue
-                if s_c != s_actual:
+                vis = visible_counts(state)
+                vis[diff[0]] -= 1
+                # 全体同向听候选（含实际所选）
+                cands: list[tuple[int, int, int]] = []  # (tile, perfect, total)
+                for t, c in enumerate(before):
+                    if c <= 0:
+                        continue
+                    cand = list(before)
+                    cand[t] -= 1
+                    try:
+                        s_c = shanten_mod.shanten(cand, meld_n, memo=memo)
+                    except Exception:  # noqa: BLE001
+                        continue
+                    if s_c != s_actual:
+                        continue
+                    p, tot = perfect_rate(cand, meld_n, s_actual, vis, memo)
+                    cands.append((t, p, tot))
+                if len(cands) < 2:
+                    skipped["lt2_cand"] += 1
                     continue
-                p, tot = perfect_rate(cand, meld_n, s_actual, vis, memo)
-                cands.append((t, p, tot))
-            if len(cands) < 2:
-                skipped["lt2_cand"] += 1
-                continue
-            # 按 perfect_rate 降序排（total=0 的候选 rate=0，排到尾）
-            cands.sort(key=lambda x: (x[1] / x[2]) if x[2] else 0.0, reverse=True)
-            rank = next((i for i, (t, _, _) in enumerate(cands) if t == diff[0]), len(cands))
-            _, cp, ct = next(((t, p, tot) for t, p, tot in cands if t == diff[0]), (0, 0, 0))
-            bp, bt = cands[0][1], cands[0][2]
-            grp = "our" if ids[seat] == OUR else "opp"
-            n = draw_idx[seat]
-            n_bucket = "n≤4" if n <= 4 else ("n5-8" if n <= 8 else ("n9-12" if n <= 12 else "n≥13"))
-            god = "god" if before[tiles.GOD] > 0 else "nogod"
-            key = f"{grp}||{god}||{n_bucket}"
-            a = agg[key]
-            a[0] += 1
-            a[1] += sum(p for _, p, _ in cands)
-            a[2] += sum(tot for _, _, tot in cands)
-            a[3] += rank
-            a[4] += cp
-            a[5] += ct
-            a[6] += bp
+                # 按 perfect_rate 降序排（total=0 的候选 rate=0，排到尾）
+                cands.sort(key=lambda x: (x[1] / x[2]) if x[2] else 0.0, reverse=True)
+                rank = next((i for i, (t, _, _) in enumerate(cands) if t == diff[0]), len(cands))
+                _, cp, ct = next(((t, p, tot) for t, p, tot in cands if t == diff[0]), (0, 0, 0))
+                bp, _bt = cands[0][1], cands[0][2]
+                grp = "our" if ids[seat] == OUR else "opp"
+                n = draw_idx[seat]
+                n_bucket = "n≤4" if n <= 4 else ("n5-8" if n <= 8 else ("n9-12" if n <= 12 else "n≥13"))
+                god = "god" if before[tiles.GOD] > 0 else "nogod"
+                key = f"{grp}||{god}||{n_bucket}"
+                a = agg[key]
+                a[0] += 1
+                a[1] += sum(p for _, p, _ in cands)
+                a[2] += sum(tot for _, _, tot in cands)
+                a[3] += rank
+                a[4] += cp
+                a[5] += ct
+                a[6] += bp
     agg_ser = {k: v for k, v in agg.items()}
     payload = {"rooms": rooms, "agg": agg_ser, "skipped": dict(skipped)}
     tmp = chunk_path.with_suffix(".tmp")
