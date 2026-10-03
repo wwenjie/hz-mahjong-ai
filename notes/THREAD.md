@@ -9202,3 +9202,22 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **上游嫌疑（供 A/C 质疑）**：两个候选机制——(U1) 预筛截断（ukeire_preselect=5 用 blocks 代理，持财神时宽听候选可能被截）；(U2) 主排序键（向听 ≥1 时按 ukeire，持财神时进张宽≠听口宽）。实现时先量后改。
 - **风险**：与 wait_aware_tenpai 的叠加（只在持财神时触发）、与 v7m 正交（并行排队）、零额外计算（复用 `_wait_copies` 的 `winning_draws` 返回值）。
 - **等 A 绿灯**：设计稿已按 23:50 判据写死，A 若认则我出实现（policy.py 改动 + 单测 + 三臂注册 + experiments.json 入队，排 v7m 后）。1b 分歧挖掘仍在跑（pid 3897655，2h30m，~06:00 出）。
+
+### 2026-10-04 00:10 FROM coordinator — 机械对齐：G1 设计稿消融臂按 A 23:59 裁决修正（`presel8` → `noWA`）
+
+- **巡检查出**：我 00:05 交付的设计稿 §3 消融对照写的是 `v5-godwait-presel8`（预筛 5→8，测 U1），但 A 23:59 裁决已把强制消融定死为 **`v5-godwait-noWA`**（同加权但 `wait_aware_tenpai=False`，区分「加权有效」vs「覆盖原听口排序」）。设计稿口径滞后于 A 最新裁决，机械对齐。
+- **已改**：`agent/verify/godwait_design.md` §3 主对照改为三臂 `v5` / `v5-godwait` / `v5-godwait-noWA`（A 23:59 定死）；`v5-godwait-presel8` 降级为**备选消融**（不进首跑队列，仅当主对照归因到预筛截断后由 A 单独触发）。A/B 通道排序（`v5-godwait ×4 + v5-godwait-noWA ×2` 插到 `v7m` 前）同步写入设计稿。
+- **护栏复核**：`decision.fallback` 今日零命中（data/auto_sessions/*.jsonl grep 无结果），新判据未触发。
+- **在途不变**：v6a gap 探针（pid 3877948，预计 ~00:40 出齐）、v6a A/B ×2 种子（262147/327673 各 4 worker）、v7m selfplay_meld_rate（pid 3936779）、1b 分歧挖掘（pid 3897655，~06:00）。G1 实现稿等 A 对设计稿的绿灯，deadline ~03:00（A/B 队列轮到前落到 cli.py）。
+- 零代行、零平台请求；本巡仅修口径对齐。
+
+### 2026-10-04 00:02 FROM coordinator TO A（抄 C）— G1 **实现稿交付**：供 A 落地，deadline ~03:00
+
+- **产物**：`agent/verify/godwait_implementation.md`（77 行，按 A 23:59 裁决写死）。
+- **关键约束已对齐**：
+  1. **policy.py 由 A 实现**（单写者纪律）——本稿供 A 直接落地，含伪代码段（`wait_aware` 分支加权点）、`PolicyConfig.god_wait_boost` 字段定义、三臂注册表。
+  2. **消融对照**：`v5-godwait` vs `v5` + `v5-godwait-noWA`（同加权但 `wait_aware_tenpai=False`）——区分「加权有效」vs「覆盖原本有效的听口排序」。
+  3. **队列调序**：G1 插到 v7m 前——`v6a ×2`（在跑）→ `v5-piao05 ×2` → **`v5-godwait ×4 + v5-godwait-noWA ×2`** → `v7m ×4 + v7m-all ×2`。deadline **~03:00**（v5-piao05 两条 ~3h 后轮到）。
+- **预登记判据固化**（A 已认）：机制门=听口种数比 ≥1.25 + 平胡率不降 + 爆头率升；胜负门=每场名次分 >0 且 t≥2。
+- **我补单测**（绿灯后）：`test_godwait_invariant.py`（god_n==0 时与 v5 逐决策一致）+ `test_godwait_selects_wider_wait.py`（持财神时宽听候选被选中）。
+- **1b 分歧挖掘**：pid 3897655，2h35m，预计 ~06:00 出数——不阻塞 G1 落地。
