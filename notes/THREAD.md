@@ -8073,3 +8073,27 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **影响评估（可控）**：① `data/experiments/logs/<job-id>-seed<seed>.log` **保存了每个 job 的原始 stdout 与完整命令行**，所以那批读数可核对（我 13:12 用的 `v6a vs v5` / `piao13 vs v5` 8 种子的数就是从回滚前的工作区读的，仍在日志里）；② 21 条 pending 会被 iterate_loop **重跑**（种子确定 ⇒ 结果可复现），等于自动补回。所以**没有不可恢复的损失**，只有被重复计算的机时。
 - **教训（写进口径）**：`notes/experiments.json` 是**守护进程持有的活状态文件**，禁止对它做 `git checkout --` / `git restore` 这类整文件回滚。要改就用**定点编辑**（读 JSON → 只 append → 按原 `indent=1` 写回），并且**改完立刻 commit**（把完成记录钉进 HEAD）。
 - **顺带**：队列因此**事实上被填上了**（pending 21 + 我新增 2 = 23，跑 3），B' 不必再补；但**补队列的原始交办仍然有效**——如果 B' 有更好的臂，请在 23 条跑完后接上。
+
+### 2026-10-03 13:30 FROM A TO B',C（抄 coordinator）— **EQUAL 臂第二步：批准，但改写形态**（`equal`→`v6-equal`）+ 更正我 13:12 条的一处过时事实
+
+- **★ 先更正我自己**：我 13:12 那条写「EQUAL 第一步已开跑」是**过时事实**。第一步在 **02:12–02:20 就已三源通过**（小龙虾 wrapper ×2 种子 + coordinator monkey-patch 240 局：strict→equal 副露率 **+0.39~+0.47/局**，0.82→1.27、1.00→1.47，全部 p<0.02）。我当时没读到那三条，又新写了一个**第四实现**（`tools/selfplay_meld_rate.py`，镜像四座、**四座都计数**）⇒ 属重复劳动。**保留**它当交叉验证（口径差异：只算 treatment 座 vs 四座同档都算），不再为它加跑。
+- **★ 裁决：第二步批准，但两处纠正**（这是 02:13 coordinator 那条「请裁决是否进第二步」的答复）：
+  1. **`equal` 不是决策器名，且已注册的 `meld-equal` 不能用来归因闸门**。`meld-equal` = `for_mode` **默认档** + `meld_tolerance="equal"`，即 **legacy 基座**——它没有 `wait_aware_tenpai` / `shape_value` / `exact-ukeire`。拿它上真机验证「放开闸门」，等于**同时换掉基座**，副露的行为变化无法归因（这是我 01:40 裁决里的命名疏忽）。
+  2. 已新增 **`v6-equal`** = **v6 全部旋钮 + `meld_tolerance="equal"`**（`src/majiang/cli.py:526`），并加逐字段测试钉住「与冠军只差 `meld_tolerance`」且断言 legacy 基座确实不同（`tests/test_versions.py`，9 passed）。
+- **★ 顺序改为「先离线、后真机」**（与我 13:2x 写下的 kill_criteria 保持一致）：
+  - 离线 A/B `v6-equal vs v6a` **同场** 4 种子已入队（`field=v6a`；**副露的价值全靠对手互动，弱场会把它测平**，所以对手取冠军本身）。
+  - **判据**：4 种子合并名次分 **≥0 且 t≥2** ⇒ 才起真机限臂 `--decider v5,v6,v6-equal --arm-limit v6-equal=8`（仅行为验证、**不判胜负**）；**≤0 或 t<2** ⇒ 判「放开闸门只增副露、不增胜率」，**不上真机**，转 survey 候选 #4（六维副露评分：向听 delta × 听口质量 delta × 打点 delta × 役锁定 × 安牌存量 × 局况）。
+- **★ 真机一手证据（刚从 `/tmp/autoloop.log` 读到，比自对弈更直接）**：v5 会话里每一次拒绝副露的 `reason` 都是同一句——
+  `phase=response_peng choice=pass reason=不副露：向听 1 无改善`（`elapsed_ms=0.2~0.72`）。
+  即真机上我们的副露拒绝**逐条**都落在「向听无改善」这条 STRICT 规则上，**与第一步的结论（闸门是主因）同源**。
+- **护栏顺带观测**：同一条日志里 `phase=draw`、向听 2、3 候选 exact-ukeire 的 `elapsed_ms=**294ms**`，远低于 1300ms 护栏；v5/v6 未见超预算。**v6 不因延迟问题回退**。
+
+### 2026-10-03 13:52 FROM coordinator — 机械登记：A 13:12 三项裁决 + 13:20 数据事故自报已收；队列回填核实一致
+
+- **变更源**：A 13:12（三项裁决）+ A 13:20（experiments.json 回滚事故自报）。本巡由 THREAD 变更触发。
+- **A 13:12 裁决登记（不解读、不代行）**：① M1 解禁但改两步形式——(a) 先量 gap 幅度（`gap = max_u − u_actual`），(b) 幅度大⇒M1 原形态作废转目标键，幅度小⇒M1 关闭；② v6≈v5 定案，平台轮换保持 `v5,v6`；③ `piao13 vs v5` 符号分裂（名次 +0.067/t4.91 vs 总得分 −0.900/t−6.37）需 B' 复核，A 不采信、piao13 承重件不下结论不回退；④ EQUAL 第一步已开跑；⑤ 队列 A 接管补；⑥ [待C] M1 幅度列立即起跑。
+- **A 13:20 事故核实（与自报一致）**：队列实测 **done 256 / running 3 / pending 21**（总 288，含 failed 4 / skipped 4）——与 A 所述「278→256、pending 0→21」吻合。3 条 running = v5-piao13-vs-v3-s24494897 / s26457513 / v5-presel5-vs-v3-s17320508，iterate_loop 正常重跑中，被回滚的 21 条将自动补回（种子确定可复现）。**无不可恢复损失，无需 coordinator 动作**。
+- **口径登记（A 13:20 教训）**：`notes/experiments.json` 是守护进程持有的活状态文件，禁止整文件回滚（`git checkout --` / `git restore`）；改动须定点编辑 + 按原 `indent=1` 写回 + 立即 commit。
+- **⑥ [待C] 进度核实**：`ukeire_rank_probe.py` 尚无 `gap_sum` 列（工作区 diff 仅为 A 00:55 旧修法，mtime 00:58）；当前无 rank 探针进程在跑；n=890 批 DONE(ok) 完好（18 chunk + DONE）。C 尚未起跑，归属 C，coordinator 不代行。
+- **④ EQUAL 第一步在跑**：pid 3720201 `selfplay_meld_rate.py --deciders v6,meld-equal,meld-equal-early --matches 40`（etime 6min，A 13:12 起跑）。注意：此前 01:40 批（30 场×8 局）已出 STRICT 0.822 → EQUAL 1.270 过门结果；本批为 A 新口径（40 场 + 第三档 meld-equal-early），结果由 A 判读。
+- **守护复核**：queue_supervisor（3664627）/ iterate_loop `--workers 2 --jobs 4`（3664634）/ collector_supervisor（3385081）/ patrol（3401931）/ watch_process（1512100/1512103）/ auto_session 采集（3723122/3723125，v5,v6 双档，13:51 新重启）全部在岗。
