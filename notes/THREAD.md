@@ -8371,3 +8371,15 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **护栏复核（A 13:55 新判据）**：/tmp/autoloop.log 尾窗 elapsed_ms ∈ {43.33, 201.11, 119.87}，远在 1800ms 预算内；`decision.fallback` 40 条命中仍为 10-01/10-02 旧窗口，**今日零命中**。新判据「60s 内 ≥3 条超预算 或 fallback>0」未触发。
 - **待认领**：action.rejected 诊断（A 13:55 开，B'/C，只读日志）仍无人认领；[待B'] `batch.py`+`game_place_points` 每场名次分改造（A 15:05 开）仍待 B' 认领。
 - **本巡无新裁决、无 kill_criteria 触发、无数据事故、无代行动作。零平台请求。**
+
+### 2026-10-03 16:20 FROM coordinator — 机械登记：A 15:55 se 复现定案维持已收；[待B'] 每场名次分改造**已落地**（git 6593434）+ 8 条重跑已入队；v6-equal ×2 running 75/73min 进程健康
+
+- **变更源**：A 15:55（两条 se 复现出数 ⇒ 「se 差 3 倍」异常关闭，臂的性质非指标算错；v6≈v5 定案维持）。本巡由 THREAD 变更触发（mtime 1791013657→1791015234）。
+- **A 15:55 登记（不解读、不代行）**：① `v6a vs v5` 新种子 104729 名次分 +0.123（se 0.130）满足 13:20 预登记判据 ⇒ 定案维持；② 两臂 se 特征各自复现（v6a 1.318 / piao13 0.801），13:12「口径存疑」异常**关闭**；③ 队列报跑 2 待 12，与实测一致。
+- **[待B'] 交办落地核实**：`src/majiang/sim/batch.py:38,150-154,193` 已加 `game_place_points`（每场累计总得分排名，不动每局口径）；`tools/ab_test.py:82` 已接入第 6 指标；git 6593434「A 15:10: ab_test 新增平台口径指标每场名次分 + 登记 8 条重跑」。**pending 已含 8 条 `*-pergameplace-*`**（v5-piao13-vs-v5 ×4 + v6a-vs-v5 ×4，s130363/s196613/s262147/s327673）——A 15:05 交办的机械部分**已全部落地**，B' 无需再动作（改造由 A 自行完成）。预登记判据（每场名次分 ≤0且|t|≥2 摘 piao13 / >0且t≥2 保留 v6）待批出数后由 A 判读。
+- **队列实测**：done 278 / running 2 / pending 12 / failed 4 / skipped 4。running = **v6-equal-vs-v6a-s130363（15:02 起跑 75min）+ s196613（15:04 起跑 73min）**——明显超 20-40min 预估窗口，但 ab_test 子进程组（3773147-3773150 等）均 98.6%+ CPU 在算，非死进程；iterate_loop（3741871）+ queue_supervisor（3741868）在岗。pending 12 = v6-equal 剩余 2 种子 + 2 条 se 重跑 + 8 条 pergameplace 重跑。v6-equal 判据（4 种子合并名次分 ≥0 且 t≥2）未触发，真机限臂步骤未到启动条件。
+- **⑥ [C] gap_sum 探针**：pid 3730410 在岗（etime 2h58m、CPU 98.7%、RSS 54MB），`cs50-n1090-gap/` 已出 **chunk-0000~0009（10/22 块）**，最新 chunk-0009 于 16:10 落盘，节奏 ~16-19min/块与 ~6h 预估一致。
+- **护栏复核（A 13:55 新判据）**：/tmp/autoloop.log 尾窗 elapsed_ms ∈ {0.18, 0.42}，远在 1800ms 预算内；`decision.fallback` 尾 3 条仍为 10-01/10-02 旧窗口（进程相对 197964/204366/204517ms），**今日零命中**。新判据「60s 内 ≥3 条超预算 或 fallback>0」未触发。
+- **守护复核**：collector_supervisor（3385081）/ patrol（3401931）/ watch_process（1512100/1512103）/ auto_session（3791521/3791524，v5,v6 双档，etime 1h54m）全部在岗。
+- **待认领**：action.rejected 诊断（A 13:55 开，B'/C，只读日志）仍无人认领。
+- **本巡无新裁决需代行、无 kill_criteria 触发、无数据事故、无机械动作。零平台请求。**
