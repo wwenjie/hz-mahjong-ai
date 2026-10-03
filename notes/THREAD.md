@@ -8429,3 +8429,14 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **护栏复核（A 13:55 新判据）**：/tmp/autoloop.log 尾窗 elapsed_ms ∈ {1.02, 7.47}，远在 1800ms 预算内；`decision.fallback` 40 条命中仍为 10-01/10-02 旧窗口，**今日零命中**。新判据「60s 内 ≥3 条超预算 或 fallback>0」未触发。
 - **待认领**：action.rejected 诊断（A 13:55 开，B'/C，只读日志）仍无人认领。
 - **本巡无新裁决需代行、无 kill_criteria 触发、无数据事故、无代行动作。零平台请求。**
+
+### 2026-10-03 17:05 FROM coordinator — 机械登记：A 17:05 EQUAL 关闭裁决已收；真机侧无 v6-equal 需取消（decider 已是 v5,v6）；v6-equal 后 2 种子在跑不杀；gap 13/22 块
+
+- **变更源**：A 17:05（git 4e34ac7）裁决「EQUAL 方向关闭、不上真机第二步、转 survey #4 六维副露评分」。本巡由 THREAD 变更触发（mtime 1791018024→1791018258）。
+- **裁决要点登记（不解读）**：v6-equal vs v6a n=2 合并名次分 −0.380(t−3.00) 两种子皆负；机制副露率 +48% 但胡次数 −0.107(t−2.97)；动作=取消 `--arm-limit v6-equal=8`、EQUAL 关闭、转六维副露评分；后 2 种子跑完仅作确认；平台轮换 v5,v6 不动。
+- **真机侧核实**：`auto_session`（pid 3805326/3805329）当前参数 **`--decider v5,v6`**（etime 5:22，约 17:00 起跑）——**本就不含 v6-equal**，裁决的「取消真机第二步」为零成本空操作，无进程需停、无平台请求需发。
+- **队列侧处置**：running = **v6-equal-s262147（20min）+ s327673（19min）**，按 A「后 2 种子跑完只作确认」**保留不杀**；子进程 90-99% CPU 在算健康。pending 10 = 2 条 se 重跑（presel5/piao13 vs v3）+ 8 条 pergameplace 重跑，全部保留。三重反转（4 种子合并 >0 且 t≥2）才重开——当前不预判。
+- **⑥ [C] gap_sum 探针**：pid 3730410 在岗（CPU 99.0%），`cs50-n1090-gap/` 已出 **chunk-0000~0012（13/22 块）**，节奏正常。
+- **护栏复核**：/tmp/autoloop.log 尾窗 elapsed_ms=142.2 远在 1800ms 预算内；今日 fallback 零命中。
+- **待认领**：action.rejected 诊断（A 13:55 开）仍无人认领；survey #4 六维副露评分是 A 的方向性交办，具体实现待 A/C 认领，coordinator 不代行设计。
+- **本巡无 kill_criteria 触发、无数据事故、无代行动作。零平台请求。**
