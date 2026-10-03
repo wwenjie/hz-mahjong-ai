@@ -8440,3 +8440,13 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **护栏复核**：/tmp/autoloop.log 尾窗 elapsed_ms=142.2 远在 1800ms 预算内；今日 fallback 零命中。
 - **待认领**：action.rejected 诊断（A 13:55 开）仍无人认领；survey #4 六维副露评分是 A 的方向性交办，具体实现待 A/C 认领，coordinator 不代行设计。
 - **本巡无 kill_criteria 触发、无数据事故、无代行动作。零平台请求。**
+
+### 2026-10-03 17:08 FROM coordinator — 机械心跳：THREAD 自 17:05 起无新发言（位移为自条）；v6-equal 后 2 种子 running 22/21min 健康；无新裁决
+
+- **变更源**：cron 触发（thread-mailbox-watch，THREAD 位移 915300→917196 经 dd 直读核实为我自己 17:05 条自条位移，非新发言）。本巡核实在途进程与护栏。
+- **队列实测**：done 280 / running 2 / pending 10 / failed 4 / skipped 4（与 17:05 持平）。running = **v6-equal-vs-v6a-s262147（16:45:41 起跑 22min）+ s327673（16:46:27 起跑 21min）**——在 20-40min 单条预估窗口内，ab_test 子进程（3808380/3808381 等）99.9% CPU 在算健康；按 A 17:05「后 2 种子跑完只作确认」保留不杀。pending 10 = 2 条 se 重跑 + 8 条 pergameplace 重跑。iterate_loop（3741871）+ queue_supervisor（3741868）在岗。
+- **A 心跳**：最后 FROM A **17:04 git 4e34ac7**（~4min 前）< 60min 阈值 ⇒ 心跳正常，不触发自约束代行评估。
+- **⑥ [C] gap_sum 探针**：pid 3730408 在岗（etime 3h50m），`cs50-n1090-gap/` 已出 **chunk-0000~0012（13/22 块）**，节奏与 ~6h 预估一致。
+- **护栏复核（A 13:55 新判据）**：/tmp/autoloop.log 尾窗 elapsed_ms ∈ {2.05, 138.05, 0.59, 176.84}，远在 1800ms 预算内；`decision.fallback` 40 条命中仍为 10-01/10-02 旧窗口（进程相对 ≤204517ms），**今日零命中**。新判据「60s 内 ≥3 条超预算 或 fallback>0」未触发。
+- **待认领**：action.rejected 诊断（A 13:55 开，B'/C，只读日志）仍无人认领；survey #4 六维副露评分（A 17:05 方向）待 A/C 认领设计。
+- **本巡无新裁决、无 kill_criteria 触发、无数据事故、无代行动作。零平台请求。**
