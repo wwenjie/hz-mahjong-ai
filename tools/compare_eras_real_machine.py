@@ -39,7 +39,7 @@ import math
 from collections import defaultdict
 from statistics import mean, stdev
 
-ERAS = ("heuristic", "v2", "v3")
+ERAS = ("heuristic", "v2", "v3", "v4", "v5", "v6")
 
 
 def load() -> list[dict]:
@@ -60,6 +60,13 @@ def cluster(rows: list[dict], field: str) -> tuple[float, float, int]:
     return mean(values), stdev(values) / math.sqrt(len(values)), len(values)
 
 
+def first_rate(rows: list[dict]) -> tuple[float, float, int]:
+    """首名率：本场名次 ==1 的比例，按房聚类（口径同其余指标）。"""
+    for row in rows:
+        row["_first"] = 1.0 if row.get("our_rank") == 1 else 0.0
+    return cluster(rows, "_first")
+
+
 def main() -> int:
     rows = load()
     stats = {}
@@ -74,16 +81,23 @@ def main() -> int:
         for field in ("our_win_rate", "our_rank", "our_score", "our_average_fan"):
             m, se, rooms = cluster(picked, field)
             print(f"    {field:16s} 均值 {m:8.4f}  标准误 {se:6.4f}（按房聚类，房数 {rooms}）")
+        rate, se, rooms = first_rate(picked)
+        print(f"    {'首名率':14s} 均值 {rate:8.4f}  标准误 {se:6.4f}（名次==1 的比例）")
         span = (picked[0].get("started_at"), picked[-1].get("started_at"))
         print(f"    时段 {span[0]} → {span[1]}")
 
-    if "v2" in stats and "v3" in stats:
-        print("\n=== v3 − v2（观测差，含时代混杂，不是因果）")
+    # 逐对相邻时代。**注意**：只有 v5/v6 这一对是**轮换交错**的（同一批房间、同一时段交替采集），
+    # 因此它比其余各对更接近 A/B；其余各对是先后接续的两个时代，含时代混杂。
+    present = [era for era in ERAS if era in stats]
+    for older, newer in zip(present, present[1:]):
+        interleaved = (older, newer) == ("v5", "v6")
+        tag = "轮换交错（同一时段交替采集，比前后接续更干净）" if interleaved else "先后接续（含时代混杂，不是因果）"
+        print(f"\n=== {newer} − {older}（观测差，{tag}）")
         for field in ("our_win_rate", "our_rank", "our_score"):
-            m2, se2, n2 = cluster(stats["v2"], field)
-            m3, se3, n3 = cluster(stats["v3"], field)
-            diff = m3 - m2
-            se = math.sqrt(se2**2 + se3**2)
+            m_old, se_old, _ = cluster(stats[older], field)
+            m_new, se_new, _ = cluster(stats[newer], field)
+            diff = m_new - m_old
+            se = math.sqrt(se_old**2 + se_new**2)
             t = diff / se if se else 0.0
             mde = 1.96 * se
             verdict = "显著" if abs(t) > 1.96 else "**不显著**"
@@ -91,10 +105,21 @@ def main() -> int:
                 f"    {field:16s} {diff:+8.4f}  标准误 {se:6.4f}  t {t:+5.2f}  "
                 f"95%CI [{diff - mde:+.4f}, {diff + mde:+.4f}]  {verdict}"
             )
+        rate_new, se_new_r, _ = first_rate(stats[newer])
+        rate_old, se_old_r, _ = first_rate(stats[older])
+        diff = rate_new - rate_old
+        se = math.sqrt(se_old_r**2 + se_new_r**2)
+        t = diff / se if se else 0.0
+        mde = 1.96 * se
+        verdict = "显著" if abs(t) > 1.96 else "**不显著**"
         print(
-            "\n读法：真机噪声基底 1.50 个百分点（胜率差 sd），是二项预期的 6 倍 ⇒ "
-            "胜率的**每场**分辨力很弱；能分辨 5 个百分点需要 ~22 小时采集。"
+            f"    {'首名率':16s} {diff:+8.4f}  标准误 {se:6.4f}  t {t:+5.2f}  "
+            f"95%CI [{diff - mde:+.4f}, {diff + mde:+.4f}]  {verdict}"
         )
+    print(
+        "\n读法：真机噪声基底 1.50 个百分点（胜率差 sd），是二项预期的 6 倍 ⇒ "
+        "胜率的**每场**分辨力很弱；能分辨 5 个百分点需要 ~22 小时采集。"
+    )
     return 0
 
 
