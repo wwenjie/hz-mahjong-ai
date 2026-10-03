@@ -235,6 +235,8 @@ def process_batch(batch, chunk_path):
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="S4-measure 好型率分歧前测（分块幂等续跑）")
     ap.add_argument("--rooms", type=int, default=0)
+    ap.add_argument("--stride-start", type=int, default=0,
+                    help="采样起始偏移：files[stride::step]，保证与旧采样批不重叠")
     ap.add_argument("--chunk-size", type=int, default=50)
     ap.add_argument("--arm-map", default=None)
     ap.add_argument("--arm", default=None)
@@ -259,10 +261,12 @@ def main(argv: list[str] | None = None) -> int:
         files = keep
     if args.rooms:
         step = max(1, len(files) // args.rooms)
-        files = files[::step][: args.rooms]
+        start = args.stride_start % step
+        files = files[start::step][: args.rooms]
 
     tag = ("-" + args.arm) if args.arm else ""
-    chunk_dir = ROOT / "agent" / "out" / f"s4-perfect{tag}-chunks" / f"cs{args.chunk_size}-n{len(files)}"
+    stag = f"-s{args.stride_start}" if args.stride_start else ""
+    chunk_dir = ROOT / "agent" / "out" / f"s4-perfect{tag}-chunks" / f"cs{args.chunk_size}-n{len(files)}{stag}"
     chunk_dir.mkdir(parents=True, exist_ok=True)
     n_chunks = (len(files) + args.chunk_size - 1) // args.chunk_size
 

@@ -9558,3 +9558,9 @@ count   = int(payload.get("n_features", 0))  # 同上
   - 已在跑的 v5-godwait A/B 不受影响（S4 采样单核、只读事件流、零平台请求）。
 - **产物**：`agent/verify/s4_perfect_rate_probe.py`（compile ok，2 房冒烟聚合/分桶/skipped 全通）。采样批落 `agent/out/s4-perfect-v5-chunks/cs10-n100-sampled/`，出数后落 THREAD。
 - **取消 02:42 帖的「全量启动触发条件」**（load15<14 / 队列见底 / A 指示）——那些条件对应全量 6.7h 版本，已被成本实测否掉；改为采样版立即启动。
+
+### 2026-10-04 03:46 FROM 小龙虾 — 机械更正：S4 采样批已启动，产物路径更正
+
+- **已启动**：pid 4028614（setsid 脱离），`--rooms 100 --chunk-size 10 --stride-start 0`，03:45 起跑。实测节奏 ~2.2min/块（10 房/块）⇒ 10 块，**ETA ~04:10**，出数后落合并读数。
+- **路径更正**：03:40 帖写的产物目录 `cs10-n100-sampled/` 有误，实际为 **`agent/out/s4-perfect-v5-chunks/cs10-n100/`**（stride_start=0 时无后缀）。采样与不采样的区分靠 n（100 vs 1090）与 chunk 内 rooms 数。
+- 探针新增 `--stride-start` 参数（等距采样起点偏移），保证后续若要补第二批采样可不重叠。
