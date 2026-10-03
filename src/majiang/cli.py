@@ -499,6 +499,22 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
     # **弃胡阈值方向性测试**（B' 01:59 第 4 层）：`piao_threshold_scale` 调大＝更保守。
     # 目标口袋：弃胡后别人胡的 165 次让出 1696 番（整体弃胡仍是赚的，所以这是一次「条件化」的前置方向测试，
     # 不是一刀切收紧）。判读要看**弃胡次数与让出番数两个量**，不能只看总得分。
+    # **弃胡阈值的反方向：`piao_threshold_scale=0.5`（更激进地追胡）**（A 2026-10-03 22:40 立）。
+    #
+    # **为什么现在补这一档**：① 这条轴的单调性已被两个端点夹住——
+    # `piao13`(1.3) 在**平台口径**下是 **−0.042(t−3.80)** 且番数 −0.086(t−5.88)，
+    # 而 legacy 基座上的 `chase-more`(0.5) 是**番数正、逐局名次负** ⇒ 两个端点符号相反；
+    # ② S2（`agent/out/s2-fan-gap.txt`）显示我们的缺口 **87% 来自「胡得少」**（率差项 +0.273 / 总 +0.314），
+    # 爆头率只有头部 bot 的 1/3（0.0287 vs 0.0879/局）⇒ **「更敢追胡」正好打这个缺口**。
+    #
+    # **注意**：已注册的 `chase-more` 是 `for_mode` 默认档 + 0.5，即 **legacy 基座**
+    # （无 `wait_aware_tenpai`/`shape_value`/`exact-ukeire`）⇒ 拿它跟 v5 比是**换了基座**，
+    # 归因不了阈值（与 `meld-equal` 同一个坑）。本档 = **v5 全部旋钮 + `piao_threshold_scale=0.5`**。
+    "v5-piao05": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, piao_threshold_scale=0.5)
+    ),
     "v5-piao13": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
