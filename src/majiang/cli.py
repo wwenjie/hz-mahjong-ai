@@ -531,6 +531,20 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
                               ukeire_candidates=3, meld_tolerance="equal")
     ),
+    # **G1 持财神听口加权**（A 2026-10-04 落地 B' 的实现稿；依据=财神专项 23:40 + 口径标定 1523/1523）。
+    # `god_wait_boost=2.0` 初值来自「财神百搭 ⇒ 听口种数边际价值翻倍」的量级判断（B' 稿）。
+    # `noWA` 是**消融**：同一个加权、但基础键换成「精确进张」（`wait_aware_tenpai=False`），
+    # 用来分清「加权有效」还是「加权覆盖了原本有效的听口排序」。
+    "v5-godwait": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, god_wait_boost=2.0)
+    ),
+    "v5-godwait-noWA": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=False,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, god_wait_boost=2.0)
+    ),
     "v5-piao05": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,

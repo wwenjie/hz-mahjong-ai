@@ -40,6 +40,7 @@ ANGANG = "angang"
 VARIANT_FIELDS = (
     "meld_tolerance",
     "meld_conditional",
+    "god_wait_boost",
     "tiebreak",
     "safe_tiebreak",
     "unified_score",
@@ -160,6 +161,10 @@ class PolicyConfig:
     # 且「副露率 × 胜率 r=+0.839」**可能是共因**（强 bot 两者都高）——因果方向已被 `v6-equal` 反证。
     # 因此本档只动「cell 条件化」这一个变量，并配预登记的 kill_criteria 与机制门（见 THREAD 22:55）。
     meld_conditional: bool = False
+    # **G1 持财神听口加权系数**（`v5-godwait`，A 2026-10-04 落地 B' 的实现稿）。
+    # 0 = 关闭（逐位等于 v5）；>0 = 出牌后手牌含财神时，候选键加 `boost × 财神数 × 听口种数`。
+    # 依据与不变量见 `_break_ties_by_ukeire` 里那段注释（含「为什么不能只放在 wait_aware 分支」）。
+    god_wait_boost: float = 0.0
     # 精确进张要评估几张候选。**候选面本身是个缺陷来源**：
     # 候选按 ``total`` 排序，而同向听时 ``total`` 被喂牌代价主导（`-3*feed`，可达 9 分），
     # 于是「听口明显更好但喂牌稍多」的那张会在进入精确比较之前就被截掉。
@@ -1053,6 +1058,30 @@ class HeuristicDecider:
                 copies = sum(copy for _, copy in entries)
             else:
                 _, copies = cheap_ukeire(counts, visible)
+            # **G1 持财神听口加权**（`v5-godwait`，A 2026-10-04 00:15 落地 B' 的实现稿）。
+            #
+            # 依据（B' 23:40 财神专项 + C 的标定 23:57）：持财神时 bot 的**听口种数** 6.08 vs 我们 4.53（+34%）、
+            # 可见张数 +33%；且 `1523/1523 一致（100%）` 的暴力枚举对拍证明**这不是计算口径 bug**，
+            # 是**策略行为**——我们的听口选择在「张数」与「种数」之间偏向张数（`_wait_copies` 只看可见张数），
+            # 而财神是百搭 ⇒ **种数的边际价值被放大**（每个种数多一张可重指派的空间）。
+            #
+            # **口径**：出牌后手牌**含财神**（`god_n ≥ 1`）时，把候选键加上 `boost × god_n × 听口种数`。
+            # **`god_n == 0` 时逐位等于 v5**（本改动被 `if god_n >= 1` 完全闸住，单测钉住这一点）——
+            # 这条不变量是判读的前提：否则「任何改动都扰动」会伪装成信号。
+            #
+            # **我相对 B' 稿的修正**：B' 稿把这个加权只放在 `wait_aware` 分支里，于是消融臂
+            # `v5-godwait-noWA`（`wait_aware_tenpai=False`）**根本不进那个分支** ⇒ 加权无效 ⇒ 那会是一个**空臂**，
+            # 什么也测不出来。现在把它放在**分支之后**：`wait_aware` 时加在「可见张数」键上，
+            # `exact` 时加在「精确进张」键上 ⇒ `noWA` 臂变成有意义的消融（同一个加权、不同的基础键）。
+            if self.config.god_wait_boost > 0 and counts[tiles.GOD] >= 1:
+                try:
+                    kinds = len(win.winning_draws(counts, situation.hand.meld_count))
+                except ValueError:
+                    kinds = 0
+                if kinds:
+                    god_n = counts[tiles.GOD]
+                    copies = copies + self.config.god_wait_boost * god_n * kinds
+                    self.last_detail["god_wait_boost"] = (god_n, kinds, copies)
             goodshape_rows.append((int(copies), _goodshape_proxy(counts, situation.hand.meld_count), score))
             if best is None or copies > best[0]:
                 best = (copies, score)
