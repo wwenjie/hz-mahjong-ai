@@ -24,6 +24,7 @@ from majiang.strategy.policy import (
     MeldTolerance,
     Mode,
     PolicyConfig,
+    _meld_cell_allows,
 )
 
 
@@ -194,3 +195,31 @@ def test_relaxed_gate_never_breaks_the_two_chi_limit() -> None:
         if chosen is None or chosen.kind != CHI:
             continue
         assert chi_count(situation.hand.melds) < 2, "吃之前必须还没到上限"
+
+
+def test_meld_conditional_cell_table_denies_late_and_deep() -> None:
+    """`meld_conditional` 的 cell 表：早中盘 × 浅向听放开，尾盘与深向听维持 STRICT。
+
+    表照抄 C 的 1a（`agent/out/meld-cond.log`，7056 房 / 3190 个副露事件）里头部 bot 的副露密度形状：
+    1-4 巡 ≤3 向听 24.7%~41.7% 有副露，9-12 巡 3 向听 0%，13+ 巡 ≤11%、3 向听 0.4%。
+    这条测试钉的是**边界**——「一律放开」（`v6-equal`）已实测为负，本档的全部价值就在这个边界上。
+
+    只用到 `situation.seat` 与 `situation.discards`（见 `_meld_cell_allows` 的说明），故用最小替身。
+    """
+
+    class _Stub:
+        def __init__(self, played: int) -> None:
+            self.seat = 0
+            self.discards = (tuple([0] * played), (), (), ())
+
+    for played in (0, 4, 8):
+        for current in (1, 2, 3):
+            assert _meld_cell_allows(_Stub(played), current), (played, current)
+        assert not _meld_cell_allows(_Stub(played), 4), played
+    for played in (9, 12):
+        for current in (1, 2):
+            assert _meld_cell_allows(_Stub(played), current), (played, current)
+        assert not _meld_cell_allows(_Stub(played), 3), played
+    for played in (13, 20):
+        for current in (1, 2, 3, 4):
+            assert not _meld_cell_allows(_Stub(played), current), (played, current)

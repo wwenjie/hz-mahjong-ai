@@ -510,6 +510,27 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
     # **注意**：已注册的 `chase-more` 是 `for_mode` 默认档 + 0.5，即 **legacy 基座**
     # （无 `wait_aware_tenpai`/`shape_value`/`exact-ukeire`）⇒ 拿它跟 v5 比是**换了基座**，
     # 归因不了阈值（与 `meld-equal` 同一个坑）。本档 = **v5 全部旋钮 + `piao_threshold_scale=0.5`**。
+    # **`v7m` v1 = cell 条件化闸门**（A 2026-10-03 22:55 立；输入= C 的 1a，`agent/out/meld-cond.log`）。
+    #
+    # 与 `v6-equal` 的**唯一**差别：`v6-equal` 在**所有** cell 放开「向听不下降也可副露」，
+    # `v7m` 只在**对手副露密度高**的 cell 放开（打出次数 ≤8 且向听 ≤3；9~12 且向听 ≤2），
+    # 13+ 巡与深向听维持 STRICT —— 因为 1a 显示头部 bot 在那些 cell 里自己也不副露（≤11%、3 向听 0.4%）。
+    # 其余旋钮与 `v5` 完全一致（唯一差别就是 `meld_tolerance=equal` + `meld_conditional=True`）。
+    #
+    # **预登记判据见 THREAD 22:55**：`v7m vs v5` 同场 4 种子，每场名次分 >0 且 t≥2 ⇒ 采纳；
+    # ≤0 或 t<2 ⇒ **整条副露轴关闭**。机制门：副露率 0.9~1.25、胡次数不下降、番数不显著下降。
+    "v7m": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, meld_tolerance="equal",
+                              meld_conditional=True)
+    ),
+    # 对照：**同一基座 + 一律放开**（= `v6-equal` 的复刻，用于确认「条件化」确实比「一律」好）。
+    "v7m-all": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, meld_tolerance="equal")
+    ),
     "v5-piao05": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,

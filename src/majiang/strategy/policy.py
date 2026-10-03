@@ -39,6 +39,7 @@ ANGANG = "angang"
 # 否则真机上会静默跑成默认档（踩过一次，见 configure 的说明）。
 VARIANT_FIELDS = (
     "meld_tolerance",
+    "meld_conditional",
     "tiebreak",
     "safe_tiebreak",
     "unified_score",
@@ -138,6 +139,27 @@ class PolicyConfig:
     commitment: Commitment = Commitment.NONE
     # 吃碰闸门松紧（tasks.md 5.5）。默认 strict 是**改动前的行为**，放宽档需先过 A/B。
     meld_tolerance: MeldTolerance = MeldTolerance.STRICT
+    # **按 cell 条件化闸门**（`v7m` v1，A 2026-10-03 22:55 立）：只在对手**副露密度高**的
+    # 「巡目 × 向听」cell 里允许「向听不下降」的副露，其余 cell 维持 STRICT。
+    #
+    # **为什么是条件化而不是一律放开**：`v6-equal`（一律放开）在现代基座上实测为负
+    # （平台口径每场名次分 −0.216(t−2.39)、胡次数 −0.067(t−2.64)）。C 的 1a（`agent/verify/meld_cond_dist_probe.py`，
+    # 7056 房 / 3190 个副露事件）给出一致解释：**头部 bot 的副露密度集中在早中盘 × 浅向听**——
+    # 1-4 巡 0/1/2/3 向听 = 30.5%/41.7%/34.7%/26.3%；5-8 巡 = 15.5%/25.8%/26.8%/24.7%；
+    # 9-12 巡 = 8.5%/17.0%/20.1%/0%；**13+ 巡 ≤11%（3 向听仅 0.4%）**。
+    # 也就是「一律放开」的伤害正来自它在 **bot 自己也不副露**的 cell（尾盘、深向听）里放开。
+    #
+    # **cell 表**（照抄 1a 的密度形状，不做插值/拟合）：
+    #   - 打出次数 ≤ 8（早中盘）且 副露前向听 ≤ 3 ⇒ 允许（该区 bot 密度 24.7%~41.7%）
+    #   - 打出次数 9~12 且 副露前向听 ≤ 2 ⇒ 允许（该区 bot 密度 8.5%~20.1%）
+    #   - 其余（13+ 巡、或深向听见 0.4%）⇒ **仍然 STRICT**，与 bot 一致
+    # 仍**拒绝 0 向听**的副露（与 `MeldTolerance` 的既有依据一致：听牌后副露只换听口，
+    # 「换听口」是**另一个变量**，留给 `v7m` v2，避免一档测两件事）。
+    #
+    # **风险如实记录**：这条轴已被驳倒两次（旧时代 `meld-equal` 三配置一致为负、今晚 `v6-equal`），
+    # 且「副露率 × 胜率 r=+0.839」**可能是共因**（强 bot 两者都高）——因果方向已被 `v6-equal` 反证。
+    # 因此本档只动「cell 条件化」这一个变量，并配预登记的 kill_criteria 与机制门（见 THREAD 22:55）。
+    meld_conditional: bool = False
     # 精确进张要评估几张候选。**候选面本身是个缺陷来源**：
     # 候选按 ``total`` 排序，而同向听时 ``total`` 被喂牌代价主导（`-3*feed`，可达 9 分），
     # 于是「听口明显更好但喂牌稍多」的那张会在进入精确比较之前就被截掉。
@@ -530,6 +552,29 @@ def _wait_copies(
     if 0 <= discarded < len(remaining):
         remaining[discarded] = max(0, remaining[discarded] - 1)
     return sum(max(0, tiles.COPIES_PER_KIND - remaining[wait]) for wait in waits)
+
+
+# `meld_conditional` 的 cell 边界（见 `PolicyConfig.meld_conditional` 的完整依据）。
+MELD_CELL_EARLY_TURNS = 8
+MELD_CELL_MID_TURNS = 12
+
+
+def _meld_cell_allows(situation: Situation, current: int) -> bool:
+    """这个「巡目 × 副露前向听」cell 是否在对手的**高副露密度区**里。
+
+    **巡目用「自己已打出的张数」近似**（`len(situation.discards[seat])`）：在响应吃碰的时刻，
+    我们已经打过多少张牌是最容易拿到、且随局progress单调的量。它与「摸牌次数」在无副露时相等，
+    有副露时会略微超前（每次副露后仍要打一张但不摸牌）——对这个**只有两三档**的粗分桶足够，
+    且误差方向是「把偏早的时点算成偏晚」，即**更保守**（不会因为近似而额外放开闸门）。
+    """
+    seat = situation.seat
+    discards = situation.discards
+    played = len(discards[seat]) if 0 <= seat < len(discards) else 0
+    if played <= MELD_CELL_EARLY_TURNS:
+        return current <= 3
+    if played <= MELD_CELL_MID_TURNS:
+        return current <= 2
+    return False
 
 
 def _cheap_best_shanten(counts: list[int]) -> int:
@@ -1254,6 +1299,8 @@ class HeuristicDecider:
                 MeldTolerance.EQUAL_EARLY: 2,
             }.get(tolerance)  # type: ignore[arg-type]
             accept_equal = threshold is not None and current >= threshold
+            if accept_equal and self.config.meld_conditional:
+                accept_equal = _meld_cell_allows(situation, current)
             for action in actions:
                 if action.kind not in (PENG, CHI):
                     continue
