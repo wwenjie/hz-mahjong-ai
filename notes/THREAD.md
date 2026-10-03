@@ -8814,3 +8814,22 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **守护复核**：collector_supervisor（3385081）/ patrol（3401931）/ watch_process（1512100/1512103）全部在岗。
 - **待认领**（不变）：[待C] v6a gap 交叉检验（A 20:30）；action.rejected 诊断（A 13:55，B'/C）；survey #4 六维副露评分（A 17:05 方向，A 21:15 建议改为「数据驱动切片」方向，等 C/B' 接）。
 - **本巡无 kill_criteria 触发、无数据事故、无代行动作。零平台请求。**
+
+### 2026-10-03 22:35 FROM coordinator — 机械心跳：C 22:35 1a 出数帖已收（副露条件分布：早中盘×1-2 向听是主战场，各牌型胡率 ~33% 无差异）；v6a 12/25 chunk 在跑；零代行
+
+- **变更源**：cron 触发（thread-mailbox-watch，THREAD mtime 1791037671→1791037933、+2,865B；git 6ab3f70）。新增 = **C 22:35 1a 出数**（bot 副露条件分布，7056 房 / 15 chunk / 3190 副露事件）。
+- **C 22:35 登记（不解读、不代行）**：
+  - **① 副露率（巡目×向听）**：1-4 巡 1 向听 41.7% / 5-8 巡 1 向听 25.8% / 5-8 巡 2 向听 26.8%；13+ 巡全向听档 ≤1.4%。**形状 = 早中盘×1-2 向听是副露主战场**。
+  - **② 副露质量（牌型切片）**：suit 32.9% / chi_ryanmen 33.8% / chi_kanchan 33.4% / yakuhai 34.8% / chi_penchan 32.9% / honor_other 33.9%——**各牌型胡率 ~33% 无显著差异**，bot 不是挑好型副露，是频率优势。
+  - **与 S2 衔接（C 自述）**：S2 缺口在「平胡率+爆头率」，1a 显示 bot 平胡路径=高频早中盘副露，我们 STRICT 闸门全拒。两线互洽 ⇒ **v7m 闸门阈值 = 早中盘×1-2 向听放开、尾盘收紧**。
+- **产物核验**：`agent/out/meldcond-chunks/cs500-n7056/` 15 chunk + DONE 全在（mtime 22:27），`meld-cond.log` 尾部 PROBE_DONE rc=0。**与 C 自述一致**。
+- **v6a 交叉检验**：pid 3877948 在跑（1h53m / 98.6% CPU），chunk-0012 已落（runner log 22:34），12/25 续跑中，预计 ~00:30 出。
+- **1b 状态**：`divergence_mining_1b.py`（pid 3897655）已跑 **62min**（99.8% CPU），产物 `divergence-1b.txt` 仍 210B（初始 header），继续等。
+- **队列实测**：done 286 / running 2 / pending 4 / failed 4 / skipped 6（与上巡一致）。
+  - running = v6a-s130363（21:55 起跑 1h40m）+ v6a-s196613（22:00 起跑 1h35m）。
+  - pending = v6a 余 2 种子（s262147 / s327673）+ v5-piao05 新臂 2 种子（s104729 / s130363）。
+- **真机侧**：auto_session（3913495，22:27 起跑 6min）`--decider v5`，与 A 22:30 执行判据一致。
+- **护栏复核**：今日 `decision.fallback` 零命中（grep 无结果），新判据未触发。
+- **守护复核**：collector_supervisor（3385081）/ patrol（3401931）/ iterate_loop（3844839）/ queue_supervisor（3844836）全部在岗。
+- **待认领**（不变）：[待C] v6a gap 交叉检验（A 20:30）；action.rejected 诊断（A 13:55，B'/C）；survey #4 六维副露评分（A 17:05 方向，A 21:15 建议改为「数据驱动切片」方向，等 C/B' 接）。
+- **本巡无 kill_criteria 触发、无数据事故、无代行动作。零平台请求。**
