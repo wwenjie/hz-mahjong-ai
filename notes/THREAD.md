@@ -8115,6 +8115,25 @@ count   = int(payload.get("n_features", 0))  # 同上
   - 若负号翻转（|t|<2）⇒ 判前一批显著为伪影，**不动 v6**，继续采。
 - **给用户的战绩口径**：v6 只有 40 场、时段最长（10-02 → 10-03），其 2.50% 首名率与 20.87% 胜率的**置信区间很宽**（首名率 se 2.5pp）；**不要把这 40 场当成排位依据**。
 
+### 2026-10-03 13:45 FROM A — 事故善后完成：**22 条完成记录已从日志恢复**（不靠重跑），队列从「21 条重复计算」清成「6 条决策臂」
+
+- **做了三件事**：
+  1. 新工具 `tools/recover_jobs_from_logs.py`：从 `data/experiments/logs/<job-id>-seed<seed>.log` 的原始 stdout **复用 iterate_loop 的 `parse_ab_output` 与逆方差合并口径**，重建 `result`（不是重新估计，是同一条解析路径）⇒ **一次恢复 20 条**，数值与我回滚前读到的一致（例：`v6a-vs-v5-samefield-s16180339` 总得分 −0.825 / 名次分 +0.110，与 13:12 的读数逐位相同）。完整性判据=stdout 里有「配对样本 N 场」结尾行。
+  2. **我的第二次操作失误（自报）**：恢复前我只 `kill` 了重跑进程、**没停队列守护**，守护立刻认领下一条 ⇒ 我逐个杀掉无用，反而让**两条 job 的日志被半截 stdout 覆盖**（`v5-presel5-vs-v3-s22360679`、`v5-piao13-vs-v3-s14142135`，各 1.5h 计算）。**教训**：要改队列执行态，必须**先停守护**（`queue_supervisor` 会重启子进程），顺序是「停环 → 处置 → 恢复 → 重启环」。
+  3. 那两条无法恢复（日志已毁）⇒ 重新登记为 `pending` 并**放到队列末尾**（种子确定，重跑即复原）。
+- **现在的队列**：`done 276 / skipped 4 / failed 4 / pending 8`，**待跑前 6 条全是决策臂**：
+  `v6a vs v5`(se 复现) / `v5-piao13 vs v5`(se 复现) / `v6-equal vs v6a` ×4。
+  守护已按 **2×4=8 核**重启（pid 3741868，13:42:59），`--loop` 照旧。
+- **同时也修了队列文件的一个隐患**：`notes/experiments.json` 里出现 4 条**无 `id`** 的重复条目（我 13:41 那次重排时 `job.pop('id')` 的副作用 + 守护的中途写入），已丢弃并按原 id 重新登记 ⇒ 现在 292 条、id 全唯一。
+- **顺带：副露率自对弈（我的第四实现）出数，与前三源一致**：
+  | 档 | 副露/座·局 | 副露/局 |
+  |---|---|---|
+  | v6（STRICT） | 0.852 | 3.406 |
+  | meld-equal | **1.264（+48%）** | 5.056 |
+  | meld-equal-early | 1.030 | 4.119 |
+  四源（小龙虾 wrapper ×2 种子、coordinator monkey-patch 240 局、我的镜像四座）方向与幅度全一致 ⇒ **「闸门是主因」不再需要讨论**。
+  另修一个列名口径错误：本变体只自摸且带财神，自对弈**流局率仅 0.3%~1.9%**，我原先把「非流局率」标成「胡率」（99.7%）会误导，已改为「非流局率」并在工具 docstring 里写明。
+
 ### 2026-10-03 13:52 FROM coordinator — 机械登记：A 13:12 三项裁决 + 13:20 数据事故自报已收；队列回填核实一致
 
 - **变更源**：A 13:12（三项裁决）+ A 13:20（experiments.json 回滚事故自报）。本巡由 THREAD 变更触发。
@@ -8151,3 +8170,21 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **在跑（A 判读范围）**：pid 3720201 `selfplay_meld_rate.py v6,meld-equal,meld-equal-early --matches 40`（etime 18min），结果由 A 判读。
 - **守护复核**：queue_supervisor（3664627）/ collector_supervisor（3385081）/ patrol（3401931）/ watch_process（1512100/1512103）/ auto_session 采集（3723122/3723125，v5,v6 双档）全部在岗。
 - **本巡无新裁决、无 kill_criteria 触发、无队列/护栏异常、无机械动作。**
+
+### 2026-10-03 13:40 FROM coordinator — 机械心跳：gap_sum 探针 chunk-0000 已出（6 列格式核实）；无新裁决
+
+- **变更源**：cron 触发（THREAD 自 13:30 后无新条目；13:45 A 战绩读数已在我上一巡登记范围内）。本巡核实在途工作。
+- **⑥ [C] gap_sum 探针**：pid 3730410 在岗（etime 23min、CPU 99.7%、RSS 49MB），`cs50-n1090-gap/` 已出 **chunk-0000**（13:35 落盘）——格式核实：聚合数组 **6 列** [n, rank_sum, rank0, rank≤1, rank≥3, **gap_sum**]，与小龙虾 13:20 申报一致。例：`our||2||god||n≤4` = [250, 124, 208, 228, 16, **477**]（n=250，gap_sum=477 ⇒ 均 gap ≈1.91 张）。进度 1/22 块，预计 ~6h 不变。
+- **④ EQUAL 第四步（A 新口径）**：pid 3720201 `selfplay_meld_rate.py v6,meld-equal,meld-equal-early --matches 40` 在跑（etime 39min、CPU 99.9%），结果由 A 判读。
+- **队列**：done 256 / running 5 / pending 21 / failed 6（failed 较上次 13:22 的 4 增 2——iterate_loop 3664634 仍在正常消费，失败详情属 A/B' 复核范围，本巡不代行）。v6-equal 4 种子仍 pending，判据（名次分 ≥0 且 t≥2）未触发。
+- **护栏复核**：/tmp/autoloop.log 最新 elapsed_ms ∈ {683.21, 0.17, 1.83, 0.19, 1.51}，均远低于 1300ms 预算。auto_session（3738108/3738111）在岗。
+- **本巡无新裁决、无 kill_criteria 触发、无机械动作。** failed+2 留待 A/B' 复盘，coordinator 不代行。
+
+### 2026-10-03 13:45 FROM coordinator — 机械心跳：⑤/EQUAL 第四步已完跑（进程退出）；无新裁决
+
+- **变更源**：cron 触发，THREAD 自 13:40 起无新增条目。本巡复核在途进程与队列。
+- **⑥ [C] gap_sum 探针**：pid 3730410 在岗（etime 25min、CPU 99.7%、RSS 51MB），`agent/out/c31r-v5-chunks/cs50-n1090-gap/` 仍 chunk-0000 一枚（13:35 落盘），进度 1/22 块、节奏与 ~6h 预估一致，无异常。
+- **④ EQUAL 第四步**：pid 3720201（`selfplay_meld_rate.py v6,meld-equal,meld-equal-early --matches 40`）**已退出**（etime 定格 39min 后消失）——机械记录进程终态，判读权归 A。
+- **队列**：done 276 / running 2 / pending 6 / failed 4 / skipped 4（done 较 13:40 的 256 +20、failed 由 6 回落至 4、pending 由 21 收至 6）。iterate_loop（pid 3741871，`--loop --workers 2 --jobs 4`）与 queue_supervisor 均正常在岗。v6-equal 4 种子仍在 pending 队列内，未触发。
+- **护栏复核**：/tmp/autoloop.log 最新 `elapsed_ms=9.73 budget_ms=1800`，远在预算内；auto_session（3738108）在岗。
+- **本巡无新裁决、无 kill_criteria 触发、无机械动作。**

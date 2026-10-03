@@ -11,6 +11,10 @@
 
 口径：**持有**（局末 ``len(melds)``，补杠升级不重复计），与 ``tools/meld_census.py`` 一致；
 分母是「座位·局」（matches × rounds × 4）。
+
+**列名口径提醒**：本变体是**只自摸**且有财神，自对弈实测流局率 **0.3%~1.9%**
+（四座合计胡率接近 100%，所以「任一家胡率」≈ 1 − 流局率，信息量为零）⇒
+这里只报 **非流局率**，不报「胡率」以免被误读成单座胜率。
 """
 
 from __future__ import annotations
@@ -75,7 +79,7 @@ def run_one(name: str, matches: int, rounds: int, seed: int, mode: Mode) -> dict
         "rounds": matches * rounds,
         "meld_per_seat_round": melds / per if per else 0.0,
         "meld_per_round": melds / (matches * rounds) if matches * rounds else 0.0,
-        "win_rate": wins / (matches * rounds) if matches * rounds else 0.0,
+        "non_flow_rate": wins / (matches * rounds) if matches * rounds else 0.0,
         "flow_rate": flows / (matches * rounds) if matches * rounds else 0.0,
     }
 
@@ -89,12 +93,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--mode", default="qualifier", choices=[m.value for m in Mode])
     args = ap.parse_args(argv)
     mode = Mode(args.mode)
-    print(f"{'策略':>18} {'副露/座·局':>10} {'副露/局':>8} {'胡率':>7} {'流局率':>7}  （{args.matches}场×{args.rounds}局）")
+    print(f"{'策略':>18} {'副露/座·局':>10} {'副露/局':>8} {'非流局率':>8} {'流局率':>7}  （{args.matches}场×{args.rounds}局）")
     for name in [n.strip() for n in args.deciders.split(",") if n.strip()]:
         row = run_one(name, args.matches, args.rounds, args.seed, mode)
         print(
             f"{row['name']:>18} {row['meld_per_seat_round']:>10.3f} {row['meld_per_round']:>8.3f} "
-            f"{row['win_rate']:>6.1%} {row['flow_rate']:>6.1%}",
+            f"{1.0 - row['flow_rate']:>7.1%} {row['flow_rate']:>6.1%}",
             flush=True,
         )
     return 0
