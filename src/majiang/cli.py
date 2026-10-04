@@ -535,6 +535,15 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
     # `god_wait_boost=2.0` 初值来自「财神百搭 ⇒ 听口种数边际价值翻倍」的量级判断（B' 稿）。
     # `noWA` 是**消融**：同一个加权、但基础键换成「精确进张」（`wait_aware_tenpai=False`），
     # 用来分清「加权有效」还是「加权覆盖了原本有效的听口排序」。
+    # **`v5-standing` = S3 局况姿态**（A 2026-10-04；窄臂形态，前置=表 C 11:10 + 接线 B' 11:35 + 定义 B' 11:42）。
+    # 只在「差距可竞争」的边界态（占比 7.28%）把**弃胡/追胡阈值**按局况缩放：落后搏（0.7）、领先守（1.4），其余中性。
+    # 与 `v5` 的差别只有四个 `standing_*` 字段（已逐字段核对）；`standing_*` 全默认时逐位等于 v5。
+    "v5-standing": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, standing_lead_scale=1.4,
+                              standing_behind_scale=0.7)
+    ),
     "v5-godwait": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,

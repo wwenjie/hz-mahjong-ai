@@ -41,6 +41,10 @@ VARIANT_FIELDS = (
     "meld_tolerance",
     "meld_conditional",
     "god_wait_boost",
+    "standing_remaining_max",
+    "standing_delta_max",
+    "standing_behind_scale",
+    "standing_lead_scale",
     "tiebreak",
     "safe_tiebreak",
     "unified_score",
@@ -165,6 +169,15 @@ class PolicyConfig:
     # 0 = 关闭（逐位等于 v5）；>0 = 出牌后手牌含财神时，候选键加 `boost × 财神数 × 听口种数`。
     # 依据与不变量见 `_break_ties_by_ukeire` 里那段注释（含「为什么不能只放在 wait_aware 分支」）。
     god_wait_boost: float = 0.0
+    # **S3 局况姿态**（`v5-standing`，A 2026-10-04）。三个条件同时成立才生效：
+    # 名次在边界（1 或 ≥3）、与相邻名次分差 ≤ `standing_delta_max`（默认 29 分）、余局 ≤ `standing_remaining_max`（默认 1）。
+    # 语义：`standing_lead_scale` > 1 = 守（阈值升、见胡就收）；`standing_behind_scale` < 1 = 搏（阈值降、追大牌）。
+    # **两个都是 1.0（默认）⇒ 逐位等于 v5**；比分拿不到或并列也 ⇒ 1.0（安全兜底）。
+    # 依据与定义见 `_standing_scale`；窄臂占比 7.28%（B' 11:42 实测）。
+    standing_lead_scale: float = 1.0
+    standing_behind_scale: float = 1.0
+    standing_delta_max: int = 29
+    standing_remaining_max: int = 1
     # 精确进张要评估几张候选。**候选面本身是个缺陷来源**：
     # 候选按 ``total`` 排序，而同向听时 ``total`` 被喂牌代价主导（`-3*feed`，可达 9 分），
     # 于是「听口明显更好但喂牌稍多」的那张会在进入精确比较之前就被截掉。
@@ -717,7 +730,7 @@ class HeuristicDecider:
             survival = risk.lap_survival(risks)
             gain = float(self._win_points(current.fan * 2, situation))
             loss = float(self._loss_points(situation))
-            threshold = self._piao_threshold(gain, loss)
+            threshold = self._piao_threshold(gain, loss, situation)
             self.last_detail = {
                 "fan_now": current.fan,
                 "fan_if_baotou": current.fan * 2,
@@ -740,7 +753,7 @@ class HeuristicDecider:
         survival = risk.lap_survival(risks)
         gain = float(self._win_points(current.fan, situation))
         loss = float(self._loss_points(situation))
-        threshold = self._piao_threshold(gain, loss)
+        threshold = self._piao_threshold(gain, loss, situation)
         self.last_detail = {
             "fan_now": current.fan,
             "survival": round(survival, 3),
@@ -841,11 +854,59 @@ class HeuristicDecider:
         )
         return abs(min(deltas[seat], 0))
 
-    def _piao_threshold(self, gain: float, loss: float) -> float:
+    def _piao_threshold(self, gain: float, loss: float, situation: Situation) -> float:
         if gain <= 0:
             return 1.0
         base = (gain + loss) / (2 * gain + loss)
-        return min(0.95, base * self.config.piao_threshold_scale)
+        return min(0.95, base * self.config.piao_threshold_scale * self._standing_scale(situation))
+
+    def _standing_scale(self, situation: Situation) -> float:
+        """**S3 局况姿态**（A 2026-10-04；窄臂形态，只在「差距可竞争」的边界态生效）。
+
+        **为什么是窄臂而不是换目标**：C 9-30 的审计（`standings_prior_audit.py`，4090 场）已确认
+        **平台排序键是总得分** ⇒ 线性效用下逐手 E-max 已最优 ⇒ 「全局换成 P(首名)」预判无效。
+        真正的价值只在**边界态**：P(首名 | 名次×余局) 的跨度在边界处最大（名次1余1 = 79.8%、
+        名次4余1 = 1.6%），而那正是「一把大牌就能翻盘/被翻盘」的位置。
+
+        **定义（B' 11:42 出数后定稿，占比 7.28%）**：
+        - **守**（`standing_lead_scale` > 1）：名次 1 **且** 与第 2 名分差 ≤ `standing_delta_max`；
+        - **搏**（`standing_behind_scale` < 1）：名次 ≥3 **且** 与上一名分差 ≤ `standing_delta_max`；
+        - **余局 > `standing_remaining_max` ⇒ 中性**；
+        - **比分拿不到（真机 `Snapshot.scores` 历史上恒为空）或并列（分差 0）⇒ 中性（1.0）** ——
+          这条是**安全兜底**：拿不到局况时行为**逐位等于 v5**，绝不靠猜姿调。
+
+        语义：`scale > 1` ⇒ 阈值升 ⇒ 见胡就收（守）；`scale < 1` ⇒ 阈值降 ⇒ 更易弃胡追大牌（搏）。
+        """
+        lead = self.config.standing_lead_scale
+        behind = self.config.standing_behind_scale
+        if lead == 1.0 and behind == 1.0:
+            return 1.0
+        table = situation.table
+        scores = table.scores
+        if not scores or len(scores) < 4 or table.rounds_total <= 0:
+            return 1.0
+        remaining = table.rounds_total - table.round_no + 1
+        if remaining > self.config.standing_remaining_max:
+            return 1.0
+        me = situation.seat
+        if not 0 <= me < len(scores):
+            return 1.0
+        mine = scores[me]
+        if any(score == mine for index, score in enumerate(scores) if index != me):
+            # **并列 ⇒ 中性**：与最近对手同分时「分差」方向不明确（谁领先要看谁先摸），
+            # 按 A 11:35 的定义「分差不明 ⇒ 中性」。缺这条会把「并列第一」误判成「领先 20 分」。
+            return 1.0
+        above = [score for index, score in enumerate(scores) if index != me and score > mine]
+        below = [score for index, score in enumerate(scores) if index != me and score < mine]
+        if not above:
+            if not below:
+                return 1.0
+            gap = mine - max(below)
+            return lead if 0 < gap <= self.config.standing_delta_max else 1.0
+        if len(above) >= 2:
+            gap = min(above) - mine
+            return behind if 0 < gap <= self.config.standing_delta_max else 1.0
+        return 1.0
 
     # ---- 杠与出牌 ---------------------------------------------------------
 
