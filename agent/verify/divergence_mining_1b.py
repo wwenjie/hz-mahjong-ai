@@ -68,7 +68,7 @@ def action_label(action) -> str:
         return "none"
     k = action.kind
     if k == DISCARD:
-        return f"discard:{tiles.label(action.tile)}"
+        return f"discard:{tiles.to_code(action.tile)}"
     if k in (PENG, CHI):
         return k
     return k
@@ -156,7 +156,7 @@ def main(sample_n: int = 0) -> None:
                                 if acts:
                                     chosen = decider.choose(sit, acts, budget_ms=600)
                                     v6_lab = action_label(chosen)
-                                    bot_lab = f"discard:{tiles.label(tile)}"
+                                    bot_lab = f"discard:{tiles.to_code(tile)}"
                                     key = ("出牌", tb, sb, gb)
                                     buckets[key][0] += 1
                                     totals["出牌:n"] += 1
@@ -165,8 +165,9 @@ def main(sample_n: int = 0) -> None:
                                         totals["出牌:div"] += 1
                                 else:
                                     errors["no_actions_discard"] += 1
-                            except Exception:
-                                errors["decide_discard"] += 1
+                            except Exception as exc:
+                                # 不吞异常类型（10-04 tiles.label bug 曾把 24 万点全吞成 n=0）
+                                errors[f"decide_discard:{type(exc).__name__}"] += 1
 
                     # 副露响应决策点
                     elif etype in ("peng", "chi", "pass"):
