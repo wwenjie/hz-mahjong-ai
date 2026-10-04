@@ -504,3 +504,75 @@ def test_runtime_stops_when_token_is_not_scoped() -> None:
     )
     with pytest.raises(ValueError, match="未绑定锦标赛"):
         runtime.run()
+
+
+def test_game_runner_accumulates_scores_across_rounds(tmp_path) -> None:
+    """S3 前置：engine 在局间 settled 快照里累加净分，注入后续决策的 TableState.scores。"""
+    from dataclasses import replace as dc_replace
+    from majiang.client.api import PlatformApi
+    from majiang.client.models import TournamentConfig
+    from majiang.client.snapshot import Snapshot
+    from majiang.rules.situation import PHASE_SETTLED
+
+    transport = RouterTransport(
+        lambda m, p, b: {"seq": 3, "pending": False, "finished": False, "snapshot": REAL_PENG_SNAPSHOT}
+    )
+    runner = GameRunner(
+        PlatformApi(transport, TOKEN),
+        "g_1",
+        FirstLegalDecider(),
+        TournamentConfig(max_concurrent_games=1, rounds_per_game=8, base_score=1),
+        NullLogger(),
+        state_poll_timeout=0.01,
+        snapshot_timeout=0.01,
+    )
+    # 初始：全零
+    assert runner._cumulative_scores == [0, 0, 0, 0]
+
+    # 第 1 局结束：settled 快照带该局净分
+    settled1 = Snapshot.parse({
+        **REAL_PENG_SNAPSHOT,
+        "phase": PHASE_SETTLED,
+        "round_no": 1,
+        "scores": [-8, -1, 10, -1],
+    })
+    runner._absorb(settled1)
+    assert runner._cumulative_scores == [-8, -1, 10, -1]
+
+    # 第 2 局结束：再累计
+    settled2 = Snapshot.parse({
+        **REAL_PENG_SNAPSHOT,
+        "phase": PHASE_SETTLED,
+        "round_no": 2,
+        "scores": [10, -8, -1, -1],
+    })
+    runner._absorb(settled2)
+    assert runner._cumulative_scores == [2, -9, 9, -2]
+
+    # 第 3 局决策时：to_situation 拿到的 TableState.scores 应为累计值
+    draw_snap = Snapshot.parse({**REAL_DRAW_SNAPSHOT, "round_no": 3})
+    table = draw_snap.table_state()
+    if any(s != 0 for s in runner._cumulative_scores):
+        table = dc_replace(table, scores=tuple(runner._cumulative_scores))
+    assert table.scores == (2, -9, 9, -2)
+
+
+def test_game_runner_cumulative_scores_empty_first_round(tmp_path) -> None:
+    """S3 不变量：首局 _cumulative_scores 恒零（等价于「未知」），不触发注入。"""
+    from majiang.client.api import PlatformApi
+    from majiang.client.models import TournamentConfig
+
+    transport = RouterTransport(
+        lambda m, p, b: {"seq": 3, "pending": False, "finished": False, "snapshot": REAL_PENG_SNAPSHOT}
+    )
+    runner = GameRunner(
+        PlatformApi(transport, TOKEN),
+        "g_1",
+        FirstLegalDecider(),
+        TournamentConfig(max_concurrent_games=1, rounds_per_game=8, base_score=1),
+        NullLogger(),
+        state_poll_timeout=0.01,
+        snapshot_timeout=0.01,
+    )
+    assert runner._cumulative_scores == [0, 0, 0, 0]
+    assert not any(s != 0 for s in runner._cumulative_scores)

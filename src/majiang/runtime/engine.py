@@ -134,6 +134,10 @@ class GameRunner:
         self.falls_back = 0
         self.errors = 0
         self.rounds_seen: set[int] = set()
+        # 本场累计比分（座位序）。平台在 phase=settled 的局间快照里给出刚结束局的净分，
+        # 逐局累加即为「本局开始时的累计比分」——S3 局况决策的唯一输入。
+        # 首局恒为 [0,0,0,0]（等价于空元组的「未知」语义）。
+        self._cumulative_scores: list[int] = [0, 0, 0, 0]
         self.log = logger.child(game_id=game_id)
 
     def request_stop(self) -> None:
@@ -231,7 +235,17 @@ class GameRunner:
         self.snapshot = snapshot
         self._piao.observe_snapshot(snapshot)
         if snapshot.phase == PHASE_SETTLED:
-            # 局间停顿：快照里的手牌是上一局残牌，不得用于牌型计算，也不提交动作
+            # 局间停顿：快照里的手牌是上一局残牌，不得用于牌型计算，也不提交动作。
+            # 但 scores 在本阶段含**刚结束局的四家净分**（接入文档 v31）——累加进场次累计。
+            if len(snapshot.scores) == 4 and any(s != 0 for s in snapshot.scores):
+                for i in range(4):
+                    self._cumulative_scores[i] += snapshot.scores[i]
+                self.log.log(
+                    "game.scores_accumulated",
+                    round_no=snapshot.round_no,
+                    round_scores=list(snapshot.scores),
+                    cumulative=list(self._cumulative_scores),
+                )
             self.log.log("game.settled", round_no=snapshot.round_no)
             return
         if snapshot.round_no not in self.rounds_seen:
@@ -267,7 +281,14 @@ class GameRunner:
         window_key = _window_key(snapshot)
         if window_key is not None and window_key in self._acted_windows:
             return None  # 本响应窗口已提交过，重复提交只会换来 409
-        situation = snapshot.to_situation(piao_count=self._piao.piao_count)
+        # 注入累计比分：让决策器看到「本局开始时四家的累计净分」。
+        # 平台在局间 settled 快照里给出上局净分，我们逐局累加（见 _absorb）。
+        # 首局恒为 [0,0,0,0]，等价于「未知」。
+        table = snapshot.table_state()
+        if any(s != 0 for s in self._cumulative_scores):
+            from dataclasses import replace as _dc_replace
+            table = _dc_replace(table, scores=tuple(self._cumulative_scores))
+        situation = snapshot.to_situation(piao_count=self._piao.piao_count, table=table)
         actions = legal_actions(situation)
         if not actions:
             self.log.log("decision.no_action", phase=snapshot.phase)
