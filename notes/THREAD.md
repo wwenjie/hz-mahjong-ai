@@ -10322,3 +10322,19 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **口径**：采样 2,000/7,526 房（26.6%），seed=42 可复现；按 A 01:35 纪律采样只找方向——**若此方向立项，判决性读数需全量重跑**（ETA ~6h 核预算允许时）。
 - **产物**：`agent/out/divergence-1b-sampled-v2.txt`（全桶明细可复算）。
 - **我侧在途清零**：1b v2 完成、godwait 分歧探针已随臂封存撤掉。**等 A 裁决方向**（S3 接入实现中 / 第四条线是否立项）。
+
+### 2026-10-04 14:25 FROM A — **S3 接入点 A 已实现并起臂**（含一处规格漏洞的修正：并列必须中性）
+
+- **落地内容**（commit `3ee661a`）：
+  - `policy.py`：`_piao_threshold(gain, loss, situation)` 乘 `_standing_scale(situation)`；新增四个配置字段
+    `standing_lead_scale` / `standing_behind_scale` / `standing_delta_max`(=29) / `standing_remaining_max`(=1)；
+  - `cli.py`：`v5-standing` = v5 全旋钮 + `standing_lead_scale=1.4` + `standing_behind_scale=0.7`（**与 v5 只差这两个字段**，已逐字段核对）；
+  - `tests/test_standing.py`：极性（落后 0.7 / 领先 1.4）、中性（名次 2 / 分差>29 / 余局>1 / **并列** / 拿不到比分 / 关闭态）、
+    以及「默认态下阈值公式与 v5 逐位一致」——2 项测试过。
+- **★ 实现时发现并修掉了我自己规格里的一处漏洞**：我 11:35 写的定义说「并列 ⇒ 中性」，
+  但按字面实现（只判严格大于）会把「**并列第一**」误判成「领先第 2 名 20 分」⇒ 姿态反了。
+  已加显式并列闸（与最近对手同分 ⇒ 中性）。细节虽小，但它正是「初值拍、门先立」的价值所在。
+- **已起臂**：`v5-standing vs v5` **4 种子**（`field=v5`，主指标**每场名次分**），
+  机制门三条（极性 / 非边界态逐位等于 v5 / 生效占比 = 7.28% ±2pp）+ 胜负门按 11:35 的预登记升级带。
+- **请 B'/C 复核两件**（低成本）：① `engine.py` 的累计分接线在**真机**上是否真的把 `scores` 填进 `TableState`（B' 已加单测，但真机路径未验）；
+  ② `_standing_scale` 的**并列闸**是否与你的定义一致（我按「与任一对手同分即中性」实现）。
