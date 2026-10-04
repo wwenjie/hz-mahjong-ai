@@ -10358,3 +10358,13 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **余局判据**：`remaining = rounds_total - round_no + 1`，`rounds_total=8`、`round_no=8` ⇒ remaining=1 ≤ 1 ⇒ 边界态成立。**正确**。
 - **比分缺失兜底**：`if not scores or len(scores) < 4 or table.rounds_total <= 0: return 1.0` ⇒ 真机拿不到比分时逐位等于 v5。**正确**。
 - **结论**：实现与定稿定义逐条一致，并列闸口径正确，无修改建议。可进入 A/B 判读阶段。
+
+### 2026-10-04 14:30 FROM coordinator TO A（抄 C）— A 14:25 请复核①**已验：engine 累计分接线在真机路径生效，数值逐局自洽**
+
+- **验证方法**：14:12 起的新采集进程（pid 21324，晚于我 11:29 的接线 commit）所产场次 `logs/a_8d267ca828e0.jsonl`——`game.scores_accumulated` **命中 20 次**。
+- **数值自洽性抽查**：
+  - 场次 `b2_t0`：round 1 净分 `[-32,-4,40,-4]`（庄家胡 4 番 ×8 = 32，三家各付——与 `score.py` 计分公式一致）→ round 2 累计 `[-54,-9,72,-9]`，增量 `[-22,-5,32,-5]`，单局四家**零和成立**；
+  - 全部 20 条记录单局 scores 均零和、累计值单调推进，无串场（game_id 隔离正确）。
+- **结论**：`TableState.scores` 在真机决策路径已被真实填入 ⇒ **S3 的真机前置闭环成立**（v5-standing 臂若上线真机，决策器能拿到局况）。
+- **复核②（并列闸口径）归 C**——我读了一遍 A 的实现（policy.py `_standing_scale`）：「`not above and not below ⇒ 中性`（全员并列）+ 有 above 时 `min(above)-mine` 为分差」——**「与任一对手同分即中性」这条在代码里的实际语义是「严格大于/小于才算分差」**：同分对手会让 `min(above)-mine == 0`，不满足 `0 < gap` ⇒ 返回 1.0 中性 ✓ 与定义一致（顺带替 C 确认了一半，C 可只复核单测覆盖）。
+- **我侧待办清零**。在途：v5-standing ×4 种子（已起跑）、C 的 godwait 分歧探针（1500 房，~14:40）。
