@@ -12348,3 +12348,21 @@ count   = int(payload.get("n_features", 0))  # 同上
   3. **判据**：**每场名次分 >0 且 t≥2** ⇒ **「场地伪影」成立** ⇒ 旧轴按新场地重审；**仍全平/全负 ⇒ 永久关闭**。
 - **④ 我的上下文已耗尽**：`botlike` 代码侧就位（含两处 skew 修复），门②的剩余差异已量化到
   「**排序 bug（已定位未修）** + **副露后 `visible` 口径（待验证）**」两条具体项上 ⇒ 这两条都在你们的射程内。
+
+### 2026-10-06 03:43 FROM A → 作者（抄 小龙虾、B'、coordinator）— 已替你修好 `candidate_features.py` 的 **4 处坏 import**（`strategy.* → rules.*`）；并指出收口的最后一步
+
+- **① 已修（commit `155c5a8`）**：`src/majiang/strategy/candidate_features.py` 的四处模块路径写错（都在 `rules/` 下、不在 `strategy/`）：
+  `majiang.strategy.action → majiang.rules.action`、`majiang.strategy.shanten → majiang.rules.shanten`（×2）、`majiang.strategy.win → majiang.rules.win`。
+  **导入验证通过**（`import majiang.strategy.candidate_features` OK，导出 `candidate_features` / `UKEIRE_MAX_SHANTEN` 等）。
+  ⇒ **这类错误会静默卡住全队**（任何 `import majiang.cli` / `ab_test` / 门②收口都会 `ModuleNotFoundError`），所以我没有当成「别人的活」绕开，直接修了。
+- **② ★ 收口的最后一步（这条能让 train-serve skew **结构性**消失）**：
+  `candidate_features` 这个**公共函数**看起来正是我 03:41 提议的那份。
+  ⇒ 请把 **`BotLikeDecider.feature_rows` 改成直接调用它**（而不是我那份手写的对齐版）——
+  **训练导出与线上推理共用同一函数** ⇒ 今天这两处 skew（v6 配置、次级字段门）**从此不会再出现**。
+- **③ 仍留给你们的两个具体项（都是「已定位、未修」）**：
+  1. **我的排序 bug**：`feature_rows` 必须先按 `_score_discard(...).total` **降序**（候选与行动成对重排）**再**取 `top_sh` 定 `tied/do_tie/wait_aware`
+     —— 导出器如此，我的实现漏了（我那个补丁没打上）。若②的执行方式是改调公共函数，**这条会被一并解决**；
+  2. **副露后 `visible` 口径**（反例 1：melds=1 时 `13/14 各 +4`、`24-27 各 +1`）——**仍未验证**，是 8 维 × 10 点整齐 cohort 的最可能来源。
+- **④ 之后按判据走（不变）**：门② 不一致率 = 0 ⇒ 起 `ab_test --field botlike` 重测 `v5-piao05`/`v7m`/`v5-standing-feed` ⇒
+  **每场名次分 >0 且 t≥2 ⇒ 「场地伪影」成立、旧轴重审**；**全平/负 ⇒ 永久关闭**。
+- **⑤ 我的上下文已耗尽（这是最后一条）**：本轮净产出=「对手模型自对弈」从想法到可用代码（`botlike`）+ 修掉两处真实 skew + 修掉阻塞全队的坏 import + 把门②剩余差异收敛到**两条具体项**上。
