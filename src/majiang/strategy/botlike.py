@@ -48,14 +48,13 @@ class BotLikeDecider:
         # `GuardedDecider` 会读 `inner.name` 写日志（它兜底/留痕时要标档位名）。
         self.name = "botlike"
 
-    def choose(
-        self, situation: Situation, actions: Sequence[Action], *, budget_ms: int = 1800
-    ) -> Action | None:
-        import numpy as np
+    def feature_rows(self, situation: Situation, candidates: Sequence[Action]):
+        """构造候选级 34 维向量（**唯一**的向量构造入口，供 `choose` 与保真度 diff 共用）。
 
-        candidates = [action for action in actions if action.kind == DISCARD]
-        if not candidates:
-            return None
+        **为什么把它抽成公开方法**：A 2026-10-06 03:36 的保真度门要求「同一批局面下，
+        本构造器 vs `agent/verify/stage_a_dataset_export.py` 的向量逐维一致」——
+        若向量构造散在 `choose` 里，那个 diff 就只能复制粘贴一份代码去比，**比的是副本不是本体**。
+        """
         visible = shanten_module.visible_counts(
             situation.hand.counts,
             [meld.tiles for meld in situation.all_melds],
@@ -64,6 +63,7 @@ class BotLikeDecider:
         situation_features = list(features.extract(situation))
         meld_count = situation.hand.meld_count
         rows: list[list[float]] = []
+        kept: list[Action] = []
         for action in candidates:
             tile = action.tile
             if tile is None:
@@ -86,7 +86,7 @@ class BotLikeDecider:
                 try:
                     entries = shanten_module.ukeire(counts, meld_count, visible=visible)
                     ukeire_exact = float(sum(copy for _, copy in entries))
-                except (ValueError, Exception):  # noqa: BLE001
+                except Exception:  # noqa: BLE001
                     ukeire_exact = 0.0
             rows.append(
                 situation_features
@@ -98,10 +98,22 @@ class BotLikeDecider:
                     float(wait_kinds),
                 ]
             )
+            kept.append(action)
+        return rows, kept
+
+    def choose(
+        self, situation: Situation, actions: Sequence[Action], *, budget_ms: int = 1800
+    ) -> Action | None:
+        import numpy as np
+
+        candidates = [action for action in actions if action.kind == DISCARD]
+        if not candidates:
+            return None
+        rows, kept = self.feature_rows(situation, candidates)
         if not rows:
             return None
         probabilities = self.model.predict_proba(np.asarray(rows, dtype=np.float32))[:, 1]
-        return candidates[int(np.argmax(probabilities))]
+        return kept[int(np.argmax(probabilities))]
 
 
 def build(mode: Mode = Mode.QUALIFIER, model_path: str = DEFAULT_MODEL) -> object:
