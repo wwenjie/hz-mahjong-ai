@@ -1,68 +1,93 @@
-"""Per-候选向听变化特征（Mortal keep/next_shanten_discards 通道的 GBDT 标量化原型）。
+"""候选级 5 字段的公共构造器——训练导出与 `botlike` 推理共用（A 2026-10-06 03:41 裁决）。
 
-**状态：原型，未接入** ``features.py``。刻意做成独立模块、不动 ``FEATURE_NAMES``：
-现有价值模型按 29 维训练，改特征数即 train-serve skew；是否接入由 A 评审后决定。
+**为什么必须共用**：train-serve skew 的根源是「训练导出口径」与「推理构造口径」各写一遍。
+本函数是**唯一**的候选字段构造入口，两侧都调它 ⇒ skew 结构性消失。
 
-**来源**：Mortal ``libriichi/src/state/obs_repr.rs`` 把「每张候选弃牌打了之后向听怎么变」
-编成显式通道（keep_shanten_discards / next_shanten_discards /
-unconditional_tenpai）。我们的特征表只有手牌整体向听，缺这一层——而 C 的证据链
-（C16←C27←C28）把与强 bot 的差距定位在**同向听层内的进张/留牌决策**，正是这类
-特征的管辖面。
-
-**成本约束**：决策热路径 p99 预算 1800ms（v5 实测 860ms），所以这里一律用
-``quick_shanten``（微秒级骨架版）而**不**用精确的 ``shanten``/``best_shanten``。
-口径是近似（骨架块分解，不枚举个位数进张），与 ``quick_shanten`` 在 v4 次排序里
-的既有用法同级——够分辨「打了掉不掉向听」，不够算精确进张数（那是 ukeire 的活，
-单样本 0.1–0.2s，进不了特征）。
+口径（与 `stage_a_dataset_export.py:candidate_rows` 逐行一致）：
+- `main_total` / `shanten`：`decider._score_discard().total` / `.shanten`
+- `wait_copies` / `wait_kinds`：**只在并列层且听牌态**（`do_tie and s in tied and wait_aware`）才计算
+- `ukeire_exact`：**只在并列层非听牌**（`do_tie and s in tied and not wait_aware`）才计算
+- 不适用字段 = `None`（不是 0.0——0.0 会丢「不适用」语义）
 """
-
 from __future__ import annotations
 
-from collections.abc import Sequence
+from typing import Sequence
 
-from majiang.rules import shanten as shanten_module
-from majiang.rules import tiles
+from majiang.rules.action import Action, DISCARD
+from majiang.strategy import features
+from majiang.rules.shanten import visible_counts
+from majiang.rules.win import winning_draws
+from majiang.rules.shanten import ukeire
 
-FEATURE_NAMES: tuple[str, ...] = (
-    "cand_keep_shanten",   # 打后不升向听的候选数（灵活性：越多越不伤结构）
-    "cand_lower_shanten",  # 打后能降低向听的候选数（攻击性：多出现在摸后多一张的牌型）
-    "cand_raise_shanten",  # 打后向听变差的候选数（陷阱牌：打了就退）
-)
-FEATURE_COUNT = len(FEATURE_NAMES)
+# 与 v5 的 `ukeire_max_shanten` 一致（policy.py:234）
+UKEIRE_MAX_SHANTEN = 3
 
 
-def extract(counts: Sequence[int], meld_count: int = 0) -> list[float]:
-    """对摸牌后（多一张）或正常手牌，统计每个可打候选对向听的影响。
+def candidate_features(
+    decider,
+    situation,
+    candidates: Sequence[Action],
+) -> tuple[list[list[float]], list[Action]]:
+    """对每个合法弃牌候选构造 34 维向量（29 维局面特征 + 5 个候选字段）。
 
-    基线 = 当前 ``quick_shanten``；逐候选打出后重算 ``quick_shanten`` 并分桶。
-    张数不符（非 target / target+1）时按 ``shanten_any`` 同款语义处理：
-    多一张状态下的「当前向听」取各候选打后向听的最小值。
+    返回 (rows, kept_actions)。rows 的每个元素是 34 维 list[float]；
+    kept_actions 与 rows 一一对应（tile 为 None 的候选被跳过）。
     """
-    work = list(counts)
-    target = tiles.HAND_SIZE - tiles.MELD_SLOTS * meld_count
-    total = tiles.total_tiles(counts)
-    if total not in (target, target + 1):
-        raise shanten_module.ShantenError(
-            f"手牌张数 {total} 与 {meld_count} 组副露不符（应为 {target} 或 {target + 1}）"
-        )
-
-    per_discard: list[int] = []
-    for tile in range(tiles.TILE_KINDS):
-        if work[tile] == 0:
-            continue
-        work[tile] -= 1
-        try:
-            per_discard.append(shanten_module.quick_shanten(work, meld_count))
-        finally:
-            work[tile] += 1
-
-    baseline = min(per_discard) if total == target + 1 else (
-        shanten_module.quick_shanten(work, meld_count)
+    visible = visible_counts(
+        situation.hand.counts,
+        [meld.tiles for meld in situation.all_melds],
+        situation.discards,
     )
-    keep = sum(1 for s in per_discard if s == baseline)
-    lower = sum(1 for s in per_discard if s < baseline)
-    raise_ = sum(1 for s in per_discard if s > baseline)
-    return [float(keep), float(lower), float(raise_)]
+    situation_features = list(features.extract(situation))
+    meld_count = situation.hand.meld_count
 
+    scores = [decider._score_discard(situation, action) for action in candidates]
+    if not scores:
+        return [], []
 
-__all__ = ["FEATURE_COUNT", "FEATURE_NAMES", "extract"]
+    top_sh = scores[0].shanten
+    tied = [score for score in scores if score.shanten == top_sh]
+    do_tie = len(tied) >= 2 and 0 <= top_sh <= UKEIRE_MAX_SHANTEN
+    wait_aware = top_sh == 0
+    memo: dict = {}
+
+    rows: list[list[float]] = []
+    kept: list[Action] = []
+    for score, action in zip(scores, candidates):
+        tile = action.tile
+        if tile is None:
+            continue
+        counts = list(situation.hand.counts)
+        counts[tile] -= 1
+
+        wait_copies = ukeire_exact = wait_kinds = None
+        if do_tie and any(score is item for item in tied):
+            if wait_aware:
+                from majiang.strategy.policy import _wait_copies
+                wc = _wait_copies(counts, meld_count, visible, tile)
+                if wc is not None:
+                    wait_copies = wc
+                try:
+                    wait_kinds = len(winning_draws(counts, meld_count))
+                except ValueError:
+                    wait_kinds = 0
+            else:
+                try:
+                    entries = ukeire(counts, meld_count, visible=visible, memo=memo)
+                    ukeire_exact = sum(copy for _, copy in entries)
+                except Exception:
+                    ukeire_exact = 0
+
+        rows.append(
+            situation_features
+            + [
+                float(score.total),
+                float(score.shanten),
+                float(wait_copies) if wait_copies is not None else 0.0,
+                float(ukeire_exact) if ukeire_exact is not None else 0.0,
+                float(wait_kinds) if wait_kinds is not None else 0.0,
+            ]
+        )
+        kept.append(action)
+
+    return rows, kept
