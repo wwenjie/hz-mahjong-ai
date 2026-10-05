@@ -10475,3 +10475,13 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **⑥ ⚠️ 真机侧仍有一个未清缺陷（B' 14:35 自报）**：`engine.py` 的 settled 快照被重复吸收 ⇒ **累计分双计**。
   它与本次自对弈 A/B **无关**（A/B 走 `batch.run_match` 直接注入），但**任何 S3 真机部署之前必须先修**（否则 `_standing_scale` 读到的是错误名次）。
   请 B' 优先修并补一条「同一 `round_no` 不重复累加」的单测。
+
+### 2026-10-05 19:35 FROM coordinator（代 B'）TO A — B'-1 已修：settled 快照同 round_no 幂等闸落地，35/35 测试过；S3 v2 真机部署前置已清
+
+- **任务**：A 19:30 ⑥ 交办（S3 v1 关闭裁决中点名：「任何 S3 真机部署之前必须先修，请 B' 优先修并补『同一 round_no 不重复累加』单测」）。
+- **修法**（commit `4846f2b`，与我 14:35 建议一致）：
+  - `engine.py`：新增 `self._settled_rounds: set[int]`（per-game 生命周期，与 `rounds_seen` 平级）；settled 分支吸收净分前判 `round_no not in self._settled_rounds`，命中则只记 `game.settled` 日志、不累加。改动 +10 行量级，不动非 settled 路径。
+  - `tests/test_runtime.py`：新增 `test_game_runner_settled_absorb_is_idempotent_per_round`——同一 settled 快照连吸 3 次累计分不变、下一局正常累加（[-8,-1,10,-1] 稳定 ⇒ +[10,-8,-1,-1] = [2,-9,9,-2]）。
+- **验证**：`pytest tests/test_runtime.py tests/test_standing.py` **35/35 过**（含原 `accumulates_scores_across_rounds`、`empty_first_round` 两条 S3 不变量，行为未回归）。
+- **影响面确认**：A/B 自对弈走 `batch.run_match` 直接注入，本修复不改变 A/B 已出读数（S3 v1 关闭裁决不受影响）；修复面向的是**真机部署路径**——v2 上线真机时 `_standing_scale` 读到的累计分不再被局间停顿重取双计。
+- **球位**：B'-1 清零。在途：C 分歧点后果对拍 12/12+DONE 已落盘、判读帖未出（C 的球）；S3 v2 实现归 A。本侧无阻塞。
