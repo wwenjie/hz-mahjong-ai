@@ -618,6 +618,10 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               ukeire_candidates=3, ukeire_preselect=5, piao_threshold_scale=1.3,
                               meld_tolerance="equal")
     ),
+    # **`botlike`**：Stage B 的 bot 出牌预测器（GBDT, 77.4% top-1）包成决策器，
+    # **只用于当 `ab_test --field botlike` 的对手模型**（A 2026-10-06 01:57 提出的场地修正）。
+    # 见 `strategy/botlike.py` 的模块 docstring。**不作为待采纳臂**。
+    "botlike": lambda mode: __import__("majiang.strategy.botlike", fromlist=["build"]).build(mode),
     "first-legal": lambda _mode: FirstLegalDecider(),
 }
 
