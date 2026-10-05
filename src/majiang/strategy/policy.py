@@ -41,6 +41,7 @@ VARIANT_FIELDS = (
     "meld_tolerance",
     "meld_conditional",
     "god_wait_boost",
+    "standing_feed_apply",
     "standing_remaining_max",
     "standing_delta_max",
     "standing_behind_scale",
@@ -176,6 +177,7 @@ class PolicyConfig:
     # 依据与定义见 `_standing_scale`；窄臂占比 7.28%（B' 11:42 实测）。
     standing_lead_scale: float = 1.0
     standing_behind_scale: float = 1.0
+    standing_feed_apply: bool = False
     standing_delta_max: int = 29
     standing_remaining_max: int = 1
     # 精确进张要评估几张候选。**候选面本身是个缺陷来源**：
@@ -858,7 +860,8 @@ class HeuristicDecider:
         if gain <= 0:
             return 1.0
         base = (gain + loss) / (2 * gain + loss)
-        return min(0.95, base * self.config.piao_threshold_scale * self._standing_scale(situation))
+        scale = 1.0 if self.config.standing_feed_apply else self._standing_scale(situation)
+        return min(0.95, base * self.config.piao_threshold_scale * scale)
 
     def _standing_scale(self, situation: Situation) -> float:
         """**S3 局况姿态**（A 2026-10-04；窄臂形态，只在「差距可竞争」的边界态生效）。
@@ -1211,6 +1214,17 @@ class HeuristicDecider:
             and situation.table.dealer_seat == situation.seat
         ):
             feed_scale *= self.config.dealer_feed_scale
+        # **S3 v2：局况姿态接在「喂牌代价」上**（A 2026-10-05 19:30 裁决）。
+        #
+        # 为什么从 v1 的接入点（弃胡阈值）搬到这里：v1 的触发基数只有 **≈0.05 次/座·局**
+        # （插桩实测：48 局里只调用 10 次、非中性 0 次）⇒ 在那个点上测 1% 量级的效应**功效为零**，
+        # 那是一次「没有功效的实验」。而 `_score_discard` 对**每个出牌候选**都会跑（每决策 ~14 次调用），
+        # 边界态（余局≤1 + 分差≤29）占出牌决策点 ~13% ⇒ **可测**。
+        #
+        # 语义：**守（领先，scale > 1）⇒ 喂牌惩罚加重**（不喂人、稳名次）；
+        # **搏（落后，scale < 1）⇒ 喂牌惩罚减轻**（敢打危险牌换速度）。其余/并列/拿不到比分 ⇒ 1.0（逐位等于 v5）。
+        if self.config.standing_feed_apply:
+            feed_scale *= self._standing_scale(situation)
 
         if not self.config.unified_score and not self.config.route_aware and self.config.commitment is Commitment.NONE:
             if self.config.natural_route:

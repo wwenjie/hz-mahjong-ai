@@ -538,6 +538,16 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
     # **`v5-standing` = S3 局况姿态**（A 2026-10-04；窄臂形态，前置=表 C 11:10 + 接线 B' 11:35 + 定义 B' 11:42）。
     # 只在「差距可竞争」的边界态（占比 7.28%）把**弃胡/追胡阈值**按局况缩放：落后搏（0.7）、领先守（1.4），其余中性。
     # 与 `v5` 的差别只有四个 `standing_*` 字段（已逐字段核对）；`standing_*` 全默认时逐位等于 v5。
+    # **`v5-standing-feed` = S3 v2**（A 2026-10-05 19:30 裁决）：同一定义（守 1.4 / 搏 0.7、分差≤29、余局≤1），
+    # 但接入点从 v1 的**弃胡阈值**（触发 ≈0.05 次/座·局 ⇒ 功效为零）搬到**出牌层的喂牌代价**
+    # （每个候选都算 ⇒ 边界态占出牌决策点 ~13% ⇒ 可测）。语义：守⇒喂牌惩罚加重、搏⇒减轻。
+    # `standing_feed_apply=True` 使两个接入点**互斥**（不会把局况计两次）。
+    "v5-standing-feed": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, standing_lead_scale=1.4,
+                              standing_behind_scale=0.7, standing_feed_apply=True)
+    ),
     "v5-standing": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,

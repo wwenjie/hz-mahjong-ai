@@ -66,3 +66,27 @@ def test_standing_defaults_are_bit_identical_to_v5_threshold() -> None:
         assert armed._piao_threshold(gain, loss, _stub((100, 90, 80, 70), me=3)) != (
             v5._piao_threshold(gain, loss, _stub((100, 90, 80, 70), me=3))
         )
+
+
+def test_standing_feed_apply_is_exclusive_with_the_piao_entry_point() -> None:
+    """`standing_feed_apply=True` 时，弃胡阈值必须**退回 v5 公式**（局况只计一次）。
+
+    为什么钉这条：S3 v1（接弃胡阈值）与 v2（接出牌层喂牌项）**用的是同一组 `standing_*` 系数**，
+    如果两个接入点同时生效，局况会被乘两次——那不是「更有姿态」，是**参数被放大成未被验证的形态**。
+    """
+    v5 = HeuristicDecider(PolicyConfig.for_mode(Mode.QUALIFIER))
+    v2 = HeuristicDecider(
+        PolicyConfig.for_mode(
+            Mode.QUALIFIER,
+            standing_lead_scale=1.4,
+            standing_behind_scale=0.7,
+            standing_feed_apply=True,
+        )
+    )
+    boundary = _stub((100, 90, 80, 70), me=3)  # 边界态：v1 在这里会改阈值
+    for gain, loss in ((2.0, 3.0), (8.0, 2.0)):
+        assert v2._piao_threshold(gain, loss, boundary) == v5._piao_threshold(
+            gain, loss, boundary
+        )
+    # 而 `_standing_scale` 本身仍非中性（说明它是要去喂牌项那边生效的）
+    assert v2._standing_scale(boundary) == 0.7
