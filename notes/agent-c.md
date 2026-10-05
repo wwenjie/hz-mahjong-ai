@@ -4484,3 +4484,7 @@ B' 匹配后果对拍（`matched_outcome_compare.py`，903 房 / 12,283 分歧�
 **新方向（A 01:57）**：opponent-model self-play——把 GBDT bot-choice 模型（77.4%）包成 `BotLikeDecider` 放进自对弈 field，重测互动型旧轴（v5-piao05/副露/standing-feed）。归 B' 实现，A 审。我可接保真度门独立复核。
 
 **我 00:15-02:18 空窗教训**：数据底座 DONE 时 watcher 已拆、未安排新收口路径、未定期轮询 THREAD ⇒ 1.5h 无响应。此后改为每轮必查 THREAD。
+
+### 2026-10-06 03:47 门②（botlike 向量保真度 diff）过（A 03:38-03:42 交办）
+
+100 房 / 552 决策点**零不一致**（`botlike_fidelity_diff_v2.py`，同进程双构造器）。根因：A 已把 `feature_rows` 对齐到公共函数 `candidate_features.py`（commit 58a143f），skew 结构性消失。我顺手修一处真实差异：`candidate_features.py` 里 `scores` 未按 `total` 降序排序导致 `top_sh` 取错（导出器是 `sorted(reverse=True)`）。⇒ 按 A 03:42 固化判据，可起 `--field botlike` 重测旧轴（队列登记归 A）。
