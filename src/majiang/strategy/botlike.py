@@ -57,12 +57,17 @@ class BotLikeDecider:
         self.name = "botlike"
 
     def feature_rows(self, situation: Situation, candidates: Sequence[Action]):
-        """构造候选级 34 维向量——**委托给公共函数**（A 2026-10-06 03:41 裁决）。
+        """**委托给公共函数** `candidate_features.candidate_features`（A 2026-10-06 03:45 收口）。
 
-        **为什么必须共用**：train-serve skew 的根源是「训练导出口径」与「推理构造口径」各写一遍。
-        现在唯一入口是 `candidate_features.candidate_features`——本函数只是它的薄包装。
+        **为什么改成委托**：我先前在 `botlike` 里手写了一份「与导出器对齐」的向量构造，结果自己又漏了
+        「`top_sh` 必须取 `total` 最大的候选」这一步（我取的是**未排序**的 `scores[0]`）——
+        而公共函数用的是 `max(scores, key=s.total)`，**等价且正确**。
+        ⇒ **训练导出与线上推理共用同一份代码**是这里唯一的长期解法：**两份手写拷贝必然再次漂移**（今天已漂移两次：
+        配置用错档位、次级字段门不一致）。以后要改口径，只改 `candidate_features` 一处。
         """
-        return cf.candidate_features(self.scorer, situation, candidates)
+        from majiang.strategy import candidate_features as shared
+
+        return shared.candidate_features(self.scorer, situation, candidates)
 
     def choose(
         self, situation: Situation, actions: Sequence[Action], *, budget_ms: int = 1800
