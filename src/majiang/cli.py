@@ -543,12 +543,12 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
     # （每个候选都算 ⇒ 边界态占出牌决策点 ~13% ⇒ 可测）。语义：守⇒喂牌惩罚加重、搏⇒减轻。
     # `standing_feed_apply=True` 使两个接入点**互斥**（不会把局况计两次）。
     # **`v5-godprog` = 财神做牌路径机制件 v1**（A 2026-10-05 20:30 立项）：有财神且到听进度落后时，
-    # 把「打出财神的惩罚」乘 `god_progress_bias`（=0.5 ⇒ 更愿意打财神博财飘链）。依据见 `PolicyConfig.god_progress_bias`。
+    # 落后态把「打财神禁忌」从 25.0 换成 `god_penalty_behind=2.0`（与候选间其他差异同量级）⇒ 打财神进入正常竞争。依据见 `PolicyConfig.god_penalty_behind`。
     # **门①（自对弈的「有财神桶」到听速度/爆头/平胡）先过，才起 A/B**（`v7m` 的教训）。
     "v5-godprog": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
-                              ukeire_candidates=3, god_progress_bias=0.5)
+                              ukeire_candidates=3, god_penalty_behind=2.0)
     ),
     "v5-standing-feed": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,

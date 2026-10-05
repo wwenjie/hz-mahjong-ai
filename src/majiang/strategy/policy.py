@@ -42,7 +42,7 @@ VARIANT_FIELDS = (
     "meld_conditional",
     "god_wait_boost",
     "standing_feed_apply",
-    "god_progress_bias",
+    "god_penalty_behind",
     "standing_remaining_max",
     "standing_delta_max",
     "standing_behind_scale",
@@ -178,7 +178,7 @@ class PolicyConfig:
     # 依据与定义见 `_standing_scale`；窄臂占比 7.28%（B' 11:42 实测）。
     standing_lead_scale: float = 1.0
     standing_behind_scale: float = 1.0
-    # **`god_progress_bias`**（财神做牌路径机制件 v1，A 2026-10-05 20:30 立项）。
+    # **财神线（机制件）**：v1 的形态（缩放惩罚）已被实测证伪（2026-10-05 22:05 铁律），v2 见下方 `god_penalty_behind`。
     # 0 = 关闭（逐位等于 v5）；>0 = 当「手里有财神且到听进度落后」时，把**打出财神的惩罚**乘这个系数。
     #
     # **现象与依据**（三处独立证据交汇在同一点）：
@@ -190,7 +190,21 @@ class PolicyConfig:
     #     所以 v1 只做一件事：**进度落后时，降低「留财神」的隐性偏好**（更愿意打财神博财飘链）。
     #
     # **不变量**：手里无财神 ⇒ 打出财神的候选根本不存在 ⇒ 该系数无从生效 ⇒ **逐位等于 v5**（结构性保证，非巧合）。
-    god_progress_bias: float = 0.0
+    # **财神线 v2**（A 2026-10-05 23:20 更正后的形态）：**把恒定的「打财神禁忌」条件化**。
+    #
+    # **为什么不是「缩放」而是「换值」**（读代码实测）：`god_discard_penalty = 25.0`，
+    # 而候选间的其他差异范围是 **个位数**（`shanten_weight=10.0` 一个向听步 10 分、`feed` 项 ~1~2 分、
+    # `shape_value` 的形质项总幅度 **≤0.36 分**）⇒ 25 分 = **2.5 个向听步 ≈ 其他差异范围的 12~20 倍**
+    # ⇒ **打财神在评分层被结构性禁止**（缩放它、或抠 `shape_value` 里财神那 1.4 个搭子，都碰不到尾巴）。
+    # ⇒ 正确做法是**换一个值**：在「有财神且到听进度落后」时改用**与其他项同量级**的禁忌值（个位数），
+    # 让「打财神」**进入正常竞争**（由 chain/进张/形质去裁决）；进度正常时**保持 25.0**（不无脑放开）。
+    #
+    # **证据三处交汇**：C 19:32 分歧对拍（触发桶全在「有财神」）+ B' 19:35（**财飘 21 vs bot 41 ≈ 一半**）+ S2（爆头率 1/3）。
+    # 结构性事实：我们的「打财神」**只从 `_choose_win_or_piao` 的「弃胡求爆头」一条窄路进来**（那边直接构造 Action、绕过本函数）
+    # ⇒ 不是「打得少」，是**几乎没有入口**。
+    #
+    # 默认值 = `25.0`（与 `god_discard_penalty` 相同）⇒ **逐位等于 v5**（关闭态）。
+    god_penalty_behind: float = 25.0
     standing_feed_apply: bool = False
     standing_delta_max: int = 29
     standing_remaining_max: int = 1
@@ -593,14 +607,14 @@ MELD_CELL_EARLY_TURNS = 8
 MELD_CELL_MID_TURNS = 12
 
 
-# 各巡目「应该到几向听」的**粗基准**（`god_progress_bias` 的判据用）。
+# 各巡目「应该到几向听」的**粗基准**（`god_penalty_behind` 的判据用）。
 # 取法是经验值而非拟合：它只需要把「明显落后」与「正常」分开，不需要精确
 # （精确化会引入新的可调参数，而这个机制件的 v1 刻意只动一个系数）。
 GOD_PROGRESS_EXPECTED_SHANTEN = ((4, 2), (8, 1))  # 巡目 ≤4 ⇒ 期望 ≤2；≤8 ⇒ ≤1；更晚 ⇒ 0
 
 
 def _god_progress_behind(situation: Situation) -> bool:
-    """手里有财神、且「到听进度落后于巡目」——`god_progress_bias` 的触发条件。
+    """手里有财神、且「到听进度落后于巡目」—— `god_penalty_behind`（财神线 v2）的触发条件。
 
     **巡目用「自己已打出的张数」近似**（与 `_meld_cell_allows` 同一口径，理由见那里）。
     落后 = 当前向听 > 该巡目的期望向听。
@@ -1249,9 +1263,18 @@ class HeuristicDecider:
                 situation.discards,
             )
             feed *= max(0.0, tiles.COPIES_PER_KIND - seen[tile]) / tiles.COPIES_PER_KIND
-        god_penalty = self.config.god_discard_penalty if tile == GOD else 0.0
-        if god_penalty and self.config.god_progress_bias > 0 and _god_progress_behind(situation):
-            god_penalty *= self.config.god_progress_bias
+        god_penalty = 0.0
+        if tile == GOD:
+            # 财神线 v2：**落后态换值**（见 `PolicyConfig.god_penalty_behind`）；正常态保持恒定禁忌。
+            # **覆盖口径（A 2026-10-05 23:35 修正）**：不加「进度落后」这个门——
+            # 因为空干预门实测该门在真机 200 点上**触发 0 次**（分歧 0.0%），
+            # 而 C 19:32 的证据桶是**「有财神」本身就分歧**（1 向听 / 2 向听 / 3+ 向听、1-5 巡与 6-10 巡都有），
+            # 与 B' 19:35「财飘只有 bot 的一半」同向 ⇒ **禁忌应当在「持财神」时整体降低**，而不是只在落后时降低。
+            god_penalty = (
+                self.config.god_penalty_behind
+                if situation.hand.counts[GOD] >= 1
+                else self.config.god_discard_penalty
+            )
         # 庄家局的喂牌权重单独缩放：庄闲赔付是 8 倍不对称，而决策层此前完全不分庄闲。
         feed_scale = self.config.feed_weight
         if (
