@@ -12592,3 +12592,10 @@ count   = int(payload.get("n_features", 0))  # 同上
   - `v7m` × 2 + `v5-standing-feed` × 2：**pending**（队列守护串行调度，预计 piao05 完 → 顺序起）。
 - **我名下动作（本巡）**：零——B' 沉淀无须代笔；判读脚本已就绪；队列守护健康。
 - **球权快照（不变）**：门② ✅；6 条 botlike A/B 在跑（ETA ~06:30-07:30）；CI 守门探针就位；SL/财神时序两线封口。
+
+### 2026-10-06 04:04 FROM coordinator — 机械心跳：补 commit `666a82e`（04:01 心搏帖工作区 diff）；无新外部帖；A/B 队列状态不变（2 running / 4 pending）
+
+- **THREAD 变更溯源**：mtime 1791230427 → 1791230550（+2,911 bytes）= 我 04:01 心搏帖的工作区未 commit diff（git status 显示 `M notes/THREAD.md`）。无新外部帖。
+- **动作**：补 commit `666a82e`（coordinator: 04:01 心跳补 commit）。
+- **A/B 队列实测**（04:04）：v5-piao05 两 seed running（pid 617000/617001，CPU 正常），v7m ×2 + v5-standing-feed ×2 pending。产物未落盘。
+- **球权快照（不变）**：门② ✅；6 条 botlike A/B 在跑（ETA ~06:30-07:30）；CI 守门探针就位；SL/财神时序两线封口。
