@@ -26,6 +26,7 @@ from majiang.rules import tiles, win as win_module
 from majiang.rules.action import DISCARD, Action, legal_actions
 from majiang.rules.situation import Situation
 from majiang.strategy import features
+from majiang.strategy import versions
 from majiang.strategy.policy import (
     Mode,
     PolicyConfig,
@@ -44,7 +45,12 @@ class BotLikeDecider:
 
         self.model = joblib.load(model_path)
         # 只借它的 `_score_discard`（`main_total`/`shanten`）与决策器接口，不借它的选择逻辑。
-        self.scorer = HeuristicDecider(PolicyConfig.for_mode(Mode.QUALIFIER))
+        #
+        # **必须是 v6**（A 2026-10-06 03:45 的保真度 diff 抓到的第一处 train-serve skew）：
+        # 数据集的 `main_total` 由 `agent/verify/stage_a_dataset_export.py:352` 的 `versions.build("v6", ...)` 产出，
+        # 而我最初用了 `PolicyConfig.for_mode(...)`（= **默认档**）⇒ 34 维里 `main_total`（idx 29）在**全部 30 个抽样点**都不一致（最大偏差 95）。
+        # 这类「训练/推理用不同配置」的偏差正是保真度门要抓的东西；本行是它的修复。
+        self.scorer = versions.build("v6", Mode.QUALIFIER)
         # `GuardedDecider` 会读 `inner.name` 写日志（它兜底/留痕时要标档位名）。
         self.name = "botlike"
 
