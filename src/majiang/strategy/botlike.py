@@ -25,6 +25,7 @@ from majiang.rules import shanten as shanten_module
 from majiang.rules import tiles, win as win_module
 from majiang.rules.action import DISCARD, Action, legal_actions
 from majiang.rules.situation import Situation
+from majiang.strategy import candidate_features as cf
 from majiang.strategy import features
 from majiang.strategy import versions
 from majiang.strategy.policy import (
@@ -56,69 +57,12 @@ class BotLikeDecider:
         self.name = "botlike"
 
     def feature_rows(self, situation: Situation, candidates: Sequence[Action]):
-        """构造候选级 34 维向量——**与训练侧（`stage_a_dataset_export.py:103-155`）逐行同口径**。
+        """构造候选级 34 维向量——**委托给公共函数**（A 2026-10-06 03:41 裁决）。
 
-        **为什么这一段必须与导出器一字不差**（A 2026-10-06 03:41 的反例）：
-        我第一版按「每个候选都算」写，而导出器的次级字段**只在 `do_tie and s in tied` 时才算**
-        （`tied` = 与最优候选同向听的那些；`do_tie` = 并列≥2 且向听 ≤ `UKEIRE_MAX_SHANTEN`），
-        且 `wait_aware` 由 **`top_sh == 0`** 判定（不是「该候选的 `wait_copies` 是否为 0」）。
-        ⇒ 结果是：反例 2/3 里**我算了、数据集是 0**（反例 3 差到 95）——**train-serve skew**。
-        现在逐行对齐：同样的 `top_sh/tied/do_tie/wait_aware` 门，同样的 `None` 语义，
-        同样的「`wait_aware` ⇒ `wait_copies`+`wait_kinds`；否则 ⇒ `ukeire_exact`」二选一。
+        **为什么必须共用**：train-serve skew 的根源是「训练导出口径」与「推理构造口径」各写一遍。
+        现在唯一入口是 `candidate_features.candidate_features`——本函数只是它的薄包装。
         """
-        visible = shanten_module.visible_counts(
-            situation.hand.counts,
-            [meld.tiles for meld in situation.all_melds],
-            situation.discards,
-        )
-        situation_features = list(features.extract(situation))
-        meld_count = situation.hand.meld_count
-        scores = [self.scorer._score_discard(situation, action) for action in candidates]
-        if not scores:
-            return [], []
-        top_sh = scores[0].shanten
-        tied = [score for score in scores if score.shanten == top_sh]
-        do_tie = len(tied) >= 2 and 0 <= top_sh <= UKEIRE_MAX_SHANTEN
-        wait_aware = top_sh == 0
-        memo: dict = {}
-        rows: list[list[float]] = []
-        kept: list[Action] = []
-        for score, action in zip(scores, candidates):
-            tile = action.tile
-            if tile is None:
-                continue
-            counts = list(situation.hand.counts)
-            counts[tile] -= 1
-            wait_copies = ukeire_exact = wait_kinds = None
-            if do_tie and any(score is item for item in tied):
-                if wait_aware:
-                    wc = _wait_copies(counts, meld_count, visible, tile)
-                    if wc is not None:
-                        wait_copies = wc
-                    try:
-                        wait_kinds = len(win_module.winning_draws(counts, meld_count))
-                    except ValueError:
-                        wait_kinds = 0
-                else:
-                    try:
-                        entries = shanten_module.ukeire(
-                            counts, meld_count, visible=visible, memo=memo
-                        )
-                        ukeire_exact = sum(copy for _, copy in entries)
-                    except Exception:  # noqa: BLE001
-                        ukeire_exact = 0
-            rows.append(
-                situation_features
-                + [
-                    float(score.total),
-                    float(score.shanten),
-                    float(wait_copies or 0),
-                    float(ukeire_exact or 0),
-                    float(wait_kinds or 0),
-                ]
-            )
-            kept.append(action)
-        return rows, kept
+        return cf.candidate_features(self.scorer, situation, candidates)
 
     def choose(
         self, situation: Situation, actions: Sequence[Action], *, budget_ms: int = 1800
