@@ -23,6 +23,19 @@ from typing import Any
 from majiang.rules import score as score_module
 from majiang.rules import shanten as shanten_module
 from majiang.rules import tiles, win
+
+# shanten_fast Cython 加速（条件导入，无 .so 时回退纯 Python）
+# 覆盖 5 个重函数：shanten/best_shanten/shanten_any/seven_pairs_shanten/ukeire
+# 通过 monkey-patch 挂到 shanten_module 上：所有调用点（本文件及 routes/rollout/features/oracle）
+# 自动走 fast 版，无需改调用代码。ShantenError 统一为纯 Python 版类对象，except 不裂化。
+try:
+    from majiang.rules import shanten_fast as _shanten_fast_mod
+    _shanten_fast_mod.ShantenError = shanten_module.ShantenError
+    for _fn in ("shanten", "best_shanten", "shanten_any", "seven_pairs_shanten", "ukeire"):
+        setattr(shanten_module, _fn, getattr(_shanten_fast_mod, _fn))
+    _HAS_SHANTEN_FAST = True
+except ImportError:
+    _HAS_SHANTEN_FAST = False
 from majiang.rules.action import CHI, DISCARD, GANG, HU, PASS, PENG, Action, chi_combinations
 from majiang.rules.fan import FanResult, compute_fan
 from majiang.rules.melds import CHI as MELD_KIND_CHI
