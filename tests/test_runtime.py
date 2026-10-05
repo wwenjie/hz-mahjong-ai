@@ -557,6 +557,49 @@ def test_game_runner_accumulates_scores_across_rounds(tmp_path) -> None:
     assert table.scores == (2, -9, 9, -2)
 
 
+def test_game_runner_settled_absorb_is_idempotent_per_round(tmp_path) -> None:
+    """B'-1：同一 round_no 的 settled 快照重复吸收不得双计净分（真机局间停顿期会重取同一快照）。"""
+    from majiang.client.api import PlatformApi
+    from majiang.client.models import TournamentConfig
+    from majiang.client.snapshot import Snapshot
+    from majiang.rules.situation import PHASE_SETTLED
+
+    transport = RouterTransport(
+        lambda m, p, b: {"seq": 3, "pending": False, "finished": False, "snapshot": REAL_PENG_SNAPSHOT}
+    )
+    runner = GameRunner(
+        PlatformApi(transport, TOKEN),
+        "g_1",
+        FirstLegalDecider(),
+        TournamentConfig(max_concurrent_games=1, rounds_per_game=8, base_score=1),
+        NullLogger(),
+        state_poll_timeout=0.01,
+        snapshot_timeout=0.01,
+    )
+    settled1 = Snapshot.parse({
+        **REAL_PENG_SNAPSHOT,
+        "phase": PHASE_SETTLED,
+        "round_no": 1,
+        "scores": [-8, -1, 10, -1],
+    })
+    runner._absorb(settled1)
+    assert runner._cumulative_scores == [-8, -1, 10, -1]
+    # 局间停顿重取同一 round_no 的 settled 快照（长闲重同步 / race 重拉路径）：不得双计
+    runner._absorb(settled1)
+    assert runner._cumulative_scores == [-8, -1, 10, -1]
+    runner._absorb(settled1)
+    assert runner._cumulative_scores == [-8, -1, 10, -1]
+    # 下一局正常累加
+    settled2 = Snapshot.parse({
+        **REAL_PENG_SNAPSHOT,
+        "phase": PHASE_SETTLED,
+        "round_no": 2,
+        "scores": [10, -8, -1, -1],
+    })
+    runner._absorb(settled2)
+    assert runner._cumulative_scores == [2, -9, 9, -2]
+
+
 def test_game_runner_cumulative_scores_empty_first_round(tmp_path) -> None:
     """S3 不变量：首局 _cumulative_scores 恒零（等价于「未知」），不触发注入。"""
     from majiang.client.api import PlatformApi

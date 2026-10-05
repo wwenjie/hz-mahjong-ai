@@ -138,6 +138,9 @@ class GameRunner:
         # 逐局累加即为「本局开始时的累计比分」——S3 局况决策的唯一输入。
         # 首局恒为 [0,0,0,0]（等价于空元组的「未知」语义）。
         self._cumulative_scores: list[int] = [0, 0, 0, 0]
+        # 已吸收净分的局号。settled 快照在局间停顿期可能被重取（长闲重同步 / race 重拉 / 未知
+        # 事件触发重取），同一 round_no 必须幂等，否则累计分双计 ⇒ 名次分差被放大 ⇒ S3 静默退化。
+        self._settled_rounds: set[int] = set()
         self.log = logger.child(game_id=game_id)
 
     def request_stop(self) -> None:
@@ -237,7 +240,14 @@ class GameRunner:
         if snapshot.phase == PHASE_SETTLED:
             # 局间停顿：快照里的手牌是上一局残牌，不得用于牌型计算，也不提交动作。
             # 但 scores 在本阶段含**刚结束局的四家净分**（接入文档 v31）——累加进场次累计。
-            if len(snapshot.scores) == 4 and any(s != 0 for s in snapshot.scores):
+            # 幂等闸：同一 round_no 的 settled 快照只吸收一次（局间停顿期 pending 轮询会重取同一
+            # 快照；race/未知事件也会触发重拉）。缺此闸会把单局净分重复累加，分差被成倍放大。
+            if (
+                snapshot.round_no not in self._settled_rounds
+                and len(snapshot.scores) == 4
+                and any(s != 0 for s in snapshot.scores)
+            ):
+                self._settled_rounds.add(snapshot.round_no)
                 for i in range(4):
                     self._cumulative_scores[i] += snapshot.scores[i]
                 self.log.log(
