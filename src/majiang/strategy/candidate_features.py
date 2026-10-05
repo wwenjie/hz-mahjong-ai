@@ -14,13 +14,79 @@ from __future__ import annotations
 from typing import Sequence
 
 from majiang.rules.action import Action, DISCARD
-from majiang.strategy import features
-from majiang.rules.shanten import visible_counts
+from majiang.rules.shanten import visible_counts, ukeire
 from majiang.rules.win import winning_draws
-from majiang.rules.shanten import ukeire
+from majiang.strategy import features
 
 # 与 v5 的 `ukeire_max_shanten` 一致（policy.py:234）
 UKEIRE_MAX_SHANTEN = 3
+
+
+def candidate_dicts(
+    decider,
+    situation,
+    candidates: Sequence[Action],
+) -> tuple[list[dict], list[Action]]:
+    """同 `candidate_features`，但返回 dict 列表（保留 None 语义）。
+
+    供训练导出器用（需要 `is_bot`/`is_v5` 等额外字段时，在调用侧加）。
+    """
+    visible = visible_counts(
+        situation.hand.counts,
+        [meld.tiles for meld in situation.all_melds],
+        situation.discards,
+    )
+    meld_count = situation.hand.meld_count
+
+    scores = [decider._score_discard(situation, action) for action in candidates]
+    if not scores:
+        return [], []
+
+    top_score = max(scores, key=lambda s: s.total)
+    top_sh = top_score.shanten
+    tied = [score for score in scores if score.shanten == top_sh]
+    do_tie = len(tied) >= 2 and 0 <= top_sh <= UKEIRE_MAX_SHANTEN
+    wait_aware = top_sh == 0
+    memo: dict = {}
+
+    fields: list[dict] = []
+    kept: list[Action] = []
+    for score, action in zip(scores, candidates):
+        tile = action.tile
+        if tile is None:
+            continue
+        counts = list(situation.hand.counts)
+        counts[tile] -= 1
+
+        wait_copies = ukeire_exact = wait_kinds = None
+        if do_tie and any(score is item for item in tied):
+            if wait_aware:
+                from majiang.strategy.policy import _wait_copies
+                wc = _wait_copies(counts, meld_count, visible, tile)
+                if wc is not None:
+                    wait_copies = wc
+                try:
+                    wait_kinds = len(winning_draws(counts, meld_count))
+                except ValueError:
+                    wait_kinds = 0
+            else:
+                try:
+                    entries = ukeire(counts, meld_count, visible=visible, memo=memo)
+                    ukeire_exact = sum(copy for _, copy in entries)
+                except Exception:
+                    ukeire_exact = 0
+
+        fields.append({
+            "tile": tile,
+            "main_total": float(score.total),
+            "shanten": float(score.shanten),
+            "wait_copies": wait_copies,
+            "ukeire_exact": ukeire_exact,
+            "wait_kinds": wait_kinds,
+        })
+        kept.append(action)
+
+    return fields, kept
 
 
 def candidate_features(
@@ -44,8 +110,9 @@ def candidate_features(
     scores = [decider._score_discard(situation, action) for action in candidates]
     if not scores:
         return [], []
-
-    top_sh = scores[0].shanten
+    # top_sh 必须取「total 最大的候选」的 shanten（导出器 `candidate_rows` 里 scores 按 total 降序排）
+    top_score = max(scores, key=lambda s: s.total)
+    top_sh = top_score.shanten
     tied = [score for score in scores if score.shanten == top_sh]
     do_tie = len(tied) >= 2 and 0 <= top_sh <= UKEIRE_MAX_SHANTEN
     wait_aware = top_sh == 0

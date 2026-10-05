@@ -88,60 +88,35 @@ def turn_bucket(n: int) -> str:
     return "16+"
 
 
+from majiang.strategy import candidate_features as cf
+
+
 def candidate_rows(decider, situation, bot_tile, v5_tile, visible):
     """对每个 legal discard 候选算主排序键 + 并列层真实键。
 
-    返回 (rows, errors_counter)。键的口径与 v5 决策内部一致（真实 `_wait_copies` /
-    `shanten.ukeire`，不是复刻）。
+    返回 (rows, errors_counter)。**委托给公共函数**（A 2026-10-06 03:41 裁决：
+    「训练导出与推理共用同一份代码，train-serve skew 结构性消失」）。
     """
     errors = collections.Counter()
     cands = [a for a in legal_actions(situation) if a.kind == DISCARD]
     if not cands:
         return [], errors
-    try:
-        scores = sorted(
-            (decider._score_discard(situation, a) for a in cands),  # noqa: SLF001
-            key=lambda item: item.total, reverse=True)
-    except Exception:  # noqa: BLE001
+    # 公共函数返回 dict 列表（保留 None 语义），这里加 is_bot/is_v5
+    field_dicts, kept = cf.candidate_dicts(decider, situation, cands)
+    if not field_dicts:
         errors["score"] += 1
         return [], errors
-    top_sh = scores[0].shanten
-    tied = [s for s in scores if s.shanten == top_sh]
-    do_tie = len(tied) >= 2 and 0 <= top_sh <= UKEIRE_MAX_SHANTEN
-    wait_aware = top_sh == 0  # v5 的 wait_aware_tenpai=True
-    memo: dict = {}
     rows = []
-    for s in scores:
-        counts = list(situation.hand.counts)
-        counts[s.tile] -= 1
-        wait_copies = None
-        ukeire_exact = None
-        wait_kinds = None
-        if do_tie and s in tied:
-            if wait_aware:
-                wc = _wait_copies(counts, situation.hand.meld_count, visible, s.tile)
-                if wc is not None:
-                    wait_copies = wc
-                try:
-                    wait_kinds = len(win_mod.winning_draws(counts, situation.hand.meld_count))
-                except ValueError:
-                    wait_kinds = 0
-            else:
-                try:
-                    entries = shanten_mod.ukeire(
-                        counts, situation.hand.meld_count, visible=visible, memo=memo)
-                    ukeire_exact = sum(copy for _, copy in entries)
-                except Exception:  # noqa: BLE001
-                    errors["ukeire"] += 1
+    for f in field_dicts:
         rows.append({
-            "tile": s.tile,
-            "main_total": round(s.total, 6),
-            "shanten": s.shanten,
-            "is_bot": s.tile == bot_tile,
-            "is_v5": s.tile == v5_tile,
-            "wait_copies": wait_copies,
-            "ukeire_exact": ukeire_exact,
-            "wait_kinds": wait_kinds,
+            "tile": f["tile"],
+            "main_total": f["main_total"],
+            "shanten": f["shanten"],
+            "is_bot": f["tile"] == bot_tile,
+            "is_v5": f["tile"] == v5_tile,
+            "wait_copies": f["wait_copies"],
+            "ukeire_exact": f["ukeire_exact"],
+            "wait_kinds": f["wait_kinds"],
         })
     return rows, errors
 
