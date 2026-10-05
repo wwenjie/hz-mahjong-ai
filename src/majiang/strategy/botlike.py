@@ -27,7 +27,6 @@ from majiang.rules.action import DISCARD, Action, legal_actions
 from majiang.rules.situation import Situation
 from majiang.strategy import features
 from majiang.strategy import versions
-from majiang.strategy.features import UKEIRE_MAX_SHANTEN  # noqa: F401
 from majiang.strategy.policy import (
     Mode,
     PolicyConfig,
