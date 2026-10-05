@@ -42,6 +42,7 @@ VARIANT_FIELDS = (
     "meld_conditional",
     "god_wait_boost",
     "standing_feed_apply",
+    "god_progress_bias",
     "standing_remaining_max",
     "standing_delta_max",
     "standing_behind_scale",
@@ -177,6 +178,19 @@ class PolicyConfig:
     # 依据与定义见 `_standing_scale`；窄臂占比 7.28%（B' 11:42 实测）。
     standing_lead_scale: float = 1.0
     standing_behind_scale: float = 1.0
+    # **`god_progress_bias`**（财神做牌路径机制件 v1，A 2026-10-05 20:30 立项）。
+    # 0 = 关闭（逐位等于 v5）；>0 = 当「手里有财神且到听进度落后」时，把**打出财神的惩罚**乘这个系数。
+    #
+    # **现象与依据**（三处独立证据交汇在同一点）：
+    #  ① C 19:32 分歧对拍：触发我预登记判据的 5 个大桶**全是有财神桶**（我方胡率 −3.0~−6.1pp、
+    #     对手同手更高；无财神桶全不触发），且「有财神时先到听率」我们低于 bot（1 向听 35.2% vs 37.9%）；
+    #  ② S2：爆头率只有 bot 的 1/3、平胡率 −0.16 fan/局；
+    #  ③ B' 19:35：**财飘次数 21 vs bot 41（约 1/2）**——对手比我们更常把财神打出去博链。
+    #  ⇒ 解释：我们把财神当 buffer **囤着**，错过转化时机（代价：更晚听、更少胡）。
+    #     所以 v1 只做一件事：**进度落后时，降低「留财神」的隐性偏好**（更愿意打财神博财飘链）。
+    #
+    # **不变量**：手里无财神 ⇒ 打出财神的候选根本不存在 ⇒ 该系数无从生效 ⇒ **逐位等于 v5**（结构性保证，非巧合）。
+    god_progress_bias: float = 0.0
     standing_feed_apply: bool = False
     standing_delta_max: int = 29
     standing_remaining_max: int = 1
@@ -577,6 +591,35 @@ def _wait_copies(
 # `meld_conditional` 的 cell 边界（见 `PolicyConfig.meld_conditional` 的完整依据）。
 MELD_CELL_EARLY_TURNS = 8
 MELD_CELL_MID_TURNS = 12
+
+
+# 各巡目「应该到几向听」的**粗基准**（`god_progress_bias` 的判据用）。
+# 取法是经验值而非拟合：它只需要把「明显落后」与「正常」分开，不需要精确
+# （精确化会引入新的可调参数，而这个机制件的 v1 刻意只动一个系数）。
+GOD_PROGRESS_EXPECTED_SHANTEN = ((4, 2), (8, 1))  # 巡目 ≤4 ⇒ 期望 ≤2；≤8 ⇒ ≤1；更晚 ⇒ 0
+
+
+def _god_progress_behind(situation: Situation) -> bool:
+    """手里有财神、且「到听进度落后于巡目」——`god_progress_bias` 的触发条件。
+
+    **巡目用「自己已打出的张数」近似**（与 `_meld_cell_allows` 同一口径，理由见那里）。
+    落后 = 当前向听 > 该巡目的期望向听。
+    """
+    hand = situation.hand
+    if hand.counts[tiles.GOD] < 1:
+        return False
+    seat = situation.seat
+    discards = situation.discards
+    played = len(discards[seat]) if 0 <= seat < len(discards) else 0
+    expected = 0
+    for limit, value in GOD_PROGRESS_EXPECTED_SHANTEN:
+        if played <= limit:
+            expected = value
+            break
+    current = _shanten_or_none(hand.counts, hand.meld_count)
+    if current is None:
+        return False
+    return current > expected
 
 
 def _meld_cell_allows(situation: Situation, current: int) -> bool:
@@ -1207,6 +1250,8 @@ class HeuristicDecider:
             )
             feed *= max(0.0, tiles.COPIES_PER_KIND - seen[tile]) / tiles.COPIES_PER_KIND
         god_penalty = self.config.god_discard_penalty if tile == GOD else 0.0
+        if god_penalty and self.config.god_progress_bias > 0 and _god_progress_behind(situation):
+            god_penalty *= self.config.god_progress_bias
         # 庄家局的喂牌权重单独缩放：庄闲赔付是 8 倍不对称，而决策层此前完全不分庄闲。
         feed_scale = self.config.feed_weight
         if (

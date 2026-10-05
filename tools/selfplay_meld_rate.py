@@ -28,9 +28,12 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
 from majiang.cli import DECIDERS, make_decider  # noqa: E402
+from majiang.rules import shanten, tiles, win  # noqa: E402
+from majiang.rules.action import DISCARD  # noqa: E402
+from majiang.rules.situation import PHASE_DRAW  # noqa: E402
 from majiang.sim.round import SEATS, run_round  # noqa: E402
 from majiang.strategy import versions  # noqa: E402
-from majiang.strategy.policy import Mode  # noqa: E402
+from majiang.strategy.policy import HeuristicDecider, Mode  # noqa: E402
 
 
 def build(name: str, mode: Mode):
@@ -42,15 +45,63 @@ def build(name: str, mode: Mode):
     raise SystemExit(f"未知策略 {name!r}（见 majiang.cli.DECIDERS 与 strategy/versions.py）")
 
 
+class WaitWidthProbe:
+    """给任意决策器**外包一层**，统计「持财神听口种数」（G1 机制门①的量）。
+
+    **为什么由本工具承担**：B' 的财神专项读的是**真机**（bot 6.08 vs 我们 4.53、+34%），
+    但 G1 要跑的是**自对弈 A/B**——机制门①（`godwait/v5` 的持财神听口种数比 ≥1.25）**必须能在自对弈里量**，
+    否则就会变成「只看胜负、不看机制」，那正是 `v6-equal` 那次的教训（副露 +48% 却输）。
+
+    **口径**：只在「**出牌后**手牌含财神 **且** 已听牌」的决策点记录 `len(winning_draws)`，
+    与 S2/财神专项的「听口种数」同义；未听牌或手里无财神不计入（否则把「到听前」混进来）。
+    """
+
+    def __init__(self, inner: object) -> None:
+        self.inner = inner
+        self.god_tenpai_widths: list[int] = []
+        self.turns = 0                 # 该座做过决策的次数（只看摸牌相 ⇒ 近似巡目）
+        self.tenpai_turn: int | None = None
+        self.tenpai_with_god = False
+
+    def choose(self, situation, actions, *, budget_ms: int = 1800):
+        if situation.phase == PHASE_DRAW:
+            self.turns += 1
+            if self.tenpai_turn is None:
+                hand_counts = situation.hand.counts
+                if shanten.shanten_any(hand_counts, situation.hand.meld_count) == 0:
+                    # **到听速度（财神桶）**：这是门①的分母——「有财神桶的到听速度」。
+                    # 按该座**到听那一刻手里是否持财神**分桶（不是按全局财神数），
+                    # 因为要检验的正是「持财神时我们更晚听」这条（C 19:32 的分歧对拍结论）。
+                    self.tenpai_turn = self.turns
+                    self.tenpai_with_god = hand_counts[tiles.GOD] >= 1
+        decision = self.inner.choose(situation, actions, budget_ms=budget_ms)  # type: ignore[attr-defined]
+        try:
+            if decision is not None and decision.kind == DISCARD and decision.tile is not None:
+                counts = list(situation.hand.counts)
+                if counts[decision.tile] > 0:
+                    counts[decision.tile] -= 1
+                    if counts[tiles.GOD] >= 1:
+                        if shanten.shanten_any(counts, situation.hand.meld_count) == 0:
+                            self.god_tenpai_widths.append(
+                                len(win.winning_draws(counts, situation.hand.meld_count))
+                            )
+        except Exception:  # noqa: BLE001 —— 探针绝不能因为计数失败影响牌局
+            pass
+        return decision
+
+
 def run_one(name: str, matches: int, rounds: int, seed: int, mode: Mode) -> dict:
     factory = build(name, mode)
     rng = random.Random(seed)
     melds = wins = flows = 0
     pinghu = baotou = 0
     fan_total = 0
+    widths: list[int] = []
+    tenpai_god: list[int] = []
+    tenpai_nogod: list[int] = []
     for index in range(matches):
         dealer = index % SEATS
-        seat_deciders = [factory() for _ in range(SEATS)]
+        seat_deciders = [WaitWidthProbe(factory()) for _ in range(SEATS)]
         for _ in range(rounds):
             seen: dict = {}
 
@@ -83,6 +134,13 @@ def run_one(name: str, matches: int, rounds: int, seed: int, mode: Mode) -> dict
                         baotou += 1
             if not (result.is_flow or result.winner == dealer):
                 dealer = (dealer + 1) % SEATS
+        for probe in seat_deciders:
+            widths.extend(probe.god_tenpai_widths)
+            if probe.tenpai_turn is not None:
+                if probe.tenpai_with_god:
+                    tenpai_god.append(probe.tenpai_turn)
+                else:
+                    tenpai_nogod.append(probe.tenpai_turn)
     games = matches * rounds
     per = games * SEATS
     return {
@@ -97,6 +155,10 @@ def run_one(name: str, matches: int, rounds: int, seed: int, mode: Mode) -> dict
         "pinghu_per_seat_round": pinghu / per if per else 0.0,
         "baotou_per_seat_round": baotou / per if per else 0.0,
         "average_fan": fan_total / wins if wins else 0.0,
+        "god_tenpai_width": sum(widths) / len(widths) if widths else 0.0,
+        "god_tenpai_points": len(widths),
+        "tenpai_turn_god": sum(tenpai_god) / len(tenpai_god) if tenpai_god else 0.0,
+        "tenpai_turn_nogod": sum(tenpai_nogod) / len(tenpai_nogod) if tenpai_nogod else 0.0,
     }
 
 
@@ -111,18 +173,20 @@ def main(argv: list[str] | None = None) -> int:
     mode = Mode(args.mode)
     print(
         f"{'策略':>18} {'副露/座·局':>10} {'平胡/座·局':>10} {'爆头/座·局':>10} "
-        f"{'均番':>6} {'流局率':>7}  （{args.matches}场×{args.rounds}局，镜像四座）"
+        f"{'均番':>6} {'持财神听口种数':>13} {'到听巡_有财':>10} {'到听巡_无财':>10} {'点数':>7}  （{args.matches}场×{args.rounds}局，镜像四座）"
     )
     for name in [n.strip() for n in args.deciders.split(",") if n.strip()]:
         row = run_one(name, args.matches, args.rounds, args.seed, mode)
         print(
             f"{row['name']:>18} {row['meld_per_seat_round']:>10.3f} {row['pinghu_per_seat_round']:>10.3f} "
-            f"{row['baotou_per_seat_round']:>10.3f} {row['average_fan']:>6.3f} {row['flow_rate']:>6.1%}",
+            f"{row['baotou_per_seat_round']:>10.3f} {row['average_fan']:>6.3f} "
+            f"{row['god_tenpai_width']:>13.3f} {row['tenpai_turn_god']:>9.2f} "
+            f"{row['tenpai_turn_nogod']:>9.2f} {row['god_tenpai_points']:>7d}",
             flush=True,
         )
     print(
-        "  （参考：头部 bot 真机 副露 1.251 / 平胡 0.284 / 爆头 0.088 / 均番 1.422；我们 v5 真机 0.623 / 0.202 / 0.029 / 1.242。"
-        "自对弈绝对值系统性偏高，看**臂间差**。）"
+        "  （参考：头部 bot 真机 副露 1.251 / 平胡 0.284 / 爆头 0.088 / 均番 1.422 / 持财神听口种数 6.08；"
+        "我们 v5 真机 0.623 / 0.202 / 0.029 / 1.242 / 4.53。自对弈绝对值系统性偏高，看**臂间差**与**倍数**。）"
     )
     return 0
 
