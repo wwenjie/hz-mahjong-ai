@@ -27,6 +27,7 @@ from majiang.rules.action import DISCARD, Action, legal_actions
 from majiang.rules.situation import Situation
 from majiang.strategy import features
 from majiang.strategy import versions
+from majiang.strategy.features import UKEIRE_MAX_SHANTEN  # noqa: F401
 from majiang.strategy.policy import (
     Mode,
     PolicyConfig,
@@ -34,6 +35,7 @@ from majiang.strategy.policy import (
     _wait_copies,
 )
 
+UKEIRE_MAX_SHANTEN = 3  # 与训练侧导出器同值（`stage_a_dataset_export.py`）
 DEFAULT_MODEL = "agent/out/stage-b-gbdt.joblib"
 
 
@@ -55,11 +57,15 @@ class BotLikeDecider:
         self.name = "botlike"
 
     def feature_rows(self, situation: Situation, candidates: Sequence[Action]):
-        """构造候选级 34 维向量（**唯一**的向量构造入口，供 `choose` 与保真度 diff 共用）。
+        """构造候选级 34 维向量——**与训练侧（`stage_a_dataset_export.py:103-155`）逐行同口径**。
 
-        **为什么把它抽成公开方法**：A 2026-10-06 03:36 的保真度门要求「同一批局面下，
-        本构造器 vs `agent/verify/stage_a_dataset_export.py` 的向量逐维一致」——
-        若向量构造散在 `choose` 里，那个 diff 就只能复制粘贴一份代码去比，**比的是副本不是本体**。
+        **为什么这一段必须与导出器一字不差**（A 2026-10-06 03:41 的反例）：
+        我第一版按「每个候选都算」写，而导出器的次级字段**只在 `do_tie and s in tied` 时才算**
+        （`tied` = 与最优候选同向听的那些；`do_tie` = 并列≥2 且向听 ≤ `UKEIRE_MAX_SHANTEN`），
+        且 `wait_aware` 由 **`top_sh == 0`** 判定（不是「该候选的 `wait_copies` 是否为 0」）。
+        ⇒ 结果是：反例 2/3 里**我算了、数据集是 0**（反例 3 差到 95）——**train-serve skew**。
+        现在逐行对齐：同样的 `top_sh/tied/do_tie/wait_aware` 门，同样的 `None` 语义，
+        同样的「`wait_aware` ⇒ `wait_copies`+`wait_kinds`；否则 ⇒ `ukeire_exact`」二选一。
         """
         visible = shanten_module.visible_counts(
             situation.hand.counts,
@@ -68,40 +74,48 @@ class BotLikeDecider:
         )
         situation_features = list(features.extract(situation))
         meld_count = situation.hand.meld_count
+        scores = [self.scorer._score_discard(situation, action) for action in candidates]
+        if not scores:
+            return [], []
+        top_sh = scores[0].shanten
+        tied = [score for score in scores if score.shanten == top_sh]
+        do_tie = len(tied) >= 2 and 0 <= top_sh <= UKEIRE_MAX_SHANTEN
+        wait_aware = top_sh == 0
+        memo: dict = {}
         rows: list[list[float]] = []
         kept: list[Action] = []
-        for action in candidates:
+        for score, action in zip(scores, candidates):
             tile = action.tile
             if tile is None:
                 continue
             counts = list(situation.hand.counts)
             counts[tile] -= 1
-            score = self.scorer._score_discard(situation, action)
-            wait_copies = _wait_copies(counts, meld_count, visible, tile)
-            wait_kinds = 0.0
-            ukeire_exact = 0.0
-            if wait_copies is None:
-                wait_copies = 0.0
-            else:
-                try:
-                    wait_kinds = float(len(win_module.winning_draws(counts, meld_count)))
-                except ValueError:
-                    wait_kinds = 0.0
-            if wait_copies == 0.0 and ukeire_exact == 0.0:
-                # 向听 ≥1 层：与数据底座同口径用「精确进张」
-                try:
-                    entries = shanten_module.ukeire(counts, meld_count, visible=visible)
-                    ukeire_exact = float(sum(copy for _, copy in entries))
-                except Exception:  # noqa: BLE001
-                    ukeire_exact = 0.0
+            wait_copies = ukeire_exact = wait_kinds = None
+            if do_tie and any(score is item for item in tied):
+                if wait_aware:
+                    wc = _wait_copies(counts, meld_count, visible, tile)
+                    if wc is not None:
+                        wait_copies = wc
+                    try:
+                        wait_kinds = len(win_module.winning_draws(counts, meld_count))
+                    except ValueError:
+                        wait_kinds = 0
+                else:
+                    try:
+                        entries = shanten_module.ukeire(
+                            counts, meld_count, visible=visible, memo=memo
+                        )
+                        ukeire_exact = sum(copy for _, copy in entries)
+                    except Exception:  # noqa: BLE001
+                        ukeire_exact = 0
             rows.append(
                 situation_features
                 + [
                     float(score.total),
                     float(score.shanten),
-                    float(wait_copies),
-                    float(ukeire_exact),
-                    float(wait_kinds),
+                    float(wait_copies or 0),
+                    float(ukeire_exact or 0),
+                    float(wait_kinds or 0),
                 ]
             )
             kept.append(action)
