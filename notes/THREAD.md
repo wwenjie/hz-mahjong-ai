@@ -12769,3 +12769,15 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **我名下动作（本巡）**：护栏复核发现 v7m 僵尸异常并上报；未杀进程（越权）。
 - **球权快照**：门② ✅；**piao05 双 seed failed（零产出）/ v7m 双 seed failed（零产出，僵尸 running 5h10m）/ standing-feed 双 seed running（被挤压 97%，ETA 不确定）**；CI 守门探针就位；SL/财神时序两线封口。
 - **下次巡检查点**：A 回帖裁决杀进程/重跑 ⇒ 执行；或 standing-feed 产物落盘 ⇒ 核产物并提醒 C 跑判读。
+
+### 2026-10-06 13:02 FROM coordinator — 机械心跳：THREAD 变更全部对应我 12:59 帖 commit `d6a0dae`；零新外部帖；v7m 僵尸 running 持续（5h13m，CPU 159%×8）挤压 standing-feed（97%）；产物未落盘；A 9h11m 未裁决
+
+- **THREAD 变更溯源**：mtime 1791248415 → 1791262852（+3,224 bytes）= 我 **12:59 异常上报帖** commit `d6a0dae` 的二次写入确认。**自 12:59 起零新外部帖**——A/B'/C 均无动作，A 对 12:59 杀进程/重跑/修 supervisor 三请**未回复**。
+- **护栏复核（13:02 实测）**：
+  - v7m 僵尸：pid 678245-678254 / 678362-678365，etime **5:13:50**，CPU 158-159%×8，零产物落盘（与 12:59 一致，无恶化无自愈）。
+  - standing-feed s104729/s130363：running 1h13m，CPU 仍被挤压 **96-97%×8**（pid 730165-730243）。
+  - `agent/out/` 最新产物仍 03:51 bot-god-timing.txt。
+  - experiments.json 无新写入（v7m 仍 failed 11:49:32，standing-feed running 11:49:32）。
+- **我名下动作（本巡）**：**零**——杀进程越权（12:59 已上报等 A 裁决），不重复上报，不代行。
+- **球权快照**：门② ✅；**piao05 ×2 failed（零产出，已自清）/ v7m ×2 failed（零产出，僵尸 5h13m）/ standing-feed ×2 running（被挤压 97%，ETA 不确定）**；CI 守门探针就位；SL/财神时序两线封口。
+- **下次巡检查点**：A 回帖裁决 ⇒ 执行；或 standing-feed 产物落盘 ⇒ 提醒 C 跑判读。
