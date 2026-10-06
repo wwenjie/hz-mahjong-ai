@@ -88,13 +88,12 @@ def process_room(path, stats, cases, seen_rounds):
                     break
                 continue
             stats["my_discard"] += 1
+            # 正确口径：此刻 state.hand 已含摸到的牌（after-draw 决策态）= 出牌前手牌。
+            # （18:38 版 bug：before = state.hand + tile 重复计数，打出牌本就在手——作废重跑）
             before = list(state.seats[my_seat].hand)
-            before[tile] += 1  # 出牌前 14 张
             meld_count = len(state.seats[my_seat].melds)
 
-            # 「这手本来能胡」= 存在某张打出后成胡。先判 14 张直接成胡（胡刚摸的），
-            # 再判「去掉任意一张后听牌且能胡某张」（见逃型）。
-            # 最直接：14 张若能成胡（is_winning_shape），则本手是胡牌手，打任何一张都是「该胡不胡」。
+            # 「这手本来能胡」= 决策态手牌（14 张）直接成胡
             try:
                 can_win_14 = win_mod.is_winning_shape(before, meld_count)
             except Exception:  # noqa: BLE001
@@ -107,18 +106,17 @@ def process_room(path, stats, cases, seen_rounds):
                 continue
 
             stats["can_win_before_discard"] += 1
-            # 过滤 1 近似：打出后手牌是否爆头形（is_baotou）——若是，大概率是弃胡求爆头策略（故意）
-            after = list(state.seats[my_seat].hand)  # apply 前，先算（此时还没打出）
-            after[tile] -= 1  # 手动减去打出的牌 = 打出后 13 张
+            # 过滤 1：打出后手牌是否爆头形（is_baotou）——弃胡求爆头/续飘策略的特征
+            after = list(before)
+            after[tile] -= 1  # 打出后 13 张
             try:
                 is_baotou_after = win_mod.is_baotou(after, meld_count)
             except Exception:  # noqa: BLE001
                 is_baotou_after = False
-            # 打出后是否仍听牌（shanten==0）
-            try:
-                sh_after = shanten_mod.shanten(after, meld_count)
-            except Exception:  # noqa: BLE001
-                sh_after = None
+            if is_baotou_after:
+                stats["filtered_baotou"] += 1
+            else:
+                stats["true_bug_candidate"] += 1
             cases.append({
                 "room": room_id,
                 "round_no": rno,
@@ -128,7 +126,6 @@ def process_room(path, stats, cases, seen_rounds):
                 "god_in_hand": before[GOD_ID],
                 "n_melds": meld_count,
                 "baotou_after": is_baotou_after,
-                "shanten_after": sh_after,
             })
             try:
                 R.apply_event(state, ev)
@@ -156,20 +153,22 @@ def main() -> int:
             fh.write(json.dumps(c, ensure_ascii=False) + "\n")
 
     lines = []
-    lines.append(f"模式1「该胡不胡」规则口径复核（{len(seen_rounds)} 去重局）")
+    lines.append(f"去重局数 = {len(seen_rounds)}")
     lines.append(f"我方出牌事件 = {stats['my_discard']}")
-    lines.append(f"出牌前 14 张已成胡（is_winning_shape=True）= {stats['can_win_before_discard']}")
+    lines.append(f"出牌前已成胡（is_winning_shape=True）= {stats['can_win_before_discard']}")
+    lines.append(f"  ├─ 过滤 1：打出后仍爆头（is_baotou）= {stats['filtered_baotou']}  ← 弃胡求爆头策略（故意）")
+    lines.append(f"  └─ 打出后非爆头（真 bug 候选）= {stats['true_bug_candidate']}  ← 仍需过滤 2（抓打圈受限）")
     lines.append("")
     if stats["my_discard"]:
         rate = stats["can_win_before_discard"] / stats["my_discard"]
-        lines.append(f"占比 = {rate:.4%}（这是「规则口径已成胡却打出」的**上限**——含弃胡求爆头等故意策略，未扣过滤 1/2）")
+        bug_rate = stats["true_bug_candidate"] / stats["my_discard"]
+        lines.append(f"「已成胡却打出」占比 = {rate:.4%}")
+        lines.append(f"扣掉弃胡求爆头后（真 bug 候选）占比 = {bug_rate:.4%}")
     lines.append("")
-    lines.append("**注意（口径声明）**：")
-    lines.append("- 本探针判「成胡」用 `win.is_winning_shape(14张)`——即「这手摸打后直接成胡」。")
-    lines.append("  这是「该胡不胡」的**必要非充分**条件：成胡不代表该胡（弃胡求爆头正是「能胡却故意不胡」）。")
-    lines.append("- 过滤 1（弃胡求爆头）与过滤 2（抓打圈受限）**未扣**——事件流无 decision.reason / is_restricted 落盘，")
-    lines.append("  需 A 决策：要么接受「上限口径」、要么在 runtime 加决策日志后重测。")
-    lines.append(f"- 逐例（含手牌/财神/副露）已落 {out_cases.relative_to(ROOT)}，可抽验。")
+    lines.append("**口径声明**：")
+    lines.append("- 「成胡」用 `win.is_winning_shape(14张)`（after-draw 决策态手牌）；打出后爆头用 `win.is_baotou(13张)`。")
+    lines.append("- 过滤 1（弃胡求爆头）用「打出后仍爆头」近似——生产策略的弃胡求爆头正是「打出非财神牌后仍听任意」。")
+    lines.append("- 过滤 2（抓打圈受限）未扣：事件流无 is_restricted 落盘，真 bug 候选数仍含它（上限）。")
     text = "\n".join(lines)
     print(text)
     (ROOT / "agent/out/hu-miss-triple-filter.txt").write_text(text, encoding="utf-8")
