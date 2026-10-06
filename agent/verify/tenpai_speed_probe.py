@@ -218,6 +218,49 @@ def main() -> int:
         m_stat = f"{percentile(mt,50):.1f}/{percentile(mt,90):.1f}/{statistics.mean(mt):.2f}" if mt else "—"
         diff = f"{statistics.mean(mt)-statistics.mean(bt):+.2f}" if (bt and mt) else "—"
         out.append(f"{key[0]:>6} {key[1]:>7} | {b_rate:>15} | {b_stat:>17} | {m_rate:>15} | {m_stat:>18} | {diff:>13}")
+
+    # === A 18:23②：分布形状（p50/p75/p90/p95 + 累计到听率），分桶 有财神 × 副露 ===
+    # 有财神 = god≥1（照抄 A 原文「有财神 × 副露有/无」两桶）
+    out.append("")
+    out.append("== 分布形状（A 18:23②）：有财神 × 副露，p50/p75/p90/p95 + 累计到听率（≤5/≤8/≤11/≤14 巡）==")
+    shape_bucket: dict[tuple, dict] = collections.defaultdict(
+        lambda: {"bot_turns": [], "my_turns": [], "bot_n": 0, "my_n": 0})
+    for r in recs:
+        gb = "god≥1" if r["god"] >= 1 else "god=0"
+        mb = meld_bucket(r["meld"])
+        key = (gb, mb)
+        v = shape_bucket[key]
+        if r["is_bot"]:
+            v["bot_n"] += 1
+            if r["turn"] is not None:
+                v["bot_turns"].append(r["turn"])
+        else:
+            v["my_n"] += 1
+            if r["turn"] is not None:
+                v["my_turns"].append(r["turn"])
+
+    def cum_rate(turns, total, cap):
+        """≤cap 巡内到听的座位局占该侧总局数（含未到听）的比例。"""
+        if not total:
+            return None
+        return sum(1 for t in turns if t <= cap) / total
+
+    out.append("分桶         | 侧  | n(局) | p50 | p75 | p90 | p95 | ≤5巡 | ≤8巡 | ≤11巡 | ≤14巡")
+    out.append("-------------|-----|-------|-----|-----|-----|-----|------|------|-------|-------")
+    for key in sorted(shape_bucket.keys()):
+        v = shape_bucket[key]
+        for side, turns, n in (("bot", v["bot_turns"], v["bot_n"]), ("我方", v["my_turns"], v["my_n"])):
+            if not n:
+                continue
+            if turns:
+                cells = (f"{percentile(turns, p):.0f}" for p in (50, 75, 90, 95))
+                p50, p75, p90, p95 = cells
+            else:
+                p50 = p75 = p90 = p95 = "—"
+            cums = (f"{cum_rate(turns, n, c):.0%}" for c in (5, 8, 11, 14))
+            c5, c8, c11, c14 = cums
+            out.append(f"{key[0]:>5} {key[1]:>7} | {side:>3} | {n:>5} | {p50:>3} | {p75:>3} | {p90:>3} | {p95:>3} | {c5:>4} | {c8:>4} | {c11:>5} | {c14:>5}")
+        out.append("-------------|-----|-------|-----|-----|-----|-----|------|------|-------|-------")
     text = "\n".join(out)
     print(text)
     (ROOT / "agent/out/tenpai-speed.txt").write_text(text, encoding="utf-8")
