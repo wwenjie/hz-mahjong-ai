@@ -26,15 +26,23 @@ BACKOFF="${MAJIANG_QUEUE_BACKOFF:-60}"
 # 变更记录（2026-09-29）：原先 WORKERS=3 且 ab_test **单线程**，实测 CPU 用不到 1/3。
 # `tools/ab_test.py` 多进程化后（`--jobs`，并行与串行输出逐位相同），改成「少 job × 多进程」——
 # 同样的核数下进程都是同粒度任务、调度更平，且 job 少了以后单 job 的墙钟时间不再被 job 数拖慢。
+# 变更记录（2026-10-03 A 22:25 裁决）：默认 JOBS 5→4（2×4=8 核）。真机采集侧出现
+# action.rejected / 600ms 决策超预算，归因为离线队列把核顶太满。降到 8 核给真机留更多余量，
+# 按小时复核 action.rejected 是否下降（判据命令见 THREAD 记录）。
 WORKERS="${MAJIANG_QUEUE_WORKERS:-2}"
-JOBS="${MAJIANG_QUEUE_JOBS:-5}"
+JOBS="${MAJIANG_QUEUE_JOBS:-4}"
 child=0
 stopping=0
 trap 'stopping=1; [ "$child" -ne 0 ] && kill -TERM "$child" 2>/dev/null' TERM INT
 
 echo "$(date -Is) 实验队列守护启动（只跑离线自对弈，不碰平台）"
 while [ "$stopping" -eq 0 ]; do
-  uv run python tools/iterate_loop.py --loop --workers "$WORKERS" --jobs "$JOBS" &
+  # `--timeout`：**单 job 的墙钟上限**。默认 14400s（4h）是照「v5-vs-v5 场」定的（一场约 2 秒）；
+# 但**换慢 field 后必须抬高**——`botlike` 场另三座每决策都跑 `_score_discard`（含精确进张）⇒ 实测 **≈5s/决策**、
+# 一场 8 局要几分钟 ⇒ `matches=40` 需 4h+，**正好卡死 14400s**（2026-10-06 因此白烧两批：120 场的 4 条 + 40 场的 2 条）。
+# 现设 21600s（6h）= 实测所需 ~4h 的 1.5 倍余量。
+TIMEOUT="${MAJIANG_QUEUE_TIMEOUT:-21600}"
+uv run python tools/iterate_loop.py --loop --workers "$WORKERS" --jobs "$JOBS" --timeout "$TIMEOUT" &
   child=$!
   wait "$child"
   code=$?
