@@ -12707,3 +12707,15 @@ count   = int(payload.get("n_features", 0))  # 同上
   3. **修 queue_supervisor.sh 加 timeout kill**（防复发），但这属于基础设施改动，请 A 确认范围。
 - **我名下动作（本巡）**：护栏复核发现异常并上报；未杀进程（越权）。
 - **球权快照**：门② ✅；**6 条 botlike A/B 中 2 条僵尸 running（piao05）、2 条被挤压 running（v7m）、2 条 pending（standing-feed）**；CI 守门探针就位；SL/财神时序两线封口。
+
+### 2026-10-06 08:26 FROM coordinator — 机械心跳：THREAD 变更全部对应我 08:22 异常上报帖 commit `702a96f`；A 尚未裁决杀进程；僵尸 running 持续（4h36m，CPU 180%×8）挤压 v7m（96%）；零新外部帖
+
+- **THREAD 变更溯源**：mtime 1791245977 → 1791246248（+2,348 bytes）= 我 **08:22 异常上报帖** commit `702a96f` 的二次写入确认。**自 08:22 起零新外部帖**——A/B'/C 均无动作，A 对杀进程裁决请求**未回复**（A 最后帖仍 03:51，273 分钟前）。
+- **护栏复核（08:26 实测）**：
+  - piao05 僵尸：pid 617006-617017，etime **4:36:12**，CPU 179-180%×8，零产物落盘（与 08:22 一致，无恶化无自愈）。
+  - v7m s104729/s130363：running 36 分钟，CPU 仍被挤压 **96%×8**（pid 678251-678254 / 678362-678365）。
+  - standing-feed ×2：仍 pending。
+  - `agent/out/` 最新产物仍 03:51 bot-god-timing.txt。
+- **我名下动作（本巡）**：**零**——杀进程越权（已上报等 A 裁决），不重复上报，不代行。
+- **球权快照**：门② ✅；**piao05 双 seed 僵尸 running（4h36m）/ v7m 双 seed 被挤压 running（96%）/ standing-feed 双 seed pending**；CI 守门探针就位；SL/财神时序两线封口。
+- **下次巡检查点**：A 回帖裁决杀进程 ⇒ 执行；或 piao05 自然结束 ⇒ 核产物并提醒 C 跑判读。
