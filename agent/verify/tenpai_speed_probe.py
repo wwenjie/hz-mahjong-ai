@@ -1,178 +1,230 @@
-"""C27：听牌速度探针——考验 C26 假设①「摸到 1 张财神时我们到听更慢」。
+#!/usr/bin/env python
+"""到听速度分桶差异（A 2026-10-06 16:49 [待C] 交办）。
 
-只读、零平台请求。从事件流重建每个座位的暗手，在每个「已出牌」的整点算向听数，
-取「首次听牌发生在自己的第几摸」（按座位自己的出牌次数计）。
+**口径**（照抄 A 16:49②）：
+1. **量**：每个座位「首次到听（shanten==0）的巡目」，真机全量局；
+2. **两侧同口径**：我方 vs 头部 bot（全知视角，从 start_hands 重放）；
+3. **分桶**：`财神数 (0 / 1 / ≥2)` × `是否已副露 (0 / ≥1)`；
+4. **同时报**：到听巡目分布（p50/p90）与到听率（在给定巡数内到听的比例），不只是均值。
 
-用法：``.venv/bin/python agent/verify/tenpai_speed_probe.py [--rooms N]``
+**预登记决策树**（A 16:49③，出数后按此执行，不重议口径）：
+| 结果 | 判读 | 动作 |
+|---|---|---|
+| 有财神桶里我们比 bot 慢 ≥0.5 巡 | (甲) 到听慢 | 立项「到听速度」机制件 |
+| 两侧无差异（<0.2 巡） | (乙) 听口质量 | 转「听口在自摸口径下的可达性」 |
+| 无财神桶也慢 | 全属性牌效慢 | 回早巡牌效（需先给机制门） |
+
+**巡目定义**：座位级「出手序数」（该座位第几次出牌，含开局弃牌），从 start_hands 重放时逐事件累计。
+
+**判定方式**：每次手牌变化（摸牌/出牌/副露/杠）后，用 `shanten(counts, meld_count)` 算向听；
+首次 `shanten==0` 时的巡目记为「到听巡目」。
+
+**产物**：`agent/out/tenpai-speed.txt`。
 """
 from __future__ import annotations
 
-import argparse
+import collections
 import glob
 import json
-import statistics as st
+import statistics
 import sys
-from math import erf, sqrt
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT / "agent" / "verify"))
 
 from majiang.rules import shanten as shanten_mod  # noqa: E402
 from majiang.rules import tiles  # noqa: E402
-from majiang.sim import replay  # noqa: E402
+from majiang.sim import replay as R  # noqa: E402
+
+import stage_a_dataset_export as EXP  # noqa: E402
 
 OUR = "u_a7f7c67bb14a"
-GOD = tiles.GOD
-DRAWN = "tile_drawn"
-DISCARDED = "tile_discarded"
+
+GOD_ID = tiles.GOD
+GOD_TILES = {GOD_ID}
 
 
-def _phat(p: float) -> float:
-    return 0.5 * (1.0 + erf(p / sqrt(2.0)))
-
-
-def two_prop_z(k1: int, n1: int, k2: int, n2: int) -> float:
-    if n1 == 0 or n2 == 0:
-        return float("nan")
-    p1, p2 = k1 / n1, k2 / n2
-    p = (k1 + k2) / (n1 + n2)
-    se = sqrt(p * (1 - p) * (1 / n1 + 1 / n2))
-    return (p2 - p1) / se if se else float("nan")
-
-
-def welch(a: list[float], b: list[float]) -> tuple[float, float]:
-    if len(a) < 2 or len(b) < 2:
-        return float("nan"), float("nan")
-    ma, mb = st.mean(a), st.mean(b)
-    va, vb = st.variance(a), st.variance(b)
-    se = sqrt(va / len(a) + vb / len(b))
-    if not se:
-        return float("nan"), float("nan")
-    t = (ma - mb) / se
-    return t, 2 * (1 - _phat(abs(t)))
-
-
-def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description="听牌速度探针")
-    ap.add_argument("--rooms", type=int, default=0)
-    ap.add_argument("--arm-map", default=None,
-                    help="game_id→臂映射 JSON（build_arm_map.py 产物）；给了就按臂过滤")
-    ap.add_argument("--arm", default=None, help="只统计指定臂（如 v5/v6）；与 --arm-map 联用")
-    args = ap.parse_args(argv)
-
-    arm_of = {}
-    if args.arm_map:
-        with open(args.arm_map, encoding="utf-8") as f:
-            arm_of = json.load(f).get("map", {})
-
-    files = sorted(glob.glob(str(ROOT / "data/auto_sessions/*/events/*.json")))
-    if arm_of:
-        keep = []
-        for p in files:
-            gid = Path(p).stem
-            arm = arm_of.get(gid)
-            if arm is None or arm == "mixed":
-                continue
-            if args.arm and arm != args.arm:
-                continue
-            keep.append(p)
-        files = keep
-    if args.rooms:
-        step = max(1, len(files) // args.rooms)
-        files = files[::step][: args.rooms]
-
-    memo = shanten_mod.Memo() if hasattr(shanten_mod, "Memo") else {}
-
-    # 桶：(did_draw_god 0/1) × 组(our/opp) → 首次听牌摸序列表 + 未听牌数 + 局数
-    buckets: dict[tuple[int, str], dict[str, list]] = {
-        (g, grp): {"tenpai_at": [], "never": 0, "n": 0}
-        for g in (0, 1)
-        for grp in ("our", "opp")
-    }
-    rooms = 0
-    for path in files:
+def build_targets(files):
+    name_to_uid = {}
+    for fpath in files:
         try:
-            doc = json.loads(Path(path).read_text(encoding="utf-8"))
+            d = json.loads(Path(fpath).read_text(encoding="utf-8"))
+            for s in d.get("seats", []):
+                n, u = s.get("name"), s.get("user_id")
+                if n and u and n not in name_to_uid:
+                    name_to_uid[n] = u
         except Exception:  # noqa: BLE001
+            pass
+    return {name_to_uid[n]: n for n in EXP.TOP_BOTS if n in name_to_uid}
+
+
+def god_bucket(n: int) -> str:
+    if n == 0:
+        return "god=0"
+    if n == 1:
+        return "god=1"
+    return "god≥2"
+
+
+def meld_bucket(m: int) -> str:
+    return "meld=0" if m == 0 else "meld≥1"
+
+
+def process_room(path, targets, stats, recs, seen_rounds):
+    """重放一房，对每个座位记录首次到听巡目。同一 (room_id, round_no) 跨文档去重。"""
+    try:
+        doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        stats["bad_json"] += 1
+        return
+    room_id = doc.get("room_id") or Path(path).stem
+    ids = [str(s.get("user_id", "")) for s in (doc.get("seats") or [])]
+    if len(ids) != 4 or OUR not in ids:
+        stats["no_our_seat"] += 1
+        return
+    my_seat = ids.index(OUR)
+    bot_seats = [i for i, u in enumerate(ids) if u in targets]
+    if not bot_seats:
+        stats["no_target_bot"] += 1
+        return
+    try:
+        rounds = list(R.iter_rounds(doc))
+    except Exception:  # noqa: BLE001
+        stats["iter_rounds"] += 1
+        return
+
+    for state, events in rounds:
+        rno = getattr(state, "round_no", None)
+        rkey = (room_id, rno)
+        if rkey in seen_rounds:
+            stats["dup_round"] += 1
             continue
-        ids = [str(s.get("user_id", "")) for s in (doc.get("seats") or [])]
-        if len(ids) != 4:
-            continue
-        rooms += 1
-        try:
-            rounds = list(replay.iter_rounds(doc))
-        except Exception:  # noqa: BLE001
-            continue
-        for state, events in rounds:
-            # 注意：iter_rounds 产出的 state **已含发牌**（庄 14 张、其余 13 张），
-            # 必须就地 apply_event，绝不可自建空 state（会丢掉整副发牌）。
-            gods = [0, 0, 0, 0]
-            first = [None, None, None, None]
-            turn_no = [0, 0, 0, 0]
-            for ev in events:
-                kind = ev.get("type")
-                seat = ev.get("seat")
-                if kind == DRAWN and isinstance(seat, int) and 0 <= seat < 4:
-                    if ev.get("tile") == "白" or _is_god_code(ev.get("tile")):
-                        gods[seat] += 1
-                replay.apply_event(state, ev)
-                if kind == DISCARDED and isinstance(seat, int) and 0 <= seat < 4:
-                    turn_no[seat] += 1
-                    if first[seat] is not None:
-                        continue
-                    counts = state.seats[seat].hand
-                    meld_n = len(state.seats[seat].melds)
-                    expected = tiles.HAND_SIZE - tiles.MELD_SLOTS * meld_n
-                    if sum(counts) != expected:
-                        continue
+        seen_rounds.add(rkey)
+        # 每局每座位的到听记录（每局独立）
+        tenpai_turn: dict[int, int | None] = {s: None for s in range(4)}
+        turn_cnt: collections.Counter = collections.Counter()  # 每座位出手序数
+        memo: dict = {}
+        # 分桶键用**起手**状态：起手财神数（固有属性，避免「到听时点财神已打出」偏差）；
+        # 副露用「该局该座位是否有过副露」（终态）
+        start_god: dict[int, int] = {s: sum(state.seats[s].hand[t] for t in GOD_TILES if t < len(state.seats[s].hand)) for s in range(4)}
+
+        for ev in events:
+            seat = ev.get("seat")
+            if seat is None:
+                continue
+            try:
+                R.apply_event(state, ev)
+            except Exception:  # noqa: BLE001
+                stats["apply_event"] += 1
+                break
+
+            etype = ev.get("type", "")
+            # 出手事件 = 出牌（tile_discarded）或副露响应（peng/chi/gang 等改变手牌）
+            # 巡目 = 该座位第几次「主动动作」（出牌或副露）
+            if etype == "tile_discarded" or etype in ("peng", "chi", "gang", "ming_gang", "an_gang", "bu_gang"):
+                turn_cnt[seat] += 1
+
+            # 手牌变化后检查到听（摸牌/出牌/副露后都算）
+            if etype in ("tile_drawn", "tile_discarded", "peng", "chi", "gang", "ming_gang", "an_gang", "bu_gang"):
+                if tenpai_turn[seat] is None:
+                    ss = state.seats[seat]
                     try:
-                        sh = shanten_mod.shanten(counts, meld_n, memo=memo)
+                        sh = shanten_mod.shanten(ss.hand, len(ss.melds), memo=memo)
                     except Exception:  # noqa: BLE001
                         continue
-                    if sh <= 0:
-                        first[seat] = turn_no[seat]
-            for s in range(4):
-                g = 1 if gods[s] >= 1 else 0
-                grp = "our" if ids[s] == OUR else "opp"
-                b = buckets[(g, grp)]
-                b["n"] += 1
-                if first[s] is None:
-                    b["never"] += 1
-                else:
-                    b["tenpai_at"].append(first[s])
+                    if sh == 0:
+                        tenpai_turn[seat] = turn_cnt[seat]
 
-    print(f"房={rooms}")
-    for g, lab in ((0, "无财神"), (1, "有财神(≥1)")):
-        print(f"\n=== {lab} ===")
-        for grp, name in (("our", "我方"), ("opp", "对手")):
-            b = buckets[(g, grp)]
-            n = b["n"]
-            if not n:
-                continue
-            ever = len(b["tenpai_at"])
-            mean_at = st.mean(b["tenpai_at"]) if b["tenpai_at"] else float("nan")
-            med = st.median(b["tenpai_at"]) if b["tenpai_at"] else float("nan")
-            print(
-                f"  [{name}] 座位-局={n} | 曾听牌={ever} ({ever / n:.1%}) "
-                f"| 首次听牌 均={mean_at:.2f} 中位={med:.1f}（自己第几摸）"
-            )
-        # 显著性：曾听牌率 + 首次听牌摸序
-        a, o = buckets[(g, "our")], buckets[(g, "opp")]
-        z = two_prop_z(len(a["tenpai_at"]), a["n"], len(o["tenpai_at"]), o["n"])
-        print(f"  曾听牌率差 z = {z:+.2f}（对手 − 我方）")
-        if a["tenpai_at"] and o["tenpai_at"]:
-            t, pv = welch(a["tenpai_at"], o["tenpai_at"])
-            print(f"  首次听牌摸序差 t = {t:+.2f} (p={pv:.4f})（对手 − 我方；正=我们更晚）")
+        # 记录结果（**所有座位都进 recs**，未到听 turn=None —— 到听率分母需要）
+        for s in range(4):
+            recs.append({
+                "seat": s,
+                "is_bot": s in bot_seats,
+                "turn": tenpai_turn[s],          # None = 本局未到听
+                "god": start_god[s],              # 起手财神数
+                "meld": len(state.seats[s].melds),  # 终态副露数（该局是否副露过）
+                "room": Path(path).stem,
+            })
+            if tenpai_turn[s] is not None:
+                stats["tenpai_recorded"] += 1
+            else:
+                stats["never_tenpai"] += 1
+
+
+def percentile(data, p):
+    if not data:
+        return None
+    s = sorted(data)
+    k = (len(s) - 1) * p / 100
+    f = int(k)
+    c = min(f + 1, len(s) - 1)
+    return s[f] + (s[c] - s[f]) * (k - f)
+
+
+def main() -> int:
+    files = sorted(glob.glob(str(ROOT / "data/auto_sessions/*/events/*.json")))
+    print(f"事件文档 {len(files)} 个", flush=True)
+    targets = build_targets(files)
+    print(f"目标 bot: {len(targets)}/{len(EXP.TOP_BOTS)}", flush=True)
+
+    stats = collections.Counter()
+    recs: list[dict] = []
+    seen_rounds: set = set()
+    for f in files:
+        process_room(f, targets, stats, recs, seen_rounds)
+
+    print(f"\n== 汇总 ==", flush=True)
+    print(f"去重局数 = {len(seen_rounds)}（dup_round 跳过 {stats['dup_round']}）", flush=True)
+    print(f"记录到听点数 = {stats['tenpai_recorded']}", flush=True)
+    print(f"未到听点数 = {stats['never_tenpai']}", flush=True)
+
+    # 分桶统计（n=该侧总座位局数含未到听；tenpai=到听数；turns=到听者的巡目列表）
+    bucket: dict[tuple, dict] = collections.defaultdict(
+        lambda: {"bot_turns": [], "my_turns": [], "bot_n": 0, "my_n": 0, "bot_tenpai": 0, "my_tenpai": 0})
+    for r in recs:
+        gb = god_bucket(r["god"])
+        mb = meld_bucket(r["meld"])
+        key = (gb, mb)
+        v = bucket[key]
+        if r["is_bot"]:
+            v["bot_n"] += 1
+            if r["turn"] is not None:
+                v["bot_tenpai"] += 1
+                v["bot_turns"].append(r["turn"])
+        else:
+            v["my_n"] += 1
+            if r["turn"] is not None:
+                v["my_tenpai"] += 1
+                v["my_turns"].append(r["turn"])
+
+    # 输出
+    out = []
+    out.append(f"到听速度分桶差异（到听 {stats['tenpai_recorded']} 座位局 / 未到听 {stats['never_tenpai']}）")
+    out.append("分桶=起手财神数 × 该局是否副露过；巡目=该座位出手序数；到听率=到听座位局/该侧总座位局")
+    out.append("")
+    out.append("分桶           |  bot n(率)      |  bot p50/p90/mean |  我方 n(率)     |  我方 p50/p90/mean | 巡目差(我-bot)")
+    out.append("---------------|-----------------|-------------------|-----------------|--------------------|---------------")
+    for key in sorted(bucket.keys()):
+        v = bucket[key]
+        bt = v["bot_turns"]
+        mt = v["my_turns"]
+        if not v["bot_n"] and not v["my_n"]:
+            continue
+        b_rate = f"{v['bot_tenpai']}/{v['bot_n']}({v['bot_tenpai']/v['bot_n']:.0%})" if v["bot_n"] else "—"
+        m_rate = f"{v['my_tenpai']}/{v['my_n']}({v['my_tenpai']/v['my_n']:.0%})" if v["my_n"] else "—"
+        b_stat = f"{percentile(bt,50):.1f}/{percentile(bt,90):.1f}/{statistics.mean(bt):.2f}" if bt else "—"
+        m_stat = f"{percentile(mt,50):.1f}/{percentile(mt,90):.1f}/{statistics.mean(mt):.2f}" if mt else "—"
+        diff = f"{statistics.mean(mt)-statistics.mean(bt):+.2f}" if (bt and mt) else "—"
+        out.append(f"{key[0]:>6} {key[1]:>7} | {b_rate:>15} | {b_stat:>17} | {m_rate:>15} | {m_stat:>18} | {diff:>13}")
+    text = "\n".join(out)
+    print(text)
+    (ROOT / "agent/out/tenpai-speed.txt").write_text(text, encoding="utf-8")
+    print(f"\n-> agent/out/tenpai-speed.txt", flush=True)
+    print("PROBE_DONE", flush=True)
     return 0
 
 
-def _is_god_code(raw: object) -> bool:
-    """事件流的 tile 若是数字码，判断是否财神。"""
-    if isinstance(raw, int):
-        return raw == GOD
-    return False
-
-
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())
