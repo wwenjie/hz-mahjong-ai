@@ -1,24 +1,17 @@
 #!/usr/bin/env python
-"""终局向听分布（A 2026-10-06 16:59④ [待C] 交办）。
+"""局末达听比例·无条件口径（A 2026-10-06 17:28② [待C] 交办）。
 
-**量**：「没到听的那些局」里我们卡在哪——**终局时刻**（他人胡牌或流局那一刻）我方的向听分布
-（0/1/2/3+ 占比），与 bot 同口径对照；分桶 `起手财神数 × 终局副露数 × 终局巡目段`。
+**目的**：排除 17:09「终局向听分布（未胡者 −14pp）」的内生性——
+「未胡者」是内生子集（bot 胡得多 ⇒ 它的未胡者更少、构成不同），两边未胡者不是同一把尺。
 
-**预登记决策树**（A 16:59④，出数后按此执行，不重议口径）：
-| 结果 | 判读 | 动作 |
-|---|---|---|
-| 我们终局向听集中在 1（差一步），bot 在 0 | 瓶颈在最后一步 | 量「自摸口径下的最后一步」（听口可达性） |
-| 我们终局向听集中在 2~3 | 瓶颈在中段形质积累 | 回到留牌/形质（财神留手、形质项） |
-| 与他人胡的时机相关（bot 更早在别人胡前到听） | 速度×时机 | 按剩余巡数分层的巡目对照 |
+**口径（照抄 A 17:28②）**：`局末（他人胡/流局那一刻）我方达到听牌的比例`，**全座·局口径（不筛未胡者）**。
+- 我方：每一局（去重）都有一个记录——局末时刻我方是否 shanten==0（听牌/已胡都算达到）。
+- bot：同一局里每个目标 bot 座位一个记录。
+- 分桶：起手财神数 × 终局副露 × 终局巡目段（与 17:09 探针同口径，便于对照）。
 
-**口径细节（C 自拟，报出供裁决）**：
-- 「终局」= 每局最后一个事件处理完后的状态（无论谁胡或流局）；
-- 「终局巡目段」= 终局时的出手序数分段：早（≤5）/ 中（6-10）/ 晚（≥11）；
-- 终局向听用 `shanten_any`（兼容 13/14 张，免张数不符抛错）；
-- 胡牌者本人终局向听必为 -1/0（已胡），仍计入分布（作为参照）；分析重点在「未胡者」。
-- 同一 (room_id, round_no) 跨文档去重（沿用到听速度探针的去重键）。
+**判据（照抄 A 17:28②）**：**无条件口径也显示我方低 ~14pp ⇒ 分支① 稳**；**若几乎无差 ⇒ 未胡者口径降级为方向**。
 
-产物：`agent/out/final-shanten-dist.txt`。
+产物：`agent/out/final-tenpai-rate.txt`。
 """
 from __future__ import annotations
 
@@ -56,26 +49,9 @@ def build_targets(files):
     return {name_to_uid[n]: n for n in EXP.TOP_BOTS if n in name_to_uid}
 
 
-def god_bucket(n: int) -> str:
-    return "god=0" if n == 0 else ("god=1" if n == 1 else "god≥2")
-
-
-def meld_bucket(m: int) -> str:
-    return "meld=0" if m == 0 else "meld≥1"
-
-
-def turn_seg(t: int) -> str:
-    return "早(≤5)" if t <= 5 else ("中(6-10)" if t <= 10 else "晚(≥11)")
-
-
-def sh_bucket(sh: int) -> str:
-    if sh <= 0:
-        return "0(听/胡)"
-    if sh == 1:
-        return "1"
-    if sh == 2:
-        return "2"
-    return "3+"
+def god_bucket(n): return "god=0" if n == 0 else ("god=1" if n == 1 else "god≥2")
+def meld_bucket(m): return "meld=0" if m == 0 else "meld≥1"
+def turn_seg(t): return "早(≤5)" if t <= 5 else ("中(6-10)" if t <= 10 else "晚(≥11)")
 
 
 def process_room(path, targets, stats, recs, seen_rounds):
@@ -128,12 +104,14 @@ def process_room(path, targets, stats, recs, seen_rounds):
             if ev.get("type") in ("tile_discarded", "peng", "chi", "gang", "ming_gang", "an_gang", "bu_gang"):
                 turn_cnt[seat] += 1
 
-        # 终局：记录每座位终局向听
+        end_turn = max(turn_cnt.values()) if turn_cnt else 0
         # winner 从 doc 级 rounds 元数据取（事件流无 hu/win 事件；17:34 核实）
         rmeta = rounds_meta.get(rno) or {}
-        winner = rmeta.get("winner") if not rmeta.get("is_draw") else None
-        end_turn = max(turn_cnt.values()) if turn_cnt else 0
+        winner = rmeta.get("winner")  # 座位索引；is_draw=1 时无 winner
+        # 全座·局口径：每座位都记录（含胡牌者）
         for s in range(4):
+            if s != my_seat and s not in bot_seats:
+                continue  # 只留我方与目标 bot
             ss = state.seats[s]
             try:
                 sh = shanten_mod.shanten_any(ss.hand, len(ss.melds), memo=memo)
@@ -144,13 +122,12 @@ def process_room(path, targets, stats, recs, seen_rounds):
                 "seat": s,
                 "is_bot": s in bot_seats,
                 "is_me": s == my_seat,
-                "is_winner": winner == s,
-                "sh": sh,
+                "is_winner": (winner == s),
+                "is_draw": bool(rmeta.get("is_draw")),
+                "tenpai": sh <= 0,  # 局末是否达听（0 或更小=听/胡）
                 "god": start_god[s],
                 "meld": len(ss.melds),
-                "turn": turn_cnt[s],
                 "end_turn": end_turn,
-                "room": room_id,
             })
 
 
@@ -167,41 +144,32 @@ def main() -> int:
         process_room(f, targets, stats, recs, seen_rounds)
 
     print(f"去重局数 = {len(seen_rounds)}（dup {stats['dup_round']}）", flush=True)
-    print(f"终局向听记录 = {len(recs)} 座位局", flush=True)
+    print(f"全座·局记录 = {len(recs)}", flush=True)
 
-    # 只分析「未胡者」的终局向听分布
-    non_win = [r for r in recs if not r["is_winner"]]
-    my_nw = [r for r in non_win if r["is_me"]]
-    bot_nw = [r for r in non_win if r["is_bot"]]
-    print(f"未胡者：我方 {len(my_nw)} 座位局 / bot {len(bot_nw)} 座位局", flush=True)
+    my = [r for r in recs if r["is_me"]]
+    bot = [r for r in recs if r["is_bot"]]
+    print(f"我方 {len(my)} 局 / bot {len(bot)} 座位局", flush=True)
 
-    # 总分布（未胡者，我方 vs bot）
-    def dist(rows):
-        c = collections.Counter(sh_bucket(r["sh"]) for r in rows)
-        n = sum(c.values())
-        if not n:
-            return {k: 0.0 for k in ("0(听/胡)", "1", "2", "3+")}, 0
-        return {k: c.get(k, 0) / n for k in ("0(听/胡)", "1", "2", "3+")}, n
+    def rate(rows):
+        return sum(r["tenpai"] for r in rows) / len(rows) if rows else 0.0
 
     out = []
-    out.append(f"终局向听分布（{len(seen_rounds)} 去重局；未胡者：我方 {len(my_nw)} / bot {len(bot_nw)} 座位局）")
+    out.append(f"局末达听比例·无条件口径（{len(seen_rounds)} 去重局；我方 {len(my)} 局 / bot {len(bot)} 座位局）")
+    out.append("「达听」= 局末 shanten≤0（听牌或已胡都算达到）")
     out.append("")
-    # 总览
-    dm, nm = dist(my_nw)
-    db, nb = dist(bot_nw)
-    out.append("== 总览（未胡者终局向听分布）==")
-    out.append("向听 | bot 占比 | 我方占比 | 差(我−bot)")
-    out.append("-----|---------|---------|----------")
-    for k in ("0(听/胡)", "1", "2", "3+"):
-        out.append(f"{k:>4} | {db[k]:>7.1%} | {dm[k]:>7.1%} | {dm[k]-db[k]:>+8.1%}")
+    out.append("== 总览（全座·局口径，不筛未胡者）==")
+    rm, rb = rate(my), rate(bot)
+    out.append(f"  bot 局末达听率 = {rb:.1%}")
+    out.append(f"  我方 局末达听率 = {rm:.1%}")
+    out.append(f"  差（我−bot）= {rm-rb:+.1%}")
+    out.append(f"  （对照：17:09 未胡者口径的 0 向听占比差 = −14.0pp；判据：无条件口径也低 ~14pp ⇒ 分支① 稳）")
 
-    # 分桶（财神×副露×巡目段）
     out.append("")
-    out.append("== 分桶（起手财神 × 终局副露 × 终局巡目段；未胡者）==")
-    out.append("分桶 | bot n | bot 分布 0/1/2/3+ | 我方 n | 我方分布 0/1/2/3+ | 关键差")
-    out.append("-----|-------|-------------------|--------|-------------------|-------")
+    out.append("== 分桶（起手财神 × 终局副露 × 终局巡目段）==")
+    out.append("分桶 | bot n | bot 达听率 | 我方 n | 我方达听率 | 差(我−bot)")
+    out.append("-----|-------|-----------|--------|-----------|----------")
     buckets: dict[tuple, dict] = collections.defaultdict(lambda: {"bot": [], "me": []})
-    for r in non_win:
+    for r in recs:
         key = (god_bucket(r["god"]), meld_bucket(r["meld"]), turn_seg(r["end_turn"]))
         if r["is_bot"]:
             buckets[key]["bot"].append(r)
@@ -211,18 +179,13 @@ def main() -> int:
         v = buckets[key]
         if not v["bot"] and not v["me"]:
             continue
-        dbx, nbx = dist(v["bot"])
-        dmx, nmx = dist(v["me"])
-        fb = "/".join(f"{dbx[k]:.0%}" for k in ("0(听/胡)", "1", "2", "3+"))
-        fm = "/".join(f"{dmx[k]:.0%}" for k in ("0(听/胡)", "1", "2", "3+"))
-        # 关键差 = 我方 1 向听占比 − bot 1 向听占比
-        key_diff = dmx["1"] - dbx["1"]
-        out.append(f"{key[0]:>6} {key[1]:>6} {key[2]:>7} | {nbx:>5} | {fb:>17} | {nmx:>6} | {fm:>17} | Δ1向听 {key_diff:+.1%}")
+        rbx = rate(v["bot"]); rmx = rate(v["me"])
+        out.append(f"{key[0]:>6} {key[1]:>6} {key[2]:>7} | {len(v['bot']):>5} | {rbx:>9.1%} | {len(v['me']):>6} | {rmx:>9.1%} | {rmx-rbx:>+8.1%}")
 
     text = "\n".join(out)
     print(text)
-    (ROOT / "agent/out/final-shanten-dist.txt").write_text(text, encoding="utf-8")
-    print(f"\n-> agent/out/final-shanten-dist.txt", flush=True)
+    (ROOT / "agent/out/final-tenpai-rate.txt").write_text(text, encoding="utf-8")
+    print(f"\n-> agent/out/final-tenpai-rate.txt", flush=True)
     print("PROBE_DONE", flush=True)
     return 0
 
