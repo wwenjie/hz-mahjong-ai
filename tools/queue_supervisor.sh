@@ -40,8 +40,9 @@ while [ "$stopping" -eq 0 ]; do
   # `--timeout`：**单 job 的墙钟上限**。默认 14400s（4h）是照「v5-vs-v5 场」定的（一场约 2 秒）；
 # 但**换慢 field 后必须抬高**——`botlike` 场另三座每决策都跑 `_score_discard`（含精确进张）⇒ 实测 **≈5s/决策**、
 # 一场 8 局要几分钟 ⇒ `matches=40` 需 4h+，**正好卡死 14400s**（2026-10-06 因此白烧两批：120 场的 4 条 + 40 场的 2 条）。
-# 现设 21600s（6h）= 实测所需 ~4h 的 1.5 倍余量。
-TIMEOUT="${MAJIANG_QUEUE_TIMEOUT:-21600}"
+# 现设 **43200s（12h）**：21600s（6h）**仍不够**——2026-10-06 17:15 起的那批 m40 跑到 23:11 仍未完（>5h56m），
+# 会在 6h 处**第 4 次**被静默杀掉。⇒ **对慢 field 的教训：冒烟给不了倍数（已两次低估 4 倍），只能靠「试点单条 + 宽松 timeout」**。
+TIMEOUT="${MAJIANG_QUEUE_TIMEOUT:-43200}"
 uv run python tools/iterate_loop.py --loop --workers "$WORKERS" --jobs "$JOBS" --timeout "$TIMEOUT" &
   child=$!
   wait "$child"
