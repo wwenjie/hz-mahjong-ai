@@ -43,6 +43,15 @@ while [ "$stopping" -eq 0 ]; do
 # 现设 **43200s（12h）**：21600s（6h）**仍不够**——2026-10-06 17:15 起的那批 m40 跑到 23:11 仍未完（>5h56m），
 # 会在 6h 处**第 4 次**被静默杀掉。⇒ **对慢 field 的教训：冒烟给不了倍数（已两次低估 4 倍），只能靠「试点单条 + 宽松 timeout」**。
 TIMEOUT="${MAJIANG_QUEUE_TIMEOUT:-43200}"
+
+# **BLAS 线程固定为 1**（2026-10-07 事故根因：OpenBLAS 线程超订）。
+# `ab_test` 的每个 worker 进程里，sklearn 的 `predict_proba` 会按默认核数起 OpenBLAS 线程
+# ⇒ `--jobs 4` × 每进程 ~16 线程 = 64 线程抢 16 核 ⇒ **有 CPU 无产物**（实测三机共烧 393 核·时零产物）。
+# 并行**只靠进程数**（`--jobs`），每个进程固定单线程 ⇒ 这是 `--jobs` 的原始设计意图。
+export OMP_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
 uv run python tools/iterate_loop.py --loop --workers "$WORKERS" --jobs "$JOBS" --timeout "$TIMEOUT" &
   child=$!
   wait "$child"
