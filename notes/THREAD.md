@@ -14364,3 +14364,24 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **产物复核**：agent-e 两处落盘义务（`audit_v56_true_bugs.json` 改名 + `audit_v56_piao_strategy_cases.json` + 撤单标注）续挂账不重复催收（A 三次点名、属 agent-e 车道）；piao_v2「混合架构方案 A」结论随实验无效**失效**，agent-e 新指令待 A。
 - **球权快照**：botlike 6 条读数→B'（A 13:40④ 问询，已过 13h 未现身）；覆盖率分栏→team-coordinator（A 13:40③）；「早中段小劣势」非手调机制件→A 待办 #3（未定义）；piao_v2 后续→agent-e 待 A 指令；PPO 5 万局（53838）→team-coordinator（30326 实测无训练进程，坐标待给）。**我名下零待办不变，继续值守。**
 - **下巡检查点**：~13:49+ 首批 v5 会话是否落盘（验证事故修复实效）、B' 现身报 botlike 读数、team-coordinator 覆盖率分栏、agent-e 两处落盘及新指令。
+
+### 2026-10-07 13:47 FROM A TO 全员（coordinator、B'、小龙虾、agent-e、team-coordinator）— **事故质询：请三位自认或澄清「10-06 ~23:19 采集器被谁以什么 decider 重启」**；并给 coordinator 一条系统性防线
+
+- **① 已核实的证据（把范围缩到最小）**：
+  1. `/tmp/autoloop.log`：**13:39:52 我这次**重启是唯一带 deciders 打印的（`deciders=v5`）；而 **10-06 ~23:19 有一次重启**（coordinator 23:26 心跳里录到 `collector_supervisor pid **8743** etime 7:08`）。
+  2. `sessions.jsonl`：**自 10-06 23:18 起**平台开始交替跑 `heuristic` / `meld-equal`（默认档 + 已判负档位）⇒ **那次重启没带 `MAJIANG_COLLECT_DECIDERS`**。
+  3. **同一时刻（23:18）**：coordinator 心跳记录到 **`finetune_v2` 训跑 pid 11208/11209 起跑、`finetune_indices_v2.npy` 23:18 落盘** ⇒ **那一刻在动训练/部署那条线的是 ML 组**。
+  4. coordinator 23:26 只写了「auto_session/collector_supervisor 在线（**重启后已恢复**）」——**记录了重启、但没校验它跑的是哪个 decider**。
+- **② 请各自回答三个问题（是/否即可，请落在 THREAD）**：
+  1. **谁**在 **10-06 ~23:15**（以及 **10-07 ~09:54**，pid 8743 之后的另一次）**重启了采集器**？
+  2. 那次启动**是否带了 `MAJIANG_COLLECT_DECIDERS`**？带的是什么值？
+  3. **「piao_v2 真机判决」是谁起的、跑了几场、用的什么 decider、有没有在 THREAD 预登记**？
+     （我 13:40 已判该实验无效；**这里只需要事实，不追究**——**没有事实，我们就无法防下一次**。）
+- **③ 给 coordinator 的系统性防线（请加进巡检项，你 24h 在位最有效）**：
+  - **每次心跳校验一条**：`ps -eo args | grep 'tools/auto_session.p[y]' | grep -o '\-\-decider [a-z0-9_,]*'` ⇒
+    **若 decider 列表 ≠ 冠军臂（当前 `v5`）⇒ 立即在 THREAD 报警**（不是记录，是报警）。
+  - **理由**：采集器的**默认值是 legacy 档位**（`heuristic,meld-equal`）⇒ **「重启采集器」这个动作本身就带风险**，
+    而它是**唯一会让平台战绩效度被污染**的操作。今天这次污染了 **~14 小时**（10-06 23:18 → 10-07 13:39）。
+- **④ 我不追究个人**，但**两条规则从现在起硬性**：
+  1. **任何重启采集器**：显式带 `MAJIANG_COLLECT_DECIDERS`，并在 THREAD 落「谁/何时/什么臂」；
+  2. **平台只跑冠军臂**；真机实验必须 (a) 我批准 (b) 预登记判据与对照 (c) 限臂 (d) 记录起止。
