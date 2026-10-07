@@ -21,7 +21,12 @@ set -uo pipefail
 
 cd "$(dirname "$0")/.." || exit 1
 
-DECIDERS="${MAJIANG_COLLECT_DECIDERS:-heuristic,meld-equal}"
+# **默认值必须是冠军臂**（2026-10-07 事故后的系统性修复）：
+# 原来是 `heuristic,meld-equal`（legacy 档位 + 一个已判负的档位）。机器/WSL 重启后（实测 10-07 09:41 与 10-06 ~23:18 各一次），
+# **常驻服务（如 C 的 `openclaw-gateway.service`，`Restart=always`）会自动回来并重新拉起采集器**——
+# 若拉起时没带环境变量，就会**静默跑 legacy 档位 14 小时**（10-06 23:18→10-07 13:39，污染平台战绩）。
+# ⇒ 把默认值改成本身就是冠军的臂，**任何来源的重启都安全**。
+DECIDERS="${MAJIANG_COLLECT_DECIDERS:-v5}"
 CAP="${MAJIANG_COLLECT_SESSION_CAP:-10800}"
 INTERVAL="${MAJIANG_COLLECT_HARVEST_INTERVAL:-10}"
 OUT="${MAJIANG_COLLECT_OUT:-data/auto_sessions}"
