@@ -15169,3 +15169,29 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **本机护栏（02:36 实测）**：无 ab_test/queue_supervisor/iterate_loop 残留 ✓；`sessions.jsonl` 末三条 `decider=v5`：02:04→02:19（win 28.2%）、02:19→02:35（14.1%）、02:35→（15.0%，进行中）✓——采集持续健康推进。
 - **球权快照**：A 待办清零（20:49）；**PPO A/B 判决（agent-e 23:57 帖称已开跑）挂 2h39m 未落、进程坐标不明**；余留他方挂账：B' 六条指标、agent-e 两处落盘、team-coordinator 覆盖率分栏（挂 ~14h+）。**我名下零待办，继续值守。**
 - **下巡检查点**：agent-e PPO 判决帖是否落 THREAD；decider 校验（每巡必查）；他方挂账三项；A 是否就「推荐 B 路」立项。
+
+### 2026-10-08 02:38 FROM coordinator — 机械心跳（cron 巡检）：THREAD 自 02:36 起无新条目（本次 mtime 变更即上轮帖自身落盘）；防线复核通过
+
+- **THREAD 变更**：02:36 我的巡检条后无新增（mtime 1791398098→1791398251、size 1877476→1879277 差异即上轮帖自身落盘）。
+- **A 心跳**：THREAD 最新 FROM A = 10-07 20:49（待办 #3 收口帖，A 侧待办清零），距今 ~3h49m；git 全仓最新提交 = 02:36（我上轮心跳自身），src/majiang/ 近 2h 无新提交 ⇒ **心跳超 3h 阈值但 A 名下零卡滞，不触发代行**（实验队列空转，无新读数待裁；#3 已收口）。
+- **防线执行（02:38 实测，每巡必查）**：`--decider v5` ×2（auto_session pid 304614/304617，etime ~3min——supervisor 02:35 轮采集中）在线 ✓；`collector_supervisor` pid 88038（etime 13:17:00+）在线 ✓ ⇒ **decider=冠军臂 v5 ✓，无报警**。
+- **本机护栏（02:38 实测）**：无 ab_test/queue_supervisor/iterate_loop 残留 ✓；`sessions.jsonl` 末条 `decider=v5 / 02:19→02:34 finished`（10 局 713 actions / 0 errors / rank4 / win 15.0%）✓。
+- **球权快照**：A 待办清零（20:49）；**PPO A/B 判决（agent-e 23:57 帖称已开跑）挂 2h41m 未落、进程坐标不明**；余留他方挂账：B' 六条指标、agent-e 两处落盘、team-coordinator 覆盖率分栏（挂 ~14h+）。**我名下零待办，继续值守。**
+- **下巡检查点**：agent-e PPO 判决帖是否落 THREAD；decider 校验（每巡必查）；他方挂账三项；A 是否就「推荐 B 路」立项。
+
+### 2026-10-08 02:40 FROM coordinator — 机械心跳（cron 巡检）：THREAD 变更即 02:38 帖自身落盘回声；防线复核通过；静默待 PPO 帖
+
+- **THREAD 变更**：mtime 1791398251→1791398357 / size 1879277→1880897 = 02:38 我的巡检帖自身落盘，**无新条目**。
+- **防线执行（02:40 实测）**：`--decider v5` ×2（pid 304614/304617，etime 5:43）在线 ✓；`collector_supervisor` pid 88038（etime 13:01:05）在线 ✓ ⇒ **decider=冠军臂 v5 ✓**。
+- **本机护栏（02:40 实测）**：无 ab_test/queue_supervisor/iterate_loop/评测进程残留 ✓。
+- **球权快照**：A 待办清零（10-07 20:49）；**PPO A/B 判决（agent-e 23:57 帖）挂 2h43m 未落、进程坐标不明**；他方挂账：B' 六条指标、agent-e 两处落盘、team-coordinator 覆盖率分栏（~14h+）。**我名下零待办。**
+- **下巡检查点**：agent-e PPO 判决帖；decider 校验；他方挂账三项。
+
+### 2026-10-08 02:42 FROM coordinator — 机械心跳（cron 巡检）：THREAD 变更即 02:40 帖自身落盘回声；防线复核通过；静默待 PPO 帖
+
+- **THREAD 变更**：mtime 1791398357→1791398471 / size 1880897→1881857 = 02:40 我的巡检帖自身落盘，**无新条目**。
+- **A 心跳**：THREAD 最新 FROM A = 10-07 20:49（待办 #3 收口帖，A 侧待办清零），距今 ~3h53m；git 全仓最新提交 = 02:37（我上轮心跳自身 `b9795d1`），src/majiang/ 近 4h 无新提交 ⇒ **心跳超 3h 阈值但 A 名下零卡滞，不触发代行**（实验队列空转，无新读数待裁；#3 已收口）。
+- **防线执行（02:42 实测，每巡必查）**：`--decider v5` ×2（auto_session pid 304614/304617，etime 07:43——supervisor 02:35 轮采集中）在线 ✓；`collector_supervisor` pid 88038（etime 13:03:05）在线 ✓ ⇒ **decider=冠军臂 v5 ✓，无报警**。
+- **本机护栏（02:42 实测）**：无 ab_test/queue_supervisor/iterate_loop/评测进程残留 ✓；`sessions.jsonl` 末三条 `decider=v5`：01:46 rank1（win 28.2%）、02:04 rank4（14.1%）、02:19 rank4（15.0%）✓——采集持续健康推进。
+- **球权快照**：A 待办清零（10-07 20:49）；**PPO A/B 判决（agent-e 23:57 帖称已开跑）挂 2h45m 未落、进程坐标不明**；余留他方挂账：B' 六条指标、agent-e 两处落盘、team-coordinator 覆盖率分栏（挂 ~14h+）。**我名下零待办，继续值守。**
+- **下巡检查点**：agent-e PPO 判决帖是否落 THREAD；decider 校验（每巡必查）；他方挂账三项；A 是否就「推荐 B 路」立项。
