@@ -1,0 +1,101 @@
+{
+  "name": "t1-nn-vs-gbdt",
+  "ran_at": "2026-09-28T11:10:46+0800",
+  "seed": 20260928,
+  "hyperparams": {
+    "train": "/home/wuwenjie01/majiang_ai/data/value_post.part000.npz",
+    "valid": "/home/wuwenjie01/majiang_ai/data/value_valid.part000.npz",
+    "hidden": 256,
+    "epochs": 300,
+    "lr": 0.001,
+    "batch": 1024,
+    "seed": 20260928,
+    "patience": 25,
+    "name": "t1-nn-vs-gbdt"
+  },
+  "data": {
+    "train": "/home/wuwenjie01/majiang_ai/data/value_post.part000.npz",
+    "valid": "/home/wuwenjie01/majiang_ai/data/value_valid.part000.npz",
+    "n_train": 139669,
+    "n_valid": 13653
+  },
+  "env": {
+    "torch": "2.14.0+cu130",
+    "device": "cuda"
+  },
+  "results": {
+    "constant": {
+      "mse": 136.52081569594205,
+      "mae": 7.746735089297164,
+      "r2": 0.0,
+      "spearman": 0.025092665641627074
+    },
+    "gbdt_existing": {
+      "mse": 124.47215384554939,
+      "mae": 7.605389451189551,
+      "r2": 0.08825512643601063,
+      "spearman": 0.2322081085533697
+    },
+    "gbdt_retrained": {
+      "mse": 124.36183417280665,
+      "mae": 7.609953621977849,
+      "r2": 0.08906320593788264,
+      "spearman": 0.23573058361226842
+    },
+    "mlp": {
+      "mse": 125.36861254945754,
+      "mae": 7.6620796464237895,
+      "r2": 0.08168866476246817,
+      "spearman": 0.22384207088287167
+    }
+  },
+  "paired_gbdt_minus_mlp": {
+    "mean": -0.8964587039081681,
+    "t": -0.770039768597478,
+    "p": 0.4412896267666769
+  },
+  "by_gods": {
+    "gods=0": {
+      "n": 7716,
+      "mse_gbdt": 87.5207366018712,
+      "mse_mlp": 85.78135374551027
+    },
+    "gods=1": {
+      "n": 4968,
+      "mse_gbdt": 155.8907240013247,
+      "mse_mlp": 159.80642949915747
+    },
+    "gods=2": {
+      "n": 917,
+      "mse_gbdt": 212.43136411232192,
+      "mse_mlp": 257.28402262685006
+    }
+  },
+  "history_tail": [
+    {
+      "epoch": 21,
+      "train_mse_std": 0.6849958788723063,
+      "val_mse": 152.36023972574756
+    },
+    {
+      "epoch": 22,
+      "train_mse_std": 0.67969438374264,
+      "val_mse": 182.1201249302703
+    },
+    {
+      "epoch": 23,
+      "train_mse_std": 0.6745718295649519,
+      "val_mse": 186.6088107517948
+    },
+    {
+      "epoch": 24,
+      "train_mse_std": 0.670092834776995,
+      "val_mse": 203.19622367307585
+    },
+    {
+      "epoch": 25,
+      "train_mse_std": 0.6633332214925683,
+      "val_mse": 175.50937674230477
+    }
+  ]
+}

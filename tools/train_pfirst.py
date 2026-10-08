@@ -28,7 +28,7 @@ from pathlib import Path
 
 import numpy as np
 
-from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.metrics import accuracy_score, roc_auc_score
 
 from majiang.strategy import features
@@ -101,13 +101,12 @@ def _fit(
     x_val: np.ndarray,
     y_val: np.ndarray,
     args: argparse.Namespace,
-) -> tuple[float, float, HistGradientBoostingClassifier]:
+) -> tuple[float, float, GradientBoostingClassifier]:
     started = time.perf_counter()
-    model = HistGradientBoostingClassifier(
+    model = GradientBoostingClassifier(
         max_depth=args.max_depth,
-        max_iter=args.max_iter,
+        n_estimators=args.max_iter,
         learning_rate=args.lr,
-        early_stopping=True,
         random_state=20260930,
     )
     model.fit(x_train, y_train)

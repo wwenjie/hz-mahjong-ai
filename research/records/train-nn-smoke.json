@@ -1,0 +1,63 @@
+{
+  "name": "nn-smoke",
+  "trained_at": "2026-09-27T18:03:07+0800",
+  "hyperparams": {
+    "train": "/tmp/v_a.part*.npz",
+    "valid": "/tmp/v_a.part*.npz",
+    "name": "nn-smoke",
+    "out": null,
+    "seed": 20260927,
+    "epochs": 4,
+    "hidden": 16,
+    "lr": 0.001,
+    "batch": 8,
+    "max_vram_mb": 2000,
+    "ckpt": null
+  },
+  "seed": 20260927,
+  "data": {
+    "train_glob": "/tmp/v_a.part*.npz",
+    "valid_glob": "/tmp/v_a.part*.npz",
+    "shard_count": 1,
+    "total_bytes": 8729,
+    "combined_sha256": "e3a73372b9bf10289a82b3a268d77b3ba1d237030448caf2f6959d646dab0f81"
+  },
+  "env": {
+    "python": "3.12.14",
+    "torch": "2.14.0+cu130",
+    "numpy": "2.5.3",
+    "cuda": "13.0",
+    "device": "cuda",
+    "gpu": "NVIDIA GeForce RTX 5060 Ti",
+    "vram_budget_fraction": 0.24620119253702635
+  },
+  "samples": {
+    "train": 652,
+    "valid": 652
+  },
+  "history": [
+    {
+      "epoch": 0,
+      "train_mse": 366.9758876730328,
+      "valid_mse": 366.014892578125
+    },
+    {
+      "epoch": 1,
+      "train_mse": 365.2131180441453,
+      "valid_mse": 363.3948974609375
+    },
+    {
+      "epoch": 2,
+      "train_mse": 361.17653815146605,
+      "valid_mse": 357.4795837402344
+    },
+    {
+      "epoch": 3,
+      "train_mse": 354.30453655032295,
+      "valid_mse": 348.7875061035156
+    }
+  ],
+  "best_valid_mse": 348.7875061035156,
+  "artifact": "/home/wuwenjie01/majiang_ai/research/artifacts/nn-smoke.json",
+  "checkpoint": "/home/wuwenjie01/majiang_ai/research/ckpt/nn-smoke.pt"
+}

@@ -1,0 +1,37 @@
+{
+  "compared_at": "2026-09-27T17:38:00+0800",
+  "treatment": "risk",
+  "baseline": "heuristic",
+  "matches": 4,
+  "rounds": 2,
+  "seed": 20260927,
+  "judged_metric": "总得分",
+  "verdict": "不显著（样本量不足）",
+  "reason": "4 场/臂 < 200",
+  "rows": [
+    {
+      "metric": "总得分",
+      "mean": -0.938,
+      "se": 0.938,
+      "t": -1.0,
+      "ci_low": -2.775,
+      "ci_high": 0.9,
+      "tool_verdict": "不显著"
+    },
+    {
+      "metric": "名次分",
+      "mean": -0.062,
+      "se": 0.062,
+      "t": -1.0,
+      "ci_low": -0.185,
+      "ci_high": 0.06,
+      "tool_verdict": "不显著"
+    }
+  ],
+  "gate": {
+    "min_matches": 200,
+    "t_threshold": 1.96,
+    "noise_floor_tool": "verify/noise_floor.py"
+  },
+  "raw_tail": "treatment=risk  baseline=heuristic  场上另三座=heuristic  场数 4  每场 2 局  种子 20260927（四座位旋转）\n  旋转 0（treatment 在 0 座）  treatment 总得分      -35   baseline      -35   差      +0\n  旋转 1（treatment 在 1 座）  treatment 总得分      -10   baseline      -10   差      +0\n  旋转 2（treatment 在 2 座）  treatment 总得分       59   baseline       74   差     -15\n  旋转 3（treatment 在 3 座）  treatment 总得分      -29   baseline      -29   差      +0\n\n配对样本 16 场（4 旋转 × 4 场），用时 50.4s\n总得分合计 treatment -15 vs baseline 0（-15）  胡率 25.0% vs 25.0%\n\n逐场配对差分（treatment − baseline，正值表示 treatment 更好）\n  总得分        均值   -0.938  标准误  0.938  t  -1.00  95%CI [-2.775, +0.900]  **不显著**\n  名次分        均值   -0.062  标准误  0.062  t  -1.00  95%CI [-0.185, +0.060]  **不显著**\n  白板数        差分恒为 +0.000（无方差）\n  胡次数        差分恒为 +0.000（无方差）\n  番数总和       差分恒为 +0.000（无方差）\n  （每场 2 局，胡次数均差 0.10 ≈ 胡率差 5.00%）\n"
+}
