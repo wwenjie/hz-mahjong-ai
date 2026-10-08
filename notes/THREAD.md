@@ -16664,3 +16664,35 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **备注（卫生）**：本轮提交 `notes/THREAD.md` + `notes/experiments.json`（s4 机械补登）；保留工作树既有未提交项 `src/majiang/cli.py`/`src/majiang/rules/shanten.py`/`src/majiang/strategy/policy.py`（**A 车道在途，勿动**）、`tools/trigger_counterfactual.py`+`trigger_census_discard.py`+`trigger_census_peng.py`+`cf_peng_seven.py`+`analyze_pair_cf.py`（**A 车道在途，勿动**）、`agent/out/trigger-points/`（大数据集，不入仓）、`.gitignore`、`tools/tournament_ready_watch.py`、`tools/replay_report.py`、`tools/remote.py`、`scripts/sync_to_remote.sh`、`webapp/`（未请求，不擅动）。
 - 状态：OPEN（等 chain3 ② 读数；等 `v7m-keepchi` 读数；等 A ① 合并裁决 + md5 立据）
 - 关联文件：`/tmp/v7chi_ab3.txt`、`/tmp/v7mkeepchi_ab.txt`、`notes/experiments.json`、`src/majiang/strategy/policy.py`
+
+
+### 2026-10-09 00:09 FROM coordinator (B') — 新机器迁移完成（AutoDL `connect.nma1.seetacloud.com:53838`）
+- **用户交办**：把这台续费的机器接上，代码同步上去，任务转过去跑。
+- **结论：通路+环境+基准全部就绪，可承接重活。但「112 核」是假象——容器 CPU 配额只有 14 核。**
+- **硬件实测**：`nproc`=112 / `/proc/cpuinfo`=112，但 **cgroup `cpu.cfs_quota_us`=1400000 / period=100000 ⇒ 实际 14 核**；内存 1007GB；GPU **A800 80GB**；数据盘 `/root/autodl-tmp` 50G（已用 5.4G）；根盘 30G。
+- **同步**：用仓库自带 `tools/remote.py push-tree` + 自建 `scripts/sync_to_remote.sh`（tar 流式，无 rsync/sshpass 依赖）→ `/root/autodl-tmp/majiang_ai`。**md5 逐文件核对一致**（policy.py/server.py/replay_report.py/cf_peng_seven.py/trigger_census_peng.py）。`agent/out`（86017 行触发点）已同步，行数一致。
+- **环境**：`pip install -e .`（majiang 可导入）+ `setup_shanten_fast.py build_ext --inplace`（Cython 编译成功，shanten_any/seven_pairs 实测通过）。远端用 `/root/miniconda3/bin/python`（numpy 2.4.6 / cython 3.3.0 / torch 2.12.1+cu130）。
+- **基准（同 A/B：v7-chibest vs v5 seed 20261010, 120场×8局）**：
+  - 本地 jobs=4：**851s**
+  - 远端 jobs=14：**394.7s ⇒ 约 2.2× 加速**（且读数一致：每场名次分 −0.008/t−0.31）
+  - 远端 jobs=32：**898s ⇒ 反而更慢**（超订阅 14 核配额，上下文切换开销）
+  - **运维结论：远端固定 `--jobs 14`（别用 32）。**
+- **数据同步方式（大件）**：`data/auto_sessions` 3.0G/1127 房；远端已 2.0G/1126 房（差 1 房）。需要时用 `scripts/sync_to_remote.sh --with-data`。
+- **迁移边界（待用户/A 定）**：本地现有两条链在跑——① chain3（v7-chibest 非劣门4种子已出，正跑 v7-keepchi 增量臂 ②）+ ② A 23:40 指派的 v7m-keepchi。**本地 16 核 load~6，未饱和**；远端 14 核空闲。建议：**新重活直接排远端 jobs=14**，本地链让其自然收尾（不打断），两台合计约 30 核容量。
+- 状态：DONE（通路/环境/基准）；迁移任务分配待定
+- 关联文件：`scripts/sync_to_remote.sh`、`tools/remote.py`、`/tmp/bench_j14.txt`
+
+
+### 2026-10-09 00:19 FROM coordinator (B') — 机械心跳（cron 巡检）：A 心跳正常（34 分钟前 23:45）⇒ **不代行**；本轮 = 入库我 00:09 迁移帖 + 机械读数 `v7m-keepchi` s20261008 已出（单种子主指标 NS，但番数/白板显著负——留观，2 种子未齐不判）
+- **A 心跳判定（本巡核心）**：最新 FROM A = 2026-10-08 **23:45**（53838 同步指派帖）⇒ 距当前（00:19）**约 34 分钟 < 60 分钟门槛** ⇒ **心跳正常、不代行**。辅助信号：`git log --since="70 minutes ago" -- src/majiang/` **空**（A 的 `src/` 改动均为**工作树未提交**；A 最后落码 = `rules/shanten.py` mtime **23:44:02**、`strategy/policy.py` **23:34:44**；`cli.py` **23:39:52** 系我(B')落缺臂、非 A）⇒ A 最后活跃 ≈ 23:44，仍 < 60 分钟。
+- **本轮通知/入库**：THREAD 工作树此前仅含我(B') **00:09 迁移帖**（未提交，17 行）⇒ **本轮将其入库**；除此之外无新第三方条目、无新裁决、无应变。
+- **【机械读数·本轮到期】`v7m-keepchi vs v5` s20261008 已出**（`/tmp/v7mkeepchi_ab.txt`，用时 1942.6s）：主指标**每场名次分 −0.056 / t=−0.59（NS）**；总得分 **−1.946 / t=−1.39（NS，点估计偏负）**；**番数总和 −0.144 / t=−2.06（显著负）**、**白板数 −0.117 / t=−2.27（显著负）**；胡次数 −0.081 / t=−1.64（NS）。⇒ **单种子、jobs=2（MDE 偏大）、且 2 种子未齐 ⇒ 本轮不判**；但**番数/白板的显著负**与「`equal` 容差放宽吃/碰 ⇒ 副露增多 ⇒ 番数/白板下降」的机制方向一致，**提请 A 判读时留意**（s771013 在跑）。
+- **chain3 ②（增量臂）**：`v7-keepchi vs v7-chibest` s20261008 **在跑、无读数**（leader 696657 + 4 worker 701788–701791，etime ~10min）。
+- **冻结点（逐位复验，与本轮基线一致 ✓）**：`policy.py 3c4980a6…`、`cli.py 73813a7d…`、`rules/shanten.py fbd019c5…`、`tools/ab_test.py 7429fdbc…`、`tests/test_meld_gate.py b5a10d9e…`、`tests/test_shape_value.py c4270e96…`；A 车道工具 `trigger_counterfactual.py 5a07f005…`/`trigger_census_discard.py bb42d994…`/`trigger_census_peng.py 00adafff…`/`cf_peng_seven.py e7aeeac4…`/`analyze_pair_cf.py e8af31e9…` 与 23:45 读数**逐位一致**（未再漂移）。
+- **A 车道在跑/在途**：`trigger_census_discard`/`cf_peng_seven`/`pairscan2` 等普查进程**已全部结束**（`ps` 无残留）；产物 `agent/out/trigger-points/pairscan2-shard{0,1}.jsonl` 落于 23:49（未跟踪、不入仓）。**待 A：① chain3 ① 4 种子合并裁决 + 建 `v7` 快照；② `policy.py`/`cli.py`/`rules/shanten.py` md5 立据；③ `trigger_census_peng.py`/`cf_peng_seven.py` md5 与 P1 锚定不符之澄清；④ `v7m-keepchi` 是否正式入 `experiments.json`（我登记 2 job `pending`）。**
+- **防线（采集线）**：`collector_supervisor` pid 88038 在线（etime ~1-10:40）✓；最新 session `a_40cd1da55aec` 00:19:15 finished（10/10 零错误）、采集线连续收尾正常 ✓；`ss -ltn` 无 53838 本地监听 ✓；webapp `server.py --port 8848` pid 669330（用户前端）✓；`ps` 无 queue_supervisor/iterate_loop/ppo/ready_watch 残留 ✓。
+- **球权快照**：A＝上列 4 项；**我(B')＝chain3 ② 在跑 + `v7m-keepchi` 2 种子在跑（s20261008 已出、s771013 在跑）**；C＝tie-break 第二臂（待 A 立案）。**我名下无阻塞待办。**
+- **下巡检查点**：`v7m-keepchi` s771013 是否出读数（→2 种子合并）；chain3 ② s20261008/s771013 是否出读数；A 是否补 md5 立据 + ① 合并裁决；`src/` md5 是否再漂移；A 心跳是否超 60 分钟（→代行判定）。
+- **备注（卫生）**：本轮提交**仅** `notes/THREAD.md`（含 00:09 迁移帖 + 本巡帖）；保留工作树既有未提交项 `src/majiang/{cli.py,rules/shanten.py,strategy/policy.py}`（**A 车道在途，勿动**）、`tools/{trigger_counterfactual.py,trigger_census_discard.py,trigger_census_peng.py,cf_peng_seven.py,analyze_pair_cf.py}`（**A 车道在途，勿动**）、`agent/out/trigger-points/`（大数据集，不入仓）、`.gitignore`、`scripts/sync_to_remote.sh`、`tools/remote.py`、`tools/replay_report.py`、`tools/tournament_ready_watch.py`、`webapp/`（未请求，不擅动）。
+- 状态：OPEN（等 `v7m-keepchi` 2 种子 → 交 A；等 chain3 ② 读数；等 A md5 立据 + 4 种子裁决）
+- 关联文件：`/tmp/v7mkeepchi_ab.txt`、`/tmp/v7chi_ab3.txt`、`notes/experiments.json`、`src/majiang/rules/shanten.py`
