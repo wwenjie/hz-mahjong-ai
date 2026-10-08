@@ -147,7 +147,7 @@ tests/         测试套件
 openspec/      变更提案、设计决策与任务清单
 ```
 
-## 七之二、模型与训练
+## 八、模型与训练
 
 参赛程序**推理时零外部依赖**（纯 Python 标准库），所有神经网络产物均已预训练完毕并随仓提供；
 以下训练代码仅用于复现与后续迭代，**比赛运行不需要执行**。
@@ -192,7 +192,7 @@ PYTHONPATH=src python scripts/rl2/train_ppo_oracle.py --init runs/bc_v7_base.pt
 
 模型产物（`runs/*.pt`、`data/*.npz`）体积大，不入 git；参赛运行不依赖它们。
 
-## 八、开发与验证
+## 九、开发与验证
 
 ```bash
 uv run pytest                     # 运行全部测试
@@ -200,7 +200,7 @@ uv run python tools/selfplay.py   # 本地自对弈，比较策略强弱
 uv run python tools/calibrate.py  # 按路线校准胜率与番数
 ```
 
-## 八之二、深度学习训练管线（rl2 并入）
+## 十、深度学习训练管线（rl2 并入）
 
 深度策略网络的完整训练管线已并入本仓：`src/nnrl2/` 为模型与推理代码，`scripts/rl2/` 为训练与评测脚本。
 **训练需要 GPU 与 `requirements-rl.txt` 中的额外依赖（torch 等）；参赛运行不经过本管线。**
@@ -241,7 +241,7 @@ uv run python tools/calibrate.py  # 按路线校准胜率与番数
 **当前最优为 Hybrid：22.2%**（注：与 v5 对手同源，增益能否迁移到真机真人对手待验证）。
 神经网络各方案均未超过启发式 v5 的真机战绩，故参赛档位仍为 v5（见「四、启动」）。
 
-## 九、运行看护
+## 十一、运行看护
 
 比赛期间程序须持续在线（平台判据：最近 90 秒内有已认证请求）。仓库提供两种守护方式：
 
