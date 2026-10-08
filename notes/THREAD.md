@@ -16298,3 +16298,32 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **备注（卫生）**：本轮提交**仅** `notes/THREAD.md`；保留工作树既有未提交项 `agent/out/trigger-points/`（大数据集，不入仓）与 `.gitignore`/`tools/tournament_ready_watch.py`/`webapp/`（未请求，不擅动）。
 - 状态：OPEN（等 ①`v7-chibest` 4 种子非劣读数 → A 判；等 ②增量 A/B → A 判；等 A 追认 ab_test md5）
 - 关联文件：`/tmp/v7chi_ab3.txt`、`/tmp/run_v7chi_chain3.sh`、`agent/out/trigger-points/cf-chi-gap.jsonl`、`tools/ab_test.py`、`notes/experiments.json`
+
+
+### 2026-10-08 22:54 FROM coordinator (B') TO A/用户 — 回答用户 22:43 方法学质疑：**「A/B 不显著」不是改错了，是测试方法选错了**
+- **用户问**：上家打 7t，手牌 `5w 4b5b6b7b7b8b 1t4t6t7t8t9t`，v5 建议「过」（实为 `meld_tolerance=STRICT` 下向听 2→2 不降 ⇒ PASS）；用户认为该吃 `8t9t` 留 `6t7t`。用户同时质疑：若 A/B 不显著，**是否 A/B 的牌局根本没复现这种场景**。
+- **答（用已有数据，不新增平台请求）**：
+  1. **场景复现了，但极稀**。`tools/trigger_census.py` 全量普查（11153 房 / 89105 局，`/tmp/census_all.log`，定义性校验 0 不一致✓）：
+     **漏吃（该吃却 PASS）= 0.0869/局 = 0.695/场(8局)**；次排序（该选更优吃法）= 0.498/局 = 3.99/场；可吃窗口 = 4.56/局 = 36.5/场。
+  2. **触发点上的真实净收益显著为正**。`cf-chi-gap.jsonl` 对拍（n=2445 触发点）：**吃 vs 不吃 净分差 = +1.445 分/点，se 0.265，t=+5.46，95%CI[+0.93,+1.97]**（独立复算逐位一致）。
+  3. **整场 A/B 在数学上测不出**（功效反推）：每场期望增益 = 0.695 × 1.445 = **+1.00 分/场**；A/B 单场总得分 sd ≈ **20.4 分**；480 配对场对 +1.00 分/场的 MDE(80%) = **2.60 分/场**，是真实效应的 **2.6 倍**。要检出需 ≈ **3224 配对场**，是现用量（480）的 **6.7 倍**。
+  ⇒ **即使修复 100% 正确，整场 A/B 也必然报「不显著」**——被牌局高方差淹没。A/B 对「稀疏触发 + 高方差」的改动**本质无功效**，这与「改动无效」无关。
+- **正确测试方法（本项 = A 22:30 ③ 已指明的「触发点条件对拍」）**：只在**触发点上**对拍 treatment/baseline 的净分差，得 +1.445(t=+5.46) ⇒ **机制正确 + 单点正收益，均已独立支撑**，不依赖整场 A/B。整场 A/B 仅作**非劣**门（防全局回归），不当**有效性**证据。
+- **待 A 裁决**：`v7-chibest` 是否据此建 `v7` 快照（我无裁决权）。chain3 的 ① 非劣 4 种子在跑，作非劣侧证据。
+- 状态：OPEN（等 A 对「以对拍为主证据、A/B 仅作非劣」的确认；等 chain3 非劣读数）
+- 关联文件：`/tmp/census_all.log`、`agent/out/trigger-points/cf-chi-gap.jsonl`、`agent/out/trigger-points/all.jsonl`、`tools/trigger_census.py`、`tools/trigger_counterfactual.py`
+
+
+### 2026-10-08 22:55 FROM coordinator — 机械心跳（cron 巡检）：THREAD 变更=**我(B') 22:54 帖**（方法学答复，触发本轮通知时尚未提交）；**无新增非 coordinator 条目** ⇒ 无新裁决、无应变；本轮将其入库；chain3 `v7-chibest` s1 仍在跑（4 worker，无读数）；冻结 md5 逐位一致；防线复核通过；A 23:00 现身、活跃、不代行
+
+- **THREAD 变更**：mtime 1791470899→**1791471261（22:54:21）**/ size 2098210→**2105409**。新增**仅 1 条**，来自 **coordinator（我本人上巡 22:54 帖：回答用户 22:43 方法学质疑）**，且触发通知时**仍在工作树、未提交** ⇒ 本轮无非 coordinator 新条目、**无新裁决、无需应变**。A 23:00 三件套帖在本轮之前已随 `7f4dfca` 入库并封口，**不重复判读**。
+- **机械判读（按预登记 kill_criteria）**：chain3 ①`v7-chibest vs v5` 4 种子**读数未出**（s1 在跑）⇒ **无判读动作**；`v7-keeppairs`（A 22:30 ④ 已判关闭）、P1 触发点对拍（B' 已交付 +1.445/t=+5.46，裁决权归 A）**均已封口，不重复判读**。
+- **chain3 活（我交付）**：`/tmp/v7chi_ab3.txt` — ① `v7-chibest vs v5` **seed 20261008** 在跑（leader pid 655685 + 4 worker 656866–656869，各 ~99.9% CPU，etime ~07min；120 场×8 局、四座位旋转、`--jobs 4 --field v5`）；**尚无读数，ETA≈23:05+**。链按 A 22:30 重排：①4 种子非劣门 → ② `v7-keepchi vs v7-chibest` 2 种子增量臂。**无重复离线树**（CF 已收、仅 chain3 单树）✓。
+- **冻结（按 A ④）**：`policy.py b9543b69…`/`shanten.py 5ac888c5…`/`cli.py 3457a318…`/`tests/test_meld_gate.py b5a10d9e…`/`tests/test_shape_value.py c4270e96…` 与 22:10 冻结点**逐位一致** ✓ ⇒ `src/` 自 22:10 未再漂移。`tools/ab_test.py` 现读 `7429fdbc930ed135d586eb39c812ce9b`（A 22:35 改写版，含 MDE），**仍待 A 追认**（不阻塞出数）。
+- **防线（采集线）**：`collector_supervisor` pid 88038 在线 ✓；子进程 auto_session pid 657730（uv）/657733（.venv python）`--decider v5` ✓；在途采集正常；`ss -ltn` 无 53838 监听 ✓；`data/experiments` 仅 `.lock` ✓；`ps` 无 queue_supervisor/iterate_loop/ppo/ready_watch 残留 ✓。
+- **A 心跳**：最新 FROM A = 10-08 **23:00**（功效三件套，用户 22:33 交办）⇒ 活跃、心跳正常、**不代行**。A 名下在途：①`v7-chibest` 非劣读数裁决、②`ab_test.py` md5 追认（低风险）、C 第二臂预登记、P1 结论、赛事资格判据（另线）。
+- **球权快照**：A＝上列 5 项；**我(B')＝chain3 出数（①4 种子→②增量 2 种子）+ P1 全量已交付**；C＝tie-break 第二臂（待 A 立案）。**我名下无阻塞待办，继续值守。**
+- **下巡检查点**：chain3 `v7-chibest` s1 是否出读数（→4 种子齐后归 A 判）；A 是否追认 `ab_test.py md5=7429fdbc…`；`src/` md5 是否再漂移（每巡必查）；上游 502 复发；decider 校验（每巡必查）。
+- **备注（卫生）**：本轮提交**仅** `notes/THREAD.md`（含我 22:54 未提交帖 + 本巡帖）；保留工作树既有未提交项 `agent/out/trigger-points/`（大数据集，不入仓）与 `.gitignore`/`tools/tournament_ready_watch.py`/`webapp/`（未请求，不擅动）。
+- 状态：OPEN（等 ①`v7-chibest` 4 种子非劣读数 → A 判；等 ②增量 A/B → A 判；等 A 追认 ab_test md5）
+- 关联文件：`/tmp/v7chi_ab3.txt`、`/tmp/run_v7chi_chain3.sh`、`agent/out/trigger-points/cf-chi-gap.jsonl`、`tools/ab_test.py`、`notes/experiments.json`
