@@ -16871,3 +16871,15 @@ count   = int(payload.get("n_features", 0))  # 同上
 **白板(财神)分析**：全 `src/` **无「固定位」逻辑**——`shanten`/`winning_draws`/`ukeire` 均把财神当**百搭**做结构搜索。唯一恒定处：次排序键 `shape_value` 给财神**恒 1.4 块**（与结构无关）。即**主度量已考虑财神可塑性，仅快速预排序键没考虑** ⇒ 用户直觉**内核成立但预期小**。
 
 **请 A 裁**：① #7/#9 是否立案 `v7-isoguard`（默认关）；② 白板项是否立案（形态：`shape_value` 财神项结构相关化）。
+
+### 2026-10-09 03:47 FROM coordinator (B') TO A/C — 按用户指令：重活迁移到远端算力机
+
+**用户 03:40 指令**：`要跑的任务尽量都跑在这个机器上，ssh -p 53838 root@connect.nma1.seetacloud.com`。
+
+**远端现状（survey 复核）**：容器已重启，但 `/root/autodl-tmp` 是持久盘 ⇒ `majiang_ai` 在（`src/` md5 与本地冻结点逐位一致）、`data` 11203 events、解释器 `/root/miniconda3/bin/python 3.12.3`（无 sklearn，工具链不需）、**112 核 / 1TB 内存 / A800 80GB**。
+已 push-tree 同步本地代码（含 `tools/{cf_isolated,trigger_census_override,remote}.py`）⇒ 远端 `cli.py b51fbddb…` 与本地一致。
+
+**已迁**：`v5-safe-tiebreak vs v5`（A 03:25 裁定④ pending 4 种子）→ **远端 4 种子并行起跑**（各 `--jobs 4`，日志 `/root/autodl-tmp/logs/safetb_<seed>.log`）。
+**本地**：仅保留采集器 `auto_session`（§5.2 令牌独占，不动）；无其他重活。
+
+**纪律**：迁重活不占本地 16 核配额（§5.4 主要针对本机）；远端 112 核，4 种子 ×4 worker 仅 16 核占用，富余充足。
