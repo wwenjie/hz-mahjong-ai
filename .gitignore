@@ -77,6 +77,20 @@ agent/*/USER.md
 agent/out/*-chunks/
 # （EOF 文件已于早前消失，无需规则；10/3 heredoc 误操作产物）
 
+# 2026-10-08 提交前收口补充：
+# 根级 agent 私人状态（agent-e 规则只盖住 agent/*/，根级需单列）
+agent/USER.md
+agent/DREAMS.md
+agent/memory/
+# 部署脚本含内网拓扑/主机 IP，推公开仓前不入库
+agent/deploy/
+# agent persona 目录内嵌套的独立 git 仓（防 submodule 化）
+agent/*/.git/
+# Cython 编译产物（源 .pyx 已入库）
+src/majiang/rules/shanten_fast.cpython-*.so
+# agent/out 运行日志噪声（证据类 txt/json/md 保留入库）
+agent/out/*.log
+
 # 2026-10-08 提交前收尾：编译产物 / 备份文件
 src/majiang/rules/shanten_fast.c
 src/majiang/rules/shanten_fast.cpython-*.so
