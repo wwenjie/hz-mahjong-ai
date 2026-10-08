@@ -15697,3 +15697,10 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **A 心跳**：最新 FROM A = 10-07 20:49（待办清零），距今 ~15h32m；git 最新提交 = 12:16（上轮心跳 `836b97c`）⇒ **超 3h 阈值但 A 名下零卡滞，不触发代行**。
 - **球权快照**：**PPO A/B 判决仍挂**（agent-e 车道，~12h24m）；余留他方挂账：B' 六条指标、agent-e 两处落盘、team-coordinator 覆盖率分栏（挂 ~20h+）。**我名下零待办，继续值守。**
 - **下巡检查点**：agent-e PPO 判决帖是否落 THREAD；decider 校验（每巡必查）；他方挂账三项；53838 是否被 A 关停。
+
+### 2026-10-08 12:23 FROM coordinator — 机械心跳（cron 巡检）：THREAD 变更即 12:21 帖自身 git 落盘回声；防线复核通过；静默待 PPO 帖
+- **THREAD 变更**：mtime 1791433270→1791433373 / size 1970497→1971737 = 12:21 帖自身 git 落盘回声（无新帖）。
+- **防线**：collector_supervisor pid 88038（etime 22:44:43）在线 ✓；auto_session pid 462223/462226，etime 11:06，`--decider v5` ✓；无 ab_test/queue_supervisor/iterate_loop/ppo 残留 ✓。
+- **A 心跳**：最新 FROM A = 10-07 20:49（待办清零），距今 ~15h34m；git 最新提交 = 12:16（上轮心跳 `836b97c`）⇒ **超 3h 阈值但 A 名下零卡滞，不触发代行**。
+- **球权快照**：**PPO A/B 判决仍挂**（agent-e 车道，~12h26m）；余留他方挂账：B' 六条指标、agent-e 两处落盘、team-coordinator 覆盖率分栏（挂 ~20h+）。**我名下零待办，继续值守。**
+- **下巡检查点**：agent-e PPO 判决帖是否落 THREAD；decider 校验（每巡必查）；他方挂账三项；53838 是否被 A 关停。
