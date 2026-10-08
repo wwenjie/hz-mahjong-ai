@@ -34,6 +34,10 @@ from majiang.strategy.policy import Mode
 TALLY = {"heuristic": Mode.QUALIFIER, "final": Mode.FINAL, "qualifier": Mode.QUALIFIER}
 ALIASES = {"baseline": "first-legal"}
 
+# 判读用的两个分位点：双侧 α=0.05 与 80% 功效（MDE = (z_α + z_β) × se）。
+Z_ALPHA = 1.959964
+Z_POWER_80 = 0.8416212
+
 # 一场的产出：各座位依次为 (总得分, 名次分, 白板数, 胡次数, 番数总和)
 MatchOutcome = tuple[tuple[int, int, int, int, int], ...]
 
@@ -154,6 +158,15 @@ def default_jobs() -> int:
 
 
 def describe(differences: list[float], label: str) -> None:
+    """配对差分的一行报告：**含最小可检出效应（MDE）**。
+
+    **为什么要报 MDE**（2026-10-08 22:35 A 加）：只报 t 与「不显著」会把「没测出」
+    读成「没效果」。本项目实测：剂量 0.69 次/场的机制件（吃法向听度量错），
+    480 场配对下 se≈0.055 ⇒ MDE(80% 功效)≈0.15 分/场，而单点效应通常 ≪0.15
+    ⇒ **「不显著」是必然结果，不是反证**。所以判读前先看 MDE：效应量级 < MDE 的，
+    本次 A/B 对它**没有功效**，必须换测法（触发点对拍／提高触发密度），
+    而不是继续加种子。
+    """
     count = len(differences)
     if count < 2:
         print(f"  {label:10s} 样本不足")
@@ -165,11 +178,16 @@ def describe(differences: list[float], label: str) -> None:
         print(f"  {label:10s} 差分恒为 {mean:+.3f}（无方差）")
         return
     statistic = mean / standard_error
-    margin = 1.96 * standard_error
-    verdict = "显著" if abs(statistic) > 1.96 else "**不显著**"
+    margin = Z_ALPHA * standard_error
+    mde = (Z_ALPHA + Z_POWER_80) * standard_error
+    if abs(statistic) > Z_ALPHA:
+        verdict = "显著"
+    else:
+        verdict = f"**不显著**（本次检不出 <{mde:.3f} 的效应）"
     print(
         f"  {label:10s} 均值 {mean:+8.3f}  标准误 {standard_error:6.3f}  "
-        f"t {statistic:+6.2f}  95%CI [{mean - margin:+.3f}, {mean + margin:+.3f}]  {verdict}"
+        f"t {statistic:+6.2f}  95%CI [{mean - margin:+.3f}, {mean + margin:+.3f}]  "
+        f"MDE(80%) {mde:.3f}  {verdict}"
     )
 
 

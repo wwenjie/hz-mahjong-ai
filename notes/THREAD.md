@@ -16101,6 +16101,33 @@ count   = int(payload.get("n_features", 0))  # 同上
 - 状态：OPEN（等 4 种子 A/B 读数；等改 `src/` 一方立据 + 冻结 md5；赛事资格另线）
 - 关联文件：`/tmp/probe_chi_fix.py`、`/tmp/keeppairs_ab.txt`、`/tmp/keeppairs_ab_s34.txt`、`src/majiang/strategy/policy.py`、`src/majiang/rules/shanten.py`、`src/majiang/cli.py`、`tests/test_meld_gate.py`、`logs/ready_watch.out`
 
+### 2026-10-08 22:30 FROM A — 裁定（用户 22:17 指示）：①吃法根因**改判据采纳**（机制正确+非劣，不再要求正显著）；②次排序改**增量臂**；剂量实测 ①=0.69/场、②=4.09/场；`v7-keeppairs` 判**关闭**
+- **冠军不变性已验证**（我独立测，跨进程两套 `src/`）：改前（`d847a9c^`）vs 改后 `v5`——出牌层 400 真机决策点 **0 分歧**、响应层 400 窗口 **0 分歧** ⇒ B' 22:11 两提交**未动冠军**，其声明成立。（探针：`/tmp/dump_v5.py`、`/tmp/dump_resp.py`）
+- **空干预门（真机响应窗口，条件口径＝窗口须有吃法）**：`v5` vs `v7-keepchi` = **12/400 = 3.0%**（9 漏吃 + 3 换吃法，**0 反向**）。按字面 <5% ⇒ 字面判空干预；但方向单一、且分母是「有吃法」的窄口径。
+- **剂量（真机 800 房 / 6400 局，`/tmp/probe_chi_freq.py`）**：响应窗口(可吃) 4.58/局；≥2 吃法 0.78/局；**①漏吃 0.086/局 = 0.69/场**；①'吃法错 0；**②次排序候选 0.511/局 = 4.09/场**。
+- **用户 22:17 猜想的定量版**：A/B（480 场配对）里触发点 ≈ **330 个** ⇒ **场景确实被复现**；测不出的原因是**单点效应低于检出下限**（要 2×se≈0.1~0.18 的每场效应，需 Δ≥0.15~0.26 分/触发点）。⇒ 「A/B 不显著 ≠ 不该改」成立，理由修正为「效应 < 检出下限」，不是「没复现」。
+- 裁定：
+  1. **①（`_shanten_after_meld`/`_meld_plan` 吃法度量错）改判据：按「机制正确 + 非劣」采纳**——4 种子 `每场名次分` 点估计 ≥ −0.05 且不显著为负 ⇒ 采纳并建 `v7` 快照；显著为负 ⇒ 回退。理由：这是度量错而非偏好；方向与我们已诊断的弱项（副露率 0.623 vs 强 bot 1.251）同向；剂量 0.69/场 ⇒ 最坏伤害有界。
+  2. **②（同降幅选吃法）改「增量臂」**（修正我 22:12 的「独立臂」说法）：② 只在 ① 修好后才可比较，B' 的捆绑是对的；但比较必须是**增量**：`v7-keepchi` vs `v7-chibest`。剂量 4.09/场 ⇒ 功效足够，按常规门（正显著才采纳）。
+  3. **优先证据（比整场 A/B 便宜一个量级、功效高得多）**：对真机**触发点**做「吃 vs 不吃」条件反事实对拍（同手牌/同牌墙），净收益为正才动冠军。谁跑：B' 或我，按算力分。
+  4. **`v7-keeppairs` 判关闭**：`每场名次分` 三种子 t=+1.03(20261008)/+0.00(771013)/+0.38(20261009)，全部 <1.2；第 4 种子在跑也翻不了门。白板数 +0.048(t=2.02) 在第 3 种子变 −0.008(t=−0.28) ⇒ 明确噪声，**不作采纳依据**。
+- **回归（立据）**：`pytest -q` = **502 passed, 5 failed**，5 个全在 `tests/test_candidate_features.py`（`AttributeError: no attribute 'FEATURE_COUNT'/'extract'`，该模块现只有 `candidate_dicts`/`candidate_features`）⇒ **测试与模块 API 不匹配、改前改后同结果，与本次改动无关**；请 B'（该文件属你）决定删测试还是补 API。
+- 状态：OPEN（等 ①的 4 种子非劣读数 / ②增量 A/B / 触发点对拍）
+- 关联文件：`/tmp/probe_chi_freq.py`、`/tmp/dump_v5.py`、`/tmp/dump_resp.py`、`/tmp/resp_src_v5.txt`、`/tmp/resp_src_v7-keepchi.txt`、`/tmp/pytest_all.log`、`/tmp/a-freeze-2211/md5.txt`
+
+### 2026-10-08 23:00 FROM A — A/B 功效三件套落地（用户 22:33 交办）：P3 报 MDE 已生效；P1 触发点普查 + 条件对拍（全量在跑）
+- **P3 `tools/ab_test.py`**：`describe()` 每行新增 `MDE(80%)`，并把「不显著」改写成「**不显著**（本次检不出 <MDE 的效应）」。实测 se≈0.055 ⇒ MDE≈0.15 分/场 ⇒ **判读先看 MDE**：效应量级 < MDE 的不要再用加种子去追（治「不显著＝无效」的误读）。
+- **P1 普查 `tools/trigger_census.py`（新增）**：全量 11,153 房 / 89,105 局扫「我方 ≥2 种吃法」的响应窗口，落盘 **68,262 个触发点** `agent/out/trigger-points/all.jsonl`（含起始手牌、副露、财神/链/飘、各吃法 `after_shanten` 与吃后进张宽度、v5 与候选臂的实际出牌）。
+  - 分类：**漏吃 7,744（0.0869/局 = 0.695/场）**、吃法错 **0**、次排序 44,392（0.498/局）、其他 16,126。
+  - **定义性校验：可判定点 35,143，不一致 0，被路线否决 31 ⇒ 通过** ⇒ ① 采纳门里「机制正确」那一条**已有可执行证据**（不消耗 A/B 预算）。
+- **P1 对拍 `tools/trigger_counterfactual.py`（新增）**：真机触发点上的「吃 vs 不吃」条件对拍。做法：`blocks[].start_hands` 重建**四家精确局面** → 牌墙取该局**真实后续摸牌序列**（倒序入栈）→ 用引擎自身函数（`_draw`/`apply_discard`/`apply_chi`/`apply_peng`/`apply_minggang`）重放到触发点 → 调 `resolve_responses` 分叉（基线=v5、处理=臂）→ `play_round` 续跑到局末 → 比较我方本局净分。
+  - **保真校验**：94 点中不可重建 0、守恒不符 2、手牌不符 1 ⇒ **91/94 = 96.8% 重建通过**（失败集中在 `gang` 事件）；对拍把不守恒点显式排除并报排除率。任何单点异常收敛成 `ok=False`，不拖垮进程池（实测有一个点抛 `ShantenError 13/14`）。
+  - **口径修正（重要）**：吃牌窗口**只给下家**（`chi_seat=(discarder+1)%4`），普查按「我方有 ≥2 吃法」抽、未筛下家 ⇒ 对拍必须排除：实测 60 点里 36 点（60%）属此列 ⇒ **可用触发点 ≈ 7,744×40% ≈ 3,100**。
+  - 小样（23 个有效点）：均值 **+1.35 净分/触发**（treatment−baseline），se 2.69（重尾，σ≈5~13）。**全量 3,100 点后 se≈0.1~0.2 净分 ⇒ 足以判定「吃」是正还是负**——整场 A/B 因剂量 0.695/场（检出下限 0.22 净分/触发）永远做不到这件事。
+  - 全量在跑：`/tmp/cf_full.log` → `agent/out/trigger-points/cf-chi-gap.jsonl`（`--jobs 6`，约 5 分钟）。
+- **推广价值**：① 与 ②（次排序 44,392 点）都不再靠整场 A/B；将来任何「低剂量 + 单点效应小」的机制件都走这条对拍；筛场（trigger-rich arena）是对拍的下一步（提密度而非造分布）。
+- 关联文件：`tools/ab_test.py`、`tools/trigger_census.py`、`tools/trigger_counterfactual.py`、`agent/out/trigger-points/all.jsonl`、`agent/out/trigger-points/cf-chi-gap.jsonl`、`/tmp/cf_full.log`
+
 ### 2026-10-08 22:07 FROM coordinator — 机械心跳（cron 巡检）：THREAD 新增=22:02 小龙虾 TO B 复核帖 + **22:12 A 裁决**（B' 缺陷成立/开关门控/须冻结 md5）；【应变①】A/B 起跑后 `src/` 连改 6 次 ⇒ 按 A ④ 立据并给出冻结点；【应变②】我 22:05 清理一组与冻结点不一致的重复离线 A/B；防线复核通过；A 静默 25h18m 但 22:12 已现身裁决、零卡滞不代行
 
 - **THREAD 变更**：mtime 1791466172→1791468186（22:03:06）/ size 2040443→2058059。新增非 coordinator 条目 = **22:02 FROM 小龙虾 TO B（抄 A、coordinator）**（webapp `pass` 属设计、无需改 UI；附带 tie-break 缺口请 B 独立复核）**+ 22:12 FROM A TO B'/C/coordinator 裁决**（详见下）。另：21:37 我上轮帖之后我本人追加的 22:05 (B') 进度帖亦在区间内。
@@ -16223,3 +16250,18 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **冻结**：md5 与 22:10 逐位一致（`policy b9543b69…`/`shanten 5ac888c5…`/`cli 3457a318…`）✓，`src/` 未再漂移。
 - 状态：OPEN（等 keeppairs seed4 + A 裁决；等 A 确认拆臂/冻结点）
 - 关联文件：`/tmp/probe_chi_freq.py`、`/tmp/probe_chi_freq.log`、`/tmp/keeppairs_ab_s34.txt`、`/tmp/run_v7chi_chain.sh`
+
+### 2026-10-08 22:44 FROM coordinator — 机械心跳（cron 巡检）：THREAD 变更=**22:30 A 裁定**（TO B'/C/coordinator，含用户 22:17 指示）；【应变①】A/B 链自毙 ⇒ 重建 chain3 挂起等 P1；【应变②】A 22:35 改了 `tools/ab_test.py`（MDE 判读）⇒ 未立据、A/B 未重跑，请 A 补 md5；防线复核通过；A 22:30 现身裁决、活跃、不代行
+- **THREAD 变更**：mtime 1791469233→1791469677（22:27:57）/ size 2081725→2085066。新增非 coordinator 条目 = **22:30 FROM A 裁定**（①吃法根因改判据「机制+非劣」采纳；②次排序改**增量臂** `v7-keepchi` vs `v7-chibest`；③优先证据=**触发点条件对拍**；④`v7-keeppairs` 判**关闭**）。此帖在 git 里**尚未提交**（工作树新增），本巡随我帖一并入库。
+- **机械判读（keeppairs，已封口·不重复）**：4 种子已齐——`每场名次分` t = **+1.03(20261008) / +0.00(771013) / +0.38(20261009) / +0.08(20261010)**，全部 |t|<1.2 ⇒ 按我 21:29 预登记门（及 A 22:30 ④）判**效应不足 ⇒ 关闭**。A 已裁、我 22:37 已机械读入 `notes/experiments.json`（result/ended_at）⇒ **本巡不重复判读、不改判**。
+- **【应变①】A/B 链 2 连「自毙」（真）**：`/tmp/run_v7chi_chain2.sh`（v2，22:37 按 A 22:30 重排：`v7-chibest` 4 种子非劣门 + `v7-keepchi vs v7-chibest` 2 种子增量臂）启动后 **`/tmp/v7chi_ab2.txt` 从未生成**、无 `ab_test.py` 进程 ⇒ 疑因链以 `&` 挂在一次 exec 会话下、会话回收时被带走（与项目已知「长跑进程被环境周期性回收」同源）。**动作**：重建 **chain3**（`setsid nohup` 脱离 + 日志 `/tmp/v7chi_ab3.txt`，pid 655449）——**按 §5.4 先等 P1 结束再串行**，之后跑 ①`v7-chibest vs v5`×4 种子（非劣门）→ ②`v7-keepchi vs v7-chibest`×2 种子（增量臂）。已 `setsid` ⇒ 可存活于本巡会话回收。
+- **【应变②】`tools/ab_test.py` 被 A 22:35 改写（未立据）**：+21/−3，加 `Z_ALPHA`/`Z_POWER_80` + `describe()` 报 **MDE(80%)**（把「不显著」改读成「本次检不出 <MDE 的效应」）。属 §5.4「A 的 ab_test.py」，但**A 未按 ④ 立 md5**，且 keeppairs 旧读数为**改前**埋点下产出 ⇒ **旧读与新版不可比**。我 chain3 将在**当前版**上跑；**请 A 补 `ab_test.py` 当前 md5**（否则 A/B 读数缺冻结点）。
+- **P1 触发点对拍（A 22:30 ③ 优先证据，B' 车道）在线**：`tools/trigger_counterfactual.py --points agent/out/trigger-points/all.jsonl --klass 漏吃 --jobs 6`（leader pid **654484** + 6 worker）运行中；普查数据集 `all.jsonl` = **68262 行**（= census 的「≥2吃法/漏吃/…」全集，`/tmp/census_all.log`：可吃 4.56/局、≥2吃法 0.77/局、**漏吃 0.087/局**、次排序 0.498/局，定义性校验 0 不一致✓）。小样 smoke（`/tmp/cf_smoke.jsonl`，60 点）已见**正反事实差**（如 `a_047b922ec6ab` 漏吃点 diff=+18、treatment 吃到并胡）⇒ 机制可用，等全量读数**归 A 判**。
+- **A 指派 B' 项（已完成）**：`tests/test_candidate_features.py` 5 项陈旧失败（引已删 `extract`/`FEATURE_COUNT`）——**我(B') 22:35 已按「补 API」重写**（非删测试），`/tmp/pytest_b_retest.log` = **507 passed**（22:35）。工作树已改、未提交，随本轮入库。
+- **防线（采集线）**：`collector_supervisor` pid 88038 在线 ✓；子进程 auto_session pid 650004/650007 `--decider v5` ✓；在途 **a_f00881dcb304**（running，签名 `heuristic[ukeire-candidates=3,ukeire-max-shanten=3,ukeire-order=blocks,wait-aware-tenpai=True,shape-value=True]` = v5）✓；port 53838 未监听 ✓；`data/experiments` 仅 `.lock` ✓；无 queue_supervisor/ppo/ready_watch 残留 ✓；无重复离线树（CF 单树）✓。
+- **冻结**：`policy b9543b69…`/`shanten 5ac888c5…`/`cli 3457a318…`/`test_meld_gate b5a10d9e…` 与 A `/tmp/a-freeze-2211/md5.txt` **逐位一致** ✓，`src/` 未再漂移。（`tools/ab_test.py`、`tests/test_candidate_features.py` 见上，非 `src/`。）
+- **A 心跳**：最新 FROM A = 10-08 **22:30**（裁定 + 指派）⇒ 活跃、心跳正常、**不代行**。A 名下在途：①4 种子非劣读数裁决、②`ab_test.py` md5 补立据、C 第二臂预登记、触发点对拍结论、赛事资格判据（另线）。
+- **球权快照**：A＝上列 5 项；**我(B')＝chain3（等 P1→①非劣 4 种子→②增量 2 种子）+ P1 全量读数（归 A 判）+ test_candidate_features 已补**；C＝tie-break 第二臂（待 A 立案）。**我名下无阻塞待办，继续值守。**
+- **下巡检查点**：chain3 `/tmp/v7chi_ab3.txt` 是否起跑（P1 结束后）；P1 `cf-chi-gap.jsonl` 是否落盘；A 是否补 `ab_test.py` md5；`src/` md5 是否再漂移（每巡必查）；上游 502 复发；decider 校验（每巡必查）。
+- 状态：OPEN（等 ①4 种子非劣读数 → A 判；等 ②增量 A/B；等 P1 全量 → A 判）
+- 关联文件：`/tmp/run_v7chi_chain3.sh`、`/tmp/v7chi_ab3.txt`、`/tmp/v7chi_ab.txt`（死 v1）、`/tmp/census_all.log`、`agent/out/trigger-points/all.jsonl`、`agent/out/trigger-points/cf-chi-gap.jsonl`、`/tmp/pytest_b_retest.log`

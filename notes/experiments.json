@@ -21979,11 +21979,29 @@
         20261008
       ],
       "field": "v5",
-      "status": "pending",
+      "status": "done",
       "registered_at": "2026-10-08T21:28:51+08:00",
       "registered_by": "coordinator (B')",
       "hypothesis": "**保留多余对子**（`v7-keeppairs`，B'/coordinator 2026-10-08，用户 21:10 指示）。**现象**：`shanten.shape_value` 的 `weights[:need]` 裁剪把「排不进前 need 名的块」当 0，于是**多余的对子**在出牌估值里完全消失——拆掉它不掉分。实测（本日）：1200 副「唯一对子=东东」手牌打出东 **0** 次（唯一对子不会被拆）；1500 副「恰好 2 张东」随机手牌打出东 **9** 次，**全部**是「东东」与另一孤立字牌同分后被平局规则选中 ⇒ 即多余对子被当 0 后才与孤张并列。对子（尤其**字牌对子，不能被吃**）是最优碰材，不该在平局里被拆。**改动（只一处）**：`shape_value(..., keep_extra_pairs)` 给被裁掉的对子一个折扣正值（字牌 0.5×、数牌 0.3×），累加后封顶 0.9（<1）。其余旋钮与 `v5` 完全一致 ⇒ 可归因。**机制门（已过）**：1500 副「恰好2张东」手牌，打东 9→**1**（0.60%→0.07%，降 9 倍）；默认档逐位不变（18000 组 shape_value 逐位等价、`tests/test_shape_value.py` 14 项全过）；成本仍微秒级。主指标=**每场名次分**（与平台战绩同口径）。",
-      "kill_criteria": "**机制门（并联，任一不满足即停）**：① `keep_extra_pairs=0` 时 `shape_value` 逐位等于旧实现（已过：18000 组差 0）；② 开关确给被裁对子加分且奖励 <1（已过：`test_keep_extra_pairs_*`）；③ 默认档/冠军档保持 0.0、不进 `DECIDERS` 默认（已过）。**胜负门（A 11:35 预登记升级带）**：4 种子后 |t|≥2 且正 ⇒ 采纳（建 `v7` 快照）；|t|<1.2 ⇒ 判效应不足、形态关闭、不补种子；1.2≤|t|<2 ⇒ 补到 6 种子。中途任一时刻 p99 决策耗时 >1500ms 或出现超预算事件 ⇒ 立即停并报告。"
+      "kill_criteria": "**机制门（并联，任一不满足即停）**：① `keep_extra_pairs=0` 时 `shape_value` 逐位等于旧实现（已过：18000 组差 0）；② 开关确给被裁对子加分且奖励 <1（已过：`test_keep_extra_pairs_*`）；③ 默认档/冠军档保持 0.0、不进 `DECIDERS` 默认（已过）。**胜负门（A 11:35 预登记升级带）**：4 种子后 |t|≥2 且正 ⇒ 采纳（建 `v7` 快照）；|t|<1.2 ⇒ 判效应不足、形态关闭、不补种子；1.2≤|t|<2 ⇒ 补到 6 种子。中途任一时刻 p99 决策耗时 >1500ms 或出现超预算事件 ⇒ 立即停并报告。",
+      "result": {
+        "note": "B' 2026-10-08 22:37 机械读取（4 种子已齐）。主指标=每场名次分。",
+        "verdict": "关闭（按预登记门 |t|<1.2 ⇒ 判效应不足、形态关闭、不补种子；A 22:30 ④ 亦判关闭）",
+        "per_seed_place_points_t": {
+          "s20261008": 1.03,
+          "s771013": 0.0,
+          "s20261009": 0.38,
+          "s20261010": 0.08
+        },
+        "seed20261010_raw": {
+          "mean": 0.004,
+          "se": 0.054,
+          "t": 0.08,
+          "note": "总得分 mean+0.733 t+0.92、胡率25.0% vs 24.8%（全不显著）"
+        },
+        "conclusion": "四种子全部 |t|<1.2 ⇒ 关闭，不作采纳依据。"
+      },
+      "ended_at": "2026-10-08T22:33:00+08:00"
     },
     {
       "id": "v7-keeppairs-vs-v5-samefield-s771013",
@@ -21994,11 +22012,125 @@
         771013
       ],
       "field": "v5",
-      "status": "pending",
+      "status": "done",
       "registered_at": "2026-10-08T21:28:51+08:00",
       "registered_by": "coordinator (B')",
       "hypothesis": "**保留多余对子**（`v7-keeppairs`，B'/coordinator 2026-10-08，用户 21:10 指示）。**现象**：`shanten.shape_value` 的 `weights[:need]` 裁剪把「排不进前 need 名的块」当 0，于是**多余的对子**在出牌估值里完全消失——拆掉它不掉分。实测（本日）：1200 副「唯一对子=东东」手牌打出东 **0** 次（唯一对子不会被拆）；1500 副「恰好 2 张东」随机手牌打出东 **9** 次，**全部**是「东东」与另一孤立字牌同分后被平局规则选中 ⇒ 即多余对子被当 0 后才与孤张并列。对子（尤其**字牌对子，不能被吃**）是最优碰材，不该在平局里被拆。**改动（只一处）**：`shape_value(..., keep_extra_pairs)` 给被裁掉的对子一个折扣正值（字牌 0.5×、数牌 0.3×），累加后封顶 0.9（<1）。其余旋钮与 `v5` 完全一致 ⇒ 可归因。**机制门（已过）**：1500 副「恰好2张东」手牌，打东 9→**1**（0.60%→0.07%，降 9 倍）；默认档逐位不变（18000 组 shape_value 逐位等价、`tests/test_shape_value.py` 14 项全过）；成本仍微秒级。主指标=**每场名次分**（与平台战绩同口径）。",
-      "kill_criteria": "**机制门（并联，任一不满足即停）**：① `keep_extra_pairs=0` 时 `shape_value` 逐位等于旧实现（已过：18000 组差 0）；② 开关确给被裁对子加分且奖励 <1（已过：`test_keep_extra_pairs_*`）；③ 默认档/冠军档保持 0.0、不进 `DECIDERS` 默认（已过）。**胜负门（A 11:35 预登记升级带）**：4 种子后 |t|≥2 且正 ⇒ 采纳（建 `v7` 快照）；|t|<1.2 ⇒ 判效应不足、形态关闭、不补种子；1.2≤|t|<2 ⇒ 补到 6 种子。中途任一时刻 p99 决策耗时 >1500ms 或出现超预算事件 ⇒ 立即停并报告。"
+      "kill_criteria": "**机制门（并联，任一不满足即停）**：① `keep_extra_pairs=0` 时 `shape_value` 逐位等于旧实现（已过：18000 组差 0）；② 开关确给被裁对子加分且奖励 <1（已过：`test_keep_extra_pairs_*`）；③ 默认档/冠军档保持 0.0、不进 `DECIDERS` 默认（已过）。**胜负门（A 11:35 预登记升级带）**：4 种子后 |t|≥2 且正 ⇒ 采纳（建 `v7` 快照）；|t|<1.2 ⇒ 判效应不足、形态关闭、不补种子；1.2≤|t|<2 ⇒ 补到 6 种子。中途任一时刻 p99 决策耗时 >1500ms 或出现超预算事件 ⇒ 立即停并报告。",
+      "result": {
+        "note": "B' 2026-10-08 22:37 机械读取（4 种子已齐）。主指标=每场名次分。",
+        "verdict": "关闭（按预登记门 |t|<1.2 ⇒ 判效应不足、形态关闭、不补种子；A 22:30 ④ 亦判关闭）",
+        "per_seed_place_points_t": {
+          "s20261008": 1.03,
+          "s771013": 0.0,
+          "s20261009": 0.38,
+          "s20261010": 0.08
+        },
+        "seed20261010_raw": {
+          "mean": 0.004,
+          "se": 0.054,
+          "t": 0.08,
+          "note": "总得分 mean+0.733 t+0.92、胡率25.0% vs 24.8%（全不显著）"
+        },
+        "conclusion": "四种子全部 |t|<1.2 ⇒ 关闭，不作采纳依据。"
+      },
+      "ended_at": "2026-10-08T22:33:00+08:00"
+    },
+    {
+      "id": "v7-keepchi-vs-v5-samefield-s20261008",
+      "treatment": "v7-keepchi",
+      "baseline": "v5",
+      "matches": 120,
+      "seeds": [
+        20261008
+      ],
+      "field": "v5",
+      "status": "pending",
+      "registered_at": "2026-10-08T22:06:17+08:00",
+      "registered_by": "coordinator (B')",
+      "hypothesis": "**多选择吃法：按具体吃法算向听 + 同向听按进张宽度打破平局**（`v7-keepchi`，B'/coordinator 2026-10-08；用户 21:57 指示「按流程修复」）。**代码缺陷**：`HeuristicDecider._shanten_after_meld`（及其调用链 `_meld_plan`）**无视 `action.tiles`**，对每个 CHI 选项都取 `chi_combinations(counts,offered)[0]`。同一张 `offered` 的两种吃法可给出**不同**的「吃后最小向听」：扫 4000 副 13 张手牌，≥2 种吃法的 2904 个局面里 **1155 个（39.8%）**不同。后果包含**漏吃**：手牌 `1w6w6w8w9w2b3b9b1t北北白白`，上家出 `7w`，吃 `8w9w` 真能到向听 1（默认 STRICT 也该吃），但 `combos[0]=(6w,8w)` 只到向听 2 ⇒ 误判「无改善」而 PASS。第二个缺陷：同向听时恒选 `combos[0]`。用户局面 `5w 4b5b6b7b7b8b 1t4t6t7t8t9t` 上家出 `7t`，吃 `8t9t`（留 `6t7t` 两面，`shape_value=4.18`）> 吃 `6t8t`（`3.955`）；精确进张 71 vs 65 张。**改动（两处：①根因 + ②次排序）**：① 吃牌按 `action.tiles` 算向听（`_shanten_after_meld`与`_meld_plan`）；② 同向听以 `shape_value` 结构最优值次排序（打哪张 + 吃哪两张）。其余旋钮与 `v5` 完全一致 ⇒ 可归因。**默认档与冠军档 `meld_chi_best=False` ⇒ 逐位等于 v5**（未改默认档）。",
+      "kill_criteria": "**机制门（并联，任一不满足即停）**：① 已知漏吃局面必须从 PASS 变为吃 `8w9w`（已过）；② 用户局面在放宽档下从吃 `6t8t` 变为吃 `8t9t`（已过）；③ `meld_chi_best=False` 时逐位等于 v5（已过）。**胜负门（A 22:30 ② 改「增量臂」）**：比较必须是 **`v7-keepchi` vs `v7-chibest`**（只比 ② 的增量，不 vs v5），主指标 `每场名次分`，4 种子合并，正显著（t ≥ 2 且 >0）⇒ 采纳 ②；否则关闭。剂量 4.09/场 ⇒ 功效足够。",
+      "field_note": "A 22:30 ②：②是①的下游增量，比较基准改为 `v7-chibest`（`v7-keepchi` vs `v7-chibest`），不是 vs v5。"
+    },
+    {
+      "id": "v7-keepchi-vs-v5-samefield-s771013",
+      "treatment": "v7-keepchi",
+      "baseline": "v5",
+      "matches": 120,
+      "seeds": [
+        771013
+      ],
+      "field": "v5",
+      "status": "pending",
+      "registered_at": "2026-10-08T22:06:17+08:00",
+      "registered_by": "coordinator (B')",
+      "hypothesis": "**多选择吃法：按具体吃法算向听 + 同向听按进张宽度打破平局**（`v7-keepchi`，B'/coordinator 2026-10-08；用户 21:57 指示「按流程修复」）。**代码缺陷**：`HeuristicDecider._shanten_after_meld`（及其调用链 `_meld_plan`）**无视 `action.tiles`**，对每个 CHI 选项都取 `chi_combinations(counts,offered)[0]`。同一张 `offered` 的两种吃法可给出**不同**的「吃后最小向听」：扫 4000 副 13 张手牌，≥2 种吃法的 2904 个局面里 **1155 个（39.8%）**不同。后果包含**漏吃**：手牌 `1w6w6w8w9w2b3b9b1t北北白白`，上家出 `7w`，吃 `8w9w` 真能到向听 1（默认 STRICT 也该吃），但 `combos[0]=(6w,8w)` 只到向听 2 ⇒ 误判「无改善」而 PASS。第二个缺陷：同向听时恒选 `combos[0]`。用户局面 `5w 4b5b6b7b7b8b 1t4t6t7t8t9t` 上家出 `7t`，吃 `8t9t`（留 `6t7t` 两面，`shape_value=4.18`）> 吃 `6t8t`（`3.955`）；精确进张 71 vs 65 张。**改动（两处：①根因 + ②次排序）**：① 吃牌按 `action.tiles` 算向听（`_shanten_after_meld`与`_meld_plan`）；② 同向听以 `shape_value` 结构最优值次排序（打哪张 + 吃哪两张）。其余旋钮与 `v5` 完全一致 ⇒ 可归因。**默认档与冠军档 `meld_chi_best=False` ⇒ 逐位等于 v5**（未改默认档）。",
+      "kill_criteria": "**机制门（并联，任一不满足即停）**：① 已知漏吃局面必须从 PASS 变为吃 `8w9w`（已过）；② 用户局面在放宽档下从吃 `6t8t` 变为吃 `8t9t`（已过）；③ `meld_chi_best=False` 时逐位等于 v5（已过）。**胜负门（A 22:30 ② 改「增量臂」）**：比较必须是 **`v7-keepchi` vs `v7-chibest`**（只比 ② 的增量，不 vs v5），主指标 `每场名次分`，4 种子合并，正显著（t ≥ 2 且 >0）⇒ 采纳 ②；否则关闭。剂量 4.09/场 ⇒ 功效足够。",
+      "field_note": "A 22:30 ②：②是①的下游增量，比较基准改为 `v7-chibest`（`v7-keepchi` vs `v7-chibest`），不是 vs v5。"
+    },
+    {
+      "id": "v7-chibest-vs-v5-samefield-s20261008",
+      "treatment": "v7-chibest",
+      "baseline": "v5",
+      "matches": 120,
+      "seeds": [
+        20261008
+      ],
+      "field": "v5",
+      "status": "pending",
+      "registered_at": "2026-10-08T22:10:21+08:00",
+      "registered_by": "coordinator (B')",
+      "hypothesis": "**多选择吃法【根因修复】①**（`v7-chibest`，2026-10-08；A 22:12 裁定：②是①的下游、须**单独成第二臂**，本臂=只修①）。**代码缺陷**：`HeuristicDecider._shanten_after_meld`（及 `_meld_plan`）**无视 `action.tiles`**，对每个 CHI 选项都取 `chi_combinations(counts,offered)[0]`。同一张 `offered` 的两种吃法可给出**不同**的「吃后最小向听」：扫 4000 副 13 张手牌，≥2 种吃法的 2904 个局面里 **1155 个（39.8%）**不同。后果包含**漏吃**：手牌 `1w6w6w8w9w2b3b9b1t北北白白`，上家出 `7w`，吃 `8w9w` 真能到向听 1（默认 STRICT 也该吃），但 `combos[0]=(6w,8w)` 只到向听 2 ⇒ 误判「无改善」而 PASS。**改动（只一处）**：吃牌按 `action.tiles` 算「吃后最小向听」。其余旋钮与 `v5` 完全一致 ⇒ 可归因。**默认档与冠军档 `meld_chi_best=False` ⇒ 逐位等于 v5**（未改默认档）。A 独立复现的空干预门：4000 个≥2吃法局面中「各吃法吃后向听不同」占 51.7%（条件采样）；`v5` vs `v7-chibest` 决策分歧 18.15%、**100% 为 pass→吃（漏吃）**、其他分歧 0 ⇒ 过门（≥5%）。",
+      "kill_criteria": "**机制门（并联，任一不满足即停）**：① 已知漏吃局面必须从 PASS 变为吃 `8w9w`（已过）；② `meld_chi_best=False` 时逐位等于 v5（`test_meld_chi_best_default_is_bit_identical` 钉住：150 个随机响应局面逐位相同）。**胜负门（A 22:30 ① 改判据：机制正确 + 非劣）**：主指标 `每场名次分`，4 种子合并，点估计 ≥ −0.05 且不显著为负（t > −2）⇒ 采纳并建 `v7` 快照；显著为负（t ≤ −2）⇒ 回退。理由：这是度量错（不是偏好）；剂量 0.69/场 ⇒ 最坏伤害有界；不再要求正显著（480 场功效不足以检出）。",
+      "field_note": "A 22:30 ①：改判据为「机制正确 + 非劣」（点估计≥−0.05 且不显著为负）。主指标每场名次分。"
+    },
+    {
+      "id": "v7-chibest-vs-v5-samefield-s771013",
+      "treatment": "v7-chibest",
+      "baseline": "v5",
+      "matches": 120,
+      "seeds": [
+        771013
+      ],
+      "field": "v5",
+      "status": "pending",
+      "registered_at": "2026-10-08T22:10:21+08:00",
+      "registered_by": "coordinator (B')",
+      "hypothesis": "**多选择吃法【根因修复】①**（`v7-chibest`，2026-10-08；A 22:12 裁定：②是①的下游、须**单独成第二臂**，本臂=只修①）。**代码缺陷**：`HeuristicDecider._shanten_after_meld`（及 `_meld_plan`）**无视 `action.tiles`**，对每个 CHI 选项都取 `chi_combinations(counts,offered)[0]`。同一张 `offered` 的两种吃法可给出**不同**的「吃后最小向听」：扫 4000 副 13 张手牌，≥2 种吃法的 2904 个局面里 **1155 个（39.8%）**不同。后果包含**漏吃**：手牌 `1w6w6w8w9w2b3b9b1t北北白白`，上家出 `7w`，吃 `8w9w` 真能到向听 1（默认 STRICT 也该吃），但 `combos[0]=(6w,8w)` 只到向听 2 ⇒ 误判「无改善」而 PASS。**改动（只一处）**：吃牌按 `action.tiles` 算「吃后最小向听」。其余旋钮与 `v5` 完全一致 ⇒ 可归因。**默认档与冠军档 `meld_chi_best=False` ⇒ 逐位等于 v5**（未改默认档）。A 独立复现的空干预门：4000 个≥2吃法局面中「各吃法吃后向听不同」占 51.7%（条件采样）；`v5` vs `v7-chibest` 决策分歧 18.15%、**100% 为 pass→吃（漏吃）**、其他分歧 0 ⇒ 过门（≥5%）。",
+      "kill_criteria": "**机制门（并联，任一不满足即停）**：① 已知漏吃局面必须从 PASS 变为吃 `8w9w`（已过）；② `meld_chi_best=False` 时逐位等于 v5（`test_meld_chi_best_default_is_bit_identical` 钉住：150 个随机响应局面逐位相同）。**胜负门（A 22:30 ① 改判据：机制正确 + 非劣）**：主指标 `每场名次分`，4 种子合并，点估计 ≥ −0.05 且不显著为负（t > −2）⇒ 采纳并建 `v7` 快照；显著为负（t ≤ −2）⇒ 回退。理由：这是度量错（不是偏好）；剂量 0.69/场 ⇒ 最坏伤害有界；不再要求正显著（480 场功效不足以检出）。",
+      "field_note": "A 22:30 ①：改判据为「机制正确 + 非劣」（点估计≥−0.05 且不显著为负）。主指标每场名次分。"
+    },
+    {
+      "id": "v7-keepchi-vs-chibest-samefield-s20261008",
+      "treatment": "v7-keepchi",
+      "baseline": "v7-chibest",
+      "matches": 120,
+      "seeds": [
+        20261008
+      ],
+      "field": "v5",
+      "status": "pending",
+      "registered_at": "2026-10-08T22:37:00+08:00",
+      "registered_by": "coordinator (B')",
+      "hypothesis": "**次排序增量臂**（A 22:30 ②）：`v7-keepchi` = ①（吃法按 action.tiles 算向听）+ ②（同向听用 shape_value 次排序）；`v7-chibest` = 仅 ①。本臂测 **② 相对 ① 的增量**（同降幅选吃法的 tie-break 是否带来净收益）。剂量 ②=4.09/场（真机 800 房/6400 局），功效足够，按常规门（正显著 t≥2 才采纳）。",
+      "kill_criteria": "**胜负门（A 22:30 ② 增量）**：主指标 `每场名次分`，基准 = `v7-chibest`（不是 v5），4 种子合并，正显著（t ≥ 2 且 >0）⇒ 采纳 ②；否则关闭。",
+      "field_note": "增量臂（A 22:30 ②）：基准是 v7-chibest，测 ② 的增量，不与 v7-keepchi-vs-v5 混判。"
+    },
+    {
+      "id": "v7-keepchi-vs-chibest-samefield-s771013",
+      "treatment": "v7-keepchi",
+      "baseline": "v7-chibest",
+      "matches": 120,
+      "seeds": [
+        771013
+      ],
+      "field": "v5",
+      "status": "pending",
+      "registered_at": "2026-10-08T22:37:00+08:00",
+      "registered_by": "coordinator (B')",
+      "hypothesis": "**次排序增量臂**（A 22:30 ②）：`v7-keepchi` = ①（吃法按 action.tiles 算向听）+ ②（同向听用 shape_value 次排序）；`v7-chibest` = 仅 ①。本臂测 **② 相对 ① 的增量**（同降幅选吃法的 tie-break 是否带来净收益）。剂量 ②=4.09/场（真机 800 房/6400 局），功效足够，按常规门（正显著 t≥2 才采纳）。",
+      "kill_criteria": "**胜负门（A 22:30 ② 增量）**：主指标 `每场名次分`，基准 = `v7-chibest`（不是 v5），4 种子合并，正显著（t ≥ 2 且 >0）⇒ 采纳 ②；否则关闭。",
+      "field_note": "增量臂（A 22:30 ②）：基准是 v7-chibest，测 ② 的增量，不与 v7-keepchi-vs-v5 混判。"
     }
   ]
 }
