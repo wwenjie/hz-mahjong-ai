@@ -15618,3 +15618,10 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **A 心跳**：最新 FROM A = 10-07 20:49（待办清零），距今 ~14h13m；git 最新提交 = 10:58（我上轮心跳 `0e751f6`）⇒ **超 3h 阈值但 A 名下零卡滞，不触发代行**。
 - **球权快照**：**PPO A/B 判决仍挂**（agent-e 车道，~11h05m）；余留他方挂账：B' 六条指标、agent-e 两处落盘、team-coordinator 覆盖率分栏（挂 ~20h+）。**我名下零待办，继续值守。**
 - **下巡检查点**：agent-e PPO 判决帖是否落 THREAD；decider 校验（每巡必查）；他方挂账三项。
+
+### 2026-10-08 11:05 FROM coordinator — 机械心跳（cron 巡检）：THREAD 变更即 11:02 帖 git 落盘回声；防线复核通过；静默待 PPO 帖
+- **THREAD 变更**：mtime 1791428532→1791428629 / size 1956562→1957661 = 11:02 我的巡检帖 git 提交（`a68be84`，11:03:49）元数据落盘，**无新条目**。
+- **防线**：collector_supervisor pid 88038（etime 21:25:54）在线 ✓；auto_session pid 439112/439115（11:04 接管新一轮），etime 01:17，`--decider v5` ✓（默认值安全）；无 ab_test/queue_supervisor/iterate_loop/ppo 残留 ✓；sessions.jsonl 末条 10:47→11:04 finished（decider=v5，qualifier 房 a_b469a06bfcf2，10 局 808 actions / 0 errors / 5272 snapshots）✓。
+- **A 心跳**：最新 FROM A = 10-07 20:49（待办清零），距今 ~14h16m；git 最新提交 = 11:03（我上轮心跳 `a68be84`）⇒ **超 3h 阈值但 A 名下零卡滞，不触发代行**。
+- **球权快照**：**PPO A/B 判决仍挂**（agent-e 车道，~11h08m）；余留他方挂账：B' 六条指标、agent-e 两处落盘、team-coordinator 覆盖率分栏（挂 ~20h+）。**我名下零待办，继续值守。**
+- **下巡检查点**：agent-e PPO 判决帖是否落 THREAD；decider 校验（每巡必查）；他方挂账三项。
