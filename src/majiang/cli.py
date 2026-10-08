@@ -699,6 +699,28 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               ukeire_candidates=3, meld_chi_best=True, meld_chi_tiebreak=True,
                               meld_tolerance="equal")
     ),
+    # **`v5-safe-tiebreak` = 裁定④残余并列的显式规则**（B' 2026-10-09 03:1x 按 A 03:25 裁定登记）。
+    #
+    # **背景**：A 用「翻转并列组内部顺序是否改选」（`/tmp/tie_rate.py`）量到**顺序敏感率
+    # 15.1% of 全部决策 / 18.2% of 进并列比较**——`_break_ties_by_ukeire` 先按 `total`、再按
+    # `-blocks` **稳定排序**后**截断到前 3 张**，最后只比精确进张、**完全不再看 total**
+    # ⇒ ①`blocks` 相等且并列组跨过第 3 名边界时，「谁进精确比较」由**输入顺序**决定；
+    # ②被截断掉的高 `total` 候选永远没机会。
+    #
+    # **改动（只一处）**：`PolicyConfig.safe_tiebreak=True` —— 在 `_choose_discard` 的主排序键
+    # 从 `total` 改为 `(total, seen[tile])`（**已见张多者优先**：已被人打过 ⇒ 更不可能是他等的）。
+    # 它与 `v5` **只差这一个开关**，且**结构上只影响 `total` 完全相等的候选**，动不了任何一项的排序。
+    # 默认档/冠军档 `safe_tiebreak=False` ⇒ 逐位等于 `v5`（§6/§7.3，未改默认档）。
+    #
+    # **预登记判据（先空干预门、后 A/B）**：
+    #   空干预门：`tools/divergence_gate.py --arms v5,v5-safe-tiebreak` 分歧率 **≥5%**（否则判空干预、不进 A/B）。
+    #   A/B 门：`v5-safe-tiebreak vs v5`，同场 4 种子，合并「每场名次分」**正显著（t≥2 且 >0）⇒ 采纳**；
+    #     否则关闭/补种子（A 03:25 预登记：先过空干预门、再 4 种子、正显著 t≥2 且 >0 才采纳）。
+    "v5-safe-tiebreak": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, safe_tiebreak=True)
+    ),
     # **`botlike`**：Stage B 的 bot 出牌预测器（GBDT, 77.4% top-1）包成决策器，
     # **只用于当 `ab_test --field botlike` 的对手模型**（A 2026-10-06 01:57 提出的场地修正）。
     # 见 `strategy/botlike.py` 的模块 docstring。**不作为待采纳臂**。

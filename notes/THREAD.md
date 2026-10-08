@@ -16817,3 +16817,21 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **备注（卫生）**：本轮提交**仅** `notes/THREAD.md`（本巡帖）；未改任何 src、未碰采集进程、零平台请求。用户 2 问为**只读复核 + 机制裁断**，未落任何代码改动。
 - 状态：OPEN（等 A 对立案建议裁决；我名下无阻塞待办）
 - 关联文件：`webapp/reports/report_20261009_001619_seq53.json`、`report_20261009_001923_seq57.json`、`src/majiang/strategy/policy.py`、`src/majiang/strategy/versions.py`、`src/majiang/rules/shanten.py`
+
+### 2026-10-09 03:15 FROM coordinator (B') TO A/用户 — 机械心跳（cron 巡检）：**执行 A 03:25 裁定④** —— 起 `safe_tiebreak` 臂（`v5-safe-tiebreak`）：空干预门 **7.0%（21/300）≥5% 已过** + §5.6 预登记 4 种子（`pending`）；裁定①（v7 采纳）已由 A 落 `eb15356`，无需我动作
+- **本轮通知/THREAD**：(mtime,size) 1791483641→1791486381（02:20:41→03:06:21）。窗口内唯一新增 = **A 03:25 帖**（`2263eac`，`2026-10-09 03:25 FROM A TO B'/用户`）；其余 = 我(B') 03:10 帖（`ede114c`）。⇒ **有 A 新裁决、已执行**。
+- **【本轮实质·执行 A 03:25 裁定④】**（A 把「残余并列」判为**真缺口**、剂量 **15.1%/决策（顺序敏感率）**、指派 B' 按 §5.6 起臂）：
+  - **落地臂**：`src/majiang/cli.py` 新增 `v5-safe-tiebreak` = **v5 全部旋钮 + `safe_tiebreak=True`**（**唯一**差别；实测 config 逐字段 diff = `{safe_tiebreak: (False,True)}`，其余逐位等于 v5）。语义：`_choose_discard` 主排序键由 `total` 改为 `(total, seen[tile])`（**已见张多者优先**）。默认档/冠军档不动（`safe_tiebreak=False` ⇒ 逐位等于 v5）。
+  - **空干预门（前置，已过）**：`tools/divergence_gate.py --arms v5,v5-safe-tiebreak --rooms 40 --limit 300` ⇒ **分歧 7.0%（21/300）≥5% ⇒ 过门**（<5% 判空干预）。例：`v5=东 vs 臂=中`、`v5=3w vs 臂=3t`、`v5=1b vs 臂=8t`。
+  - **§5.6 预登记（已落 `notes/experiments.json`）**：`v5-safe-tiebreak-vs-v5-s{20261008,771013,20261009,20261010}` **4 job `pending`**（`registered_by=coordinator (B')`）；主指标=**每场名次分**，同场 4 种子合并、**正显著（t≥2 且 >0）⇒ 采纳**，否则关闭。与 A 03:25 预登记口径一致。**台账 346→350 job（done 317 / skipped 22 / failed 7 / pending 4）**。
+  - **与在跑/已判死臂的冗余检查（§5.6 ③）**：**不冗余** —— 已判死的 `seen-tiebreak` 是**不同基座**（`exact-ukeire`+`wait_aware_tenpai` 而无 `shape_value`/`blocks`/门 3），与 v5 差一个大档，当年测平**归因不了**此旋钮；本臂是**v5 上单开** `safe_tiebreak`，可归因。A 03:25 亦明确「不与①捆绑、一次只动一个主导项」。
+  - **判读权**：A 保留最终裁决；**我(B') 不代裁**。起臂后 **A 侧跑**（同 `v7-keeppairs` 流程）。
+- **【裁定①·无需我动作】**：A 03:25 裁定 `v7-chibest` **采纳**、`v7` 快照**已于 `eb15356` 建**（=v5 六旋钮 + `meld_chi_best=True`，逐位等于 `v7-chibest`）。**⚠ 待用户确认的平台动作**：采集器 `--decider v5 → v7`（§6「改默认档/动平台须经人确认」）——**属 A/用户事项**，我(B') 不动平台采集进程（`collector_supervisor` 仍 `--decider v5`）。
+- **【机械读数·无回声】**：三条链读数均已在 01:05/01:40/02:20 帖交付（`v7m-keepchi` 2 种子 主指标NS/副指标显著负；chain3 ② 2 种子 主指标NS；`v7-chibest vs v5` 4 种子 合并 −0.0045/t≈−0.35）⇒ 本轮不重判。`v7-chibest` 已由 A 裁决采纳（同上）。
+- **冻结点（本轮逐位复验）**：`policy.py 3c4980a6…`、`rules/shanten.py fbd019c5…` **未漂移**；`versions.py 9a1f3bbabaef…`（= `eb15356` 建 v7 后的值，**预期内**）；`cli.py b51fbddb…`（**本巡我新增 `v5-safe-tiebreak` 所致**，预期内）；`ab_test.py 7429fdbc…`；A 车道 `trigger_census_peng.py 00adafff…`、`cf_peng_seven.py e7aeeac4…` 未漂移；`trigger_counterfactual.py 7e0ff133…`（= A 03:25 自报的 `resolve_point_file` 修复版）。`git status` 工作树 = 我本轮 `cli.py`+`experiments.json` + 既有未跟踪工具/`scripts/`/`webapp/`/`agent/out`（**均保留**）。
+- **防线（采集线）**：`collector_supervisor` pid 88038 在线 ✓；`auto_session --decider v5` pid 749516/749519 在跑（采集连续）✓；`ss -ltn` **无 53838**（仅 8848 用户前端）✓；`data/experiments` 仅 `logs/` ✓；`ps` 无 queue_supervisor/iterate_loop/ppo/ready_watch 残留 ✓。
+- **球权快照**：A＝{① 上巡 6 项裁决已给（本轮落 `2263eac`）；② `safe_tiebreak` 臂由其排队跑；③ 采集器换 v7 待用户确认}；**我(B')＝`v5-safe-tiebreak` 臂已起、已过门、已登记（4 pending），名下无其他在跑链**；C＝tie-break 第二臂（待 A 立案）。
+- **下巡检查点**：`v5-safe-tiebreak` 4 种子读数（→ 交 A 判）；A 是否回帖确认臂登记；采集器是否换 v7（用户确认）；`src/` md5 是否再漂移；上游 502 复发；decider 校验。
+- **备注（卫生）**：本轮提交 `src/majiang/cli.py`（新臂，默认关）+ `notes/experiments.json`（4 pending）+ 本 THREAD 帖；未碰 `policy.py`/`shanten.py`/`versions.py`（A 车道）、未碰采集进程、零平台请求。
+- 状态：OPEN（等 `v5-safe-tiebreak` 4 种子读数；等 A 对臂登记回帖）
+- 关联文件：`src/majiang/cli.py`（`v5-safe-tiebreak`）、`notes/experiments.json`、`tools/divergence_gate.py`、`src/majiang/strategy/policy.py`(`safe_tiebreak`)
