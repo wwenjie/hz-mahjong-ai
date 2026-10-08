@@ -216,3 +216,79 @@ def test_default_never_calls_shape_value(monkeypatch) -> None:
 @pytest.mark.parametrize("version", ["v1", "v2", "v3"])
 def test_frozen_champions_unchanged(version: str) -> None:
     assert make_decider(version, Mode.QUALIFIER).config.shape_value is False
+
+
+# --------------------------------------------------------------------------- #
+# `keep_extra_pairs`（保留多余对子，`v7-keeppairs`，2026-10-08）
+#
+# 修的是一处**估值盲区**：`shape_value` 的 `weights[:need]` 裁剪把「排不进前 need 名的块」
+# 当 0，于是「多余的对子」在估值里完全消失——拆掉它不掉分，会与孤立字牌在平局规则里互排。
+# 三条防线：① 默认关、逐位不变；② 开关确实给被裁掉的对子加分；③ 仍 < 10（不覆盖向听优先）。
+# --------------------------------------------------------------------------- #
+
+
+def test_keep_extra_pairs_knob_default_off_and_registered() -> None:
+    assert PolicyConfig().keep_extra_pairs == 0.0, "默认必须为 0，否则等于换了冠军"
+    assert "keep_extra_pairs" in VARIANT_FIELDS, "新开关必须进 VARIANT_FIELDS（configure 会丢字段）"
+    assert "v7-keeppairs" in DECIDERS
+    assert make_decider("v7-keeppairs", Mode.QUALIFIER).config.keep_extra_pairs == 1.0
+    # 冠军档与默认档在采纳前一律保持 0.0
+    assert make_decider("v5", Mode.QUALIFIER).config.keep_extra_pairs == 0.0
+    assert make_decider("heuristic", Mode.QUALIFIER).config.keep_extra_pairs == 0.0
+
+
+def test_keep_extra_pairs_default_is_bit_identical() -> None:
+    """**逐位不变**：默认（0.0）必须与显式传 0.0 完全相同。"""
+    rng = random.Random(20261008)
+    for _ in range(600):
+        hand = list(round_module_deal(rng).seats[0].hand)
+        for melds in (0, 1, 2):
+            assert (
+                shanten_module.shape_value(hand, melds)
+                == shanten_module.shape_value(hand, melds, keep_extra_pairs=0.0)
+            )
+
+
+def test_keep_extra_pairs_rewards_truncated_pair() -> None:
+    """被裁掉的多余对子不再计 0：多留一个对子的手，分应更高。
+
+    构造：1 面子 + 3 两面——两面权重 1.2 占满 `need=3`，**任何**对子（1.0）都排在刀口外。
+    """
+    head = ("5t", "6t", "7t", "3w", "4w", "6w", "7w", "8b", "9b")  # 1 面子 + 3 两面
+    one_pair = _hand(*head, "东", "东", "1w", "2t", "9t")
+    two_pairs = _hand(*head, "东", "东", "南", "南", "1w")
+    base_1 = shanten_module.shape_value(one_pair, 0)
+    base_2 = shanten_module.shape_value(two_pairs, 0)
+    assert base_1 == base_2, "旧口径把被裁对子当 0 ⇒ 一手一对与一手两对并列（这正是要修的现象）"
+    tuned_1 = shanten_module.shape_value(one_pair, 0, keep_extra_pairs=1.0)
+    tuned_2 = shanten_module.shape_value(two_pairs, 0, keep_extra_pairs=1.0)
+    assert tuned_2 > base_2, "开启后，多留对子应加分"
+    assert tuned_1 >= base_1, "开启后，被裁对子（哪怕只有一个）也应加分"
+    # 奖励累加后**封顶**在 PAIR_BONUS_CAP（< 1）⇒ 不会覆盖「块数差 1」（核心不变量）
+    assert tuned_2 - base_2 <= shanten_module.PAIR_BONUS_CAP + 1e-9, "奖励不得越过封顶"
+    assert 0.0 < (tuned_2 - base_2) < 1.0, "奖励必须 < 1（只打破并列、不覆盖块数差）"
+
+
+def test_keep_extra_pairs_leaves_untruncated_pair_alone() -> None:
+    """**未被裁**的对子本来就已计入 ⇒ 奖励为 0、逐位不变。
+
+    构造：块数 < `need`（1 面子 + 1 两面 + 1 对 + 散牌）⇒ 对子落在 `taken` 里。
+    """
+    hand = _hand("5t", "6t", "7t", "3w", "4w", "东", "东",
+                 "1b", "4b", "7b", "2t", "5t", "8t")
+    base = shanten_module.shape_value(hand, 0)
+    assert shanten_module.shape_value(hand, 0, keep_extra_pairs=1.0) == base, (
+        "对子未被裁时开开关不应改变结果"
+    )
+
+
+def test_keep_extra_pairs_stays_below_shanten_weight() -> None:
+    """**不越界**：开启后形质值仍 < 10（`shanten_weight`），不覆盖向听优先。"""
+    rng = random.Random(17)
+    worst = 0.0
+    for _ in range(400):
+        hand = list(round_module_deal(rng).seats[0].hand)
+        for melds in (0, 1, 2):
+            worst = max(worst, shanten_module.shape_value(hand, melds, keep_extra_pairs=1.0))
+    assert worst < 10.0, f"形质值上界 {worst:.2f} 已达 10，会覆盖 -10×向听"
+

@@ -20,6 +20,7 @@ from majiang.rules.melds import chi_count
 from majiang.rules.situation import PHASE_RESPONSE_CHI, PHASE_RESPONSE_PENG
 from majiang.sim import round as round_module
 from majiang.strategy.policy import (
+    VARIANT_FIELDS,
     HeuristicDecider,
     MeldTolerance,
     Mode,
@@ -223,3 +224,120 @@ def test_meld_conditional_cell_table_denies_late_and_deep() -> None:
     for played in (13, 20):
         for current in (1, 2, 3, 4):
             assert not _meld_cell_allows(_Stub(played), current), (played, current)
+
+
+# --------------------------------------------------------------------------- #
+# `meld_chi_best`（①根因修复）+ `meld_chi_tiebreak`（②同向听次排序），2026-10-08
+#
+# 修的是一处**代码缺陷**：`_shanten_after_meld` 无视 `action.tiles`，对每个 CHI 选项
+# 都取 `chi_combinations()[0]`。同一张 `offered` 的两种吃法可以有**不同**的「吃后最小向听」
+# （扫 4000 副：≥2 种吃法的 2904 个局面里 1155 个不同）。后果包含**漏吃**。
+# A 22:12 裁定：②是①的**下游**、须**单独成第二臂**，故两开关拆开：
+#   `v7-chibest` = ①（根因）；`v7-keepchi` = ①+②（次排序）。一次只动一个主导项。
+# 三条防线：① 默认关、逐位不变；② 已知漏吃局面被修正；③ 仍走 v5 的路径（未开时不调用）。
+# --------------------------------------------------------------------------- #
+
+
+def _response_situation(hand_codes, offered_code):
+    from majiang.rules import tiles as _t
+    from majiang.rules.god import GodState
+    from majiang.rules.hand import Hand
+    from majiang.rules.situation import Situation
+    from majiang.rules.table import TableState
+
+    return Situation.from_parts(
+        seat=0,
+        phase=PHASE_RESPONSE_CHI,
+        turn=1,
+        hand=Hand.from_codes(list(hand_codes)),
+        god=GodState(),
+        table=TableState(wall_remaining=60, dealer_seat=1, round_no=1),
+        offered_tile=_t.parse(offered_code),
+        responding_seats=(0,),
+        discards=(),
+        melds=(),
+    )
+
+
+def test_meld_chi_best_knob_default_off_and_registered() -> None:
+    from majiang.strategy.policy import PolicyConfig as Config
+    from majiang.cli import DECIDERS
+
+    assert Config().meld_chi_best is False, "默认必须为 False，否则等于换了冠军"
+    assert Config().meld_chi_tiebreak is False, "次排序默认也必须关（A ③ 拆臂）"
+    assert "meld_chi_best" in VARIANT_FIELDS, "新开关必须进 VARIANT_FIELDS（configure 会丢字段）"
+    assert "meld_chi_tiebreak" in VARIANT_FIELDS
+    assert "v7-chibest" in DECIDERS and "v7-keepchi" in DECIDERS
+    # 两臂必须分开：`v7-chibest` 只动①，`v7-keepchi` = ①+②
+    assert make_decider("v7-chibest", Mode.QUALIFIER).config.meld_chi_best is True
+    assert make_decider("v7-chibest", Mode.QUALIFIER).config.meld_chi_tiebreak is False
+    assert make_decider("v7-keepchi", Mode.QUALIFIER).config.meld_chi_best is True
+    assert make_decider("v7-keepchi", Mode.QUALIFIER).config.meld_chi_tiebreak is True
+    assert make_decider("v5", Mode.QUALIFIER).config.meld_chi_best is False
+    assert make_decider("v5", Mode.QUALIFIER).config.meld_chi_tiebreak is False
+
+
+def test_meld_chi_best_fixes_a_known_missed_chi() -> None:
+    """**硬证据**：已知会漏吃的局面，开启后必须改判为吃。
+
+    手牌 `1w 6w 6w 8w 9w 2b 3b 9b 1t 北 北 白 白`（2 财神），上家出 `7w`，当前向听 2。
+    吃 `8w9w` 真实能到**向听 1**（默认 STRICT 也该吃）；但 `combos[0]=(6w,8w)` 只到向听 2。
+    """
+    hand = ["1w", "6w", "6w", "8w", "9w", "2b", "3b", "9b", "1t", "北", "北", "白", "白"]
+    situation = _response_situation(hand, "7w")
+    actions = legal_actions(situation)
+
+    off = make_decider("v5", Mode.QUALIFIER)
+    assert off.choose(situation, actions, budget_ms=3000).kind == PASS, (
+        "默认档（开关关）必须保持旧行为：漏吃 ⇒ PASS"
+    )
+
+    on = make_decider("v7-chibest", Mode.QUALIFIER)   # 只修根因① 就能吃到向听 1
+    choice = on.choose(situation, actions, budget_ms=3000)
+    assert choice.kind == CHI, "开启后必须吃到向听 1，而不是漏吃"
+    from majiang.rules import tiles as _t
+
+    assert set(_t.to_codes(choice.tiles)) == {"8w", "9w"}, "应选能降到向听 1 的吃法（8w9w）"
+
+
+def test_meld_chi_best_default_is_bit_identical() -> None:
+    """**逐位不变**：默认关的决策器对随机响应局面与旧路径完全一致。
+
+    旧路径 = 显式调用 `_shanten_after_meld(..., kind)`（不传 chi_tiles），
+    新路径 = `_meld_after_shanten`（开关关时也应回退到同一支）。
+    """
+    for situation, actions in _situations(11, 150):
+        offered = situation.offered_tile
+        assert offered is not None
+        decider = make_decider("v5", Mode.QUALIFIER)
+        for action in actions:
+            if action.kind not in (PENG, CHI):
+                continue
+            legacy = decider._shanten_after_meld(situation, offered, action.kind)
+            routed = decider._meld_after_shanten(situation, offered, action)
+            assert legacy == routed, (action.describe(), legacy, routed)
+
+
+def test_meld_chi_best_prefers_wider_ukeire_on_tie() -> None:
+    """同向听的多种吃法：开启后选**留下更宽进张**的那手。
+
+    用户局面 `5w 4b5b6b7b7b8b 1t4t6t7t8t9t`，上家出 `7t`：吃 `8t9t`（留 6t7t 两面）
+    的进张宽度 > 吃 `6t8t`。
+    """
+    from majiang.rules import tiles as _t
+
+    hand = ["5w", "4b", "5b", "6b", "7b", "7b", "8b", "1t", "4t", "6t", "7t", "8t", "9t"]
+    situation = _response_situation(hand, "7t")
+    actions = [a for a in legal_actions(situation) if a.kind == CHI]
+    assert len(actions) >= 2, "该局面应有多种吃法"
+
+    on = make_decider("v7-keepchi", Mode.QUALIFIER)
+    offered = situation.offered_tile
+    assert offered is not None
+    widths = {
+        tuple(_t.to_codes(a.tiles)): on._meld_ukeire_copies(situation, offered, a, 2)
+        for a in actions
+    }
+    best = max(widths, key=lambda key: widths[key])
+    assert best == ("8t", "9t"), f"进张最宽的吃法应为 8t9t，实测 {widths}"
+    assert widths[("8t", "9t")] > widths[("6t", "8t")], widths

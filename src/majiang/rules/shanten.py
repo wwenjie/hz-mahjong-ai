@@ -364,11 +364,20 @@ def quick_blocks(counts: Sequence[int]) -> tuple[int, int, int]:
     return sets, partials, min(1, pairs)
 
 
+# 超额对子奖励的系数（字牌对子不能被吃、是最好的碰材，故高于数牌）：见 shape_value 尾部注释。
+PAIR_BONUS_HONOR = 0.5
+PAIR_BONUS_SUITED = 0.3
+# 奖励**总量上限**（乘以 keep_extra_pairs）：多个多余对子累加后仍须 < 1.0，
+# 否则会越过 `len(taken)` 的「块数差 1」并覆盖排序语义——这是 shape_value 的核心不变量。
+PAIR_BONUS_CAP = 0.9
+
+
 def shape_value(
     counts: Sequence[int],
     meld_count: int = 0,
     *,
     edge_partial_weight: float | None = None,
+    keep_extra_pairs: float = 0.0,
 ) -> float:
     """骨架的**加权形质值**（微秒级），用于替代 ``2×面子 + 搭子`` 的次排序。
 
@@ -398,18 +407,29 @@ def shape_value(
     （含雀头），而 ``quick_blocks`` 恒按 4 裁。``quick_shanten`` 用 ``−2×meld_count``
     补偿了向听，但 ``2×面子 + 搭子`` 这个**次排序项没有补偿** ⇒ 副露越多，
     「多留一个用不上的搭子」越被加分。
+    **超额对子奖励**（``keep_extra_pairs``，默认 0.0 ⇒ 逐位等于旧行为）：上面那个
+    ``weights[:need]`` 裁剪把**排在刀口外的块**当 0，于是「多出来的对子」在估值里
+    完全消失——拆掉它不掉分。实测（1200 副「唯一对子=东东」手牌）唯一对子不会
+    被拆，但当手里有 ≥2 个对子时，多余的对子被当 0，会与孤立字牌在平局规则里被
+    重新排序 ⇒ 偶尔拆掉一个对子（含字牌对子，而它不能被吃、是最好的碰材）。本参数
+    给被裁掉的**对子**一个折扣正值（字牌 0.5、数牌 0.3，乘以 ``keep_extra_pairs``），
+    使「多留一个对子」优于「留一张孤张」，且幅度 < 1 ⇒ 仍只打破并列、不覆盖块数差。
     """
     real = list(counts)
     real[GOD] = 0
     sets = 0
-    weights: list[float] = []
+    # 每个块 = (搭子权重, 该块是「对子」时的**超额对子奖励**)。
+    # 奖励在裁剪之后只对**被裁掉的**对子累加（见函数尾），保证 `keep_extra_pairs=0` 时逐位等于旧行为。
+    pair_bonus_honor = PAIR_BONUS_HONOR * keep_extra_pairs
+    pair_bonus_suited = PAIR_BONUS_SUITED * keep_extra_pairs
+    blocks: list[tuple[float, float]] = []
     for start, size in ((0, 9), (9, 9), (18, 9), (27, 7)):
         group = real[start : start + size]
         if start == 27:  # 字牌不能成顺
             for amount in group:
                 sets += amount // tiles.SET_LENGTH
                 if amount % tiles.SET_LENGTH >= 2:
-                    weights.append(1.0)
+                    blocks.append((1.0, pair_bonus_honor))
             continue
         for index in range(size):
             while group[index] >= tiles.SET_LENGTH:
@@ -434,28 +454,40 @@ def shape_value(
                 # 给 0.7 就与坎张同权，给 0.8 则介于坎张与真两面之间。
                 is_edge = index == 0 or index == size - 2  # 组内 rank 1-2 或 8-9
                 if edge_partial_weight is not None and is_edge:
-                    weights.append(edge_partial_weight)
+                    blocks.append((edge_partial_weight, 0.0))
                 else:
-                    weights.append(1.2)
+                    blocks.append((1.2, 0.0))
         for index in range(size):
             while group[index] >= 2:
                 group[index] -= 2
-                weights.append(1.0)
+                blocks.append((1.0, pair_bonus_suited))
         for index in range(size - 2):
             while group[index] and group[index + 2]:
                 group[index] -= 1
                 group[index + 2] -= 1
-                weights.append(0.7)
+                blocks.append((0.7, 0.0))
     if counts[GOD]:
-        weights.append(1.4)
-    # 只需要 `SETS_PER_HAND - meld_count` 个块，取**最好的**那几个（按副露数裁剪）
+        blocks.append((1.4, 0.0))
+    # 只需要 `SETS_PER_HAND - meld_count` 个块，取**最好的**那几个（按副露数裁剪）。
+    # 排序键**只用搭子权重**（元组第二项是对子奖励，不参与排序），与旧 `weights.sort(reverse=True)`
+    # 逐位等价（同为稳定排序、同插入序）。
     need = max(0, tiles.SETS_PER_HAND - meld_count - sets)
-    weights.sort(reverse=True)
-    taken = weights[:need]
+    blocks.sort(key=lambda item: item[0], reverse=True)
+    taken = blocks[:need]
+    # **超额对子奖励**：被裁掉的对子不再计 0，而是累加一个折扣值（`keep_extra_pairs`）。
+    # 累加后**封顶**在 `PAIR_BONUS_CAP`（< 1）⇒ 只打破并列、不覆盖块数差（见 Docstring）。
+    # 非对子块的奖励为 0，故不影响它们。
+    if keep_extra_pairs:
+        extra_pair_bonus = min(
+            PAIR_BONUS_CAP * keep_extra_pairs,
+            sum(bonus for _, bonus in blocks[need:]),
+        )
+    else:
+        extra_pair_bonus = 0.0
     if not taken:
-        return 2.0 * sets
-    mean_w = sum(taken) / len(taken)
-    return 2.0 * sets + len(taken) + 0.9 * (mean_w - 1.0)
+        return 2.0 * sets + extra_pair_bonus
+    mean_w = sum(weight for weight, _ in taken) / len(taken)
+    return 2.0 * sets + len(taken) + 0.9 * (mean_w - 1.0) + extra_pair_bonus
 
 
 def quick_shanten(counts: Sequence[int], meld_count: int = 0) -> int:

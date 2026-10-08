@@ -68,6 +68,13 @@ VARIANT_FIELDS = (
     "goodshape_tolerance",
     "ukeire_preselect",
     "edge_partial_weight",
+    # **保留多余对子**（`v7-keappairs`，2026-10-08）：>0 时给被 `shape_value` 的
+    # `weights[:need]` 裁剪掉的多余对子一个折扣正值（字牌 0.5×、数牌 0.3×）。默认 0.0 ⇒ 逐位等于 v5。
+    "keep_extra_pairs",
+    # **多选择吃法：按具体吃法算向听 + 同向听按进张宽度打破平局**（`v7-keepchi`，2026-10-08）。
+    # 默认 False ⇒ 逐位等于 v5。
+    "meld_chi_best",
+    "meld_chi_tiebreak",
     "ukeire_candidates",
     "ukeire_max_shanten",
     "ukeire_order",
@@ -411,6 +418,30 @@ class PolicyConfig:
     # 坎张 `1w3w`（同样 4 张）只有 0.7 ⇒ **边张搭被高估一倍**。
     # `0.0` = 关闭（保持旧行为）；0.7 = 与坎张同权；0.8 = 介于坎张与真两面之间。
     edge_partial_weight: float = 0.0
+    # **保留多余对子**（`v7-keappairs`，2026-10-08）：`shape_value` 的 `weights[:need]` 裁剪
+    # 把「排不进前 `need` 名的块」当 0，于是**多余的对子**在估值里完全消失——拆掉它不掉分。
+    # 实测（1200 副「唯一对子=东东」手牌）唯一对子不会被拆；但当手里有 ≥2 个对子时，
+    # 多余的那个被当 0，会与孤立字牌在**平局规则**里被重排 ⇒ 偶尔拆掉对子（含字牌对子，
+    # 而它不能被吃、是最好的碰材）。本开关给被裁掉的对子一个折扣正值，使「多留一个对子」
+    # 优于「留一张孤张」。幅度 < 1 ⇒ 仍只打破并列、不覆盖块数差（见 `shape_value` 注释）。
+    # 0.0 = 关闭（**逐位等于 v5**）。默认档、冠军档在采纳前**一律保持 0.0**（需人拍板）。
+    keep_extra_pairs: float = 0.0
+    # **①根因修复：按具体吃法算向听**（`v7-chibest`，2026-10-08；A 22:12 裁定为该臂）。
+    # `_shanten_after_meld`（及 `_meld_plan`）旧实现无视 `action.tiles`，对每个 CHI 选项都取
+    # `chi_combinations()[0]`。同一张 `offered` 的两种吃法可以有**不同**的「吃后最小向听」
+    # （实测 4000 副：≥2 种吃法的 2904 个局面里 **1155 个（39.8%）** 不同）。
+    # 后果**包括漏吃**：手牌 `1w6w6w8w9w2b3b9b1t北北白白`，上家出 `7w`，吃 `8w9w` 真能到向听 1
+    # （连默认 STRICT 也该吃），但 `combos[0]=(6w,8w)` 只到向听 2 ⇒ 误判「无改善」而 PASS。
+    # `False` = 关闭（**逐位等于 v5**，走旧 `combos[0]`）；`True` = 吃牌按 `action.tiles` 算。
+    meld_chi_best: bool = False
+    # **②次排序：同向听时按进张宽度打破吃法平局**（`v7-keepchi`，2026-10-08；A 22:12 裁定：
+    # 这是**根因修复的下游**、须**单独成第二臂**，故与 ① 拆开）。
+    # 只有 ① 修好后才会出现「同降幅的多种吃法」这个比较（此前不存在）。
+    # `5w 4b5b6b7b7b8b 1t4t6t7t8t9t` 吃 `7t`：吃 `8t9t` 留 `6t7t` 两面（`shape_value=4.18`）
+    # 优于吃 `6t8t`（`3.955`）；精确进张 65 vs 71 张；旧代码恒选 `combos[0]`。
+    # 判据 `shape_value`（打哪张 + 吃哪两张都按它取最优），开销微秒级。
+    # `False` = 关闭（**逐位等于 v5**）。
+    meld_chi_tiebreak: bool = False
     # 实验档位：绝不打出财神（只在无其他可打牌时才打）。
     # 用途是验证一条尚未测过的假设——爆头需要「4 组**自然**面子 + 1 张闲余财神」，
     # 而此前的 0 次爆头是被动观测到的（现有策略会把财神当百搭用掉）。若把财神硬留，
@@ -1257,6 +1288,7 @@ class HeuristicDecider:
                 edge_partial_weight=(
                     self.config.edge_partial_weight or None
                 ),
+                keep_extra_pairs=self.config.keep_extra_pairs,
             )
         else:
             blocks = shanten_module.quick_blocks(counts)
@@ -1457,7 +1489,7 @@ class HeuristicDecider:
             for action in actions:
                 if action.kind not in (PENG, CHI):
                     continue
-                after_shanten = self._shanten_after_meld(situation, offered, action.kind)
+                after_shanten = self._meld_after_shanten(situation, offered, action)
                 if after_shanten is None or after_shanten >= current:
                     continue
                 if best_meld is None or after_shanten < best_meld[0]:
@@ -1472,7 +1504,7 @@ class HeuristicDecider:
             if self._is_pair_route(situation):
                 self.last_reason = "保留七对路线：不吃不碰"
                 return fallback
-            best_legacy: tuple[int, Action] | None = None
+            best_legacy: tuple[tuple[int, int, int], Action] | None = None
             # 放宽档允许「向听不变」的副露，但**排除已听牌**（0 向听）——那时副露只会
             # 换掉听口，不会让你更接近胡牌。见 MeldTolerance 的实测依据。
             # **必须用 == 而不是 is**：`PolicyConfig.for_mode(mode, meld_tolerance="equal")`
@@ -1489,24 +1521,30 @@ class HeuristicDecider:
             for action in actions:
                 if action.kind not in (PENG, CHI):
                     continue
-                after_legacy = self._shanten_after_meld(situation, offered, action.kind)
+                after_legacy = self._meld_after_shanten(situation, offered, action)
                 if after_legacy is None or after_legacy > current:
                     continue
                 if after_legacy == current and not accept_equal:
                     continue
                 # 同向听时优先碰：吃全局最多 2 副，碰不占这个额度
-                rank = (after_legacy, 0 if action.kind == PENG else 1)
-                if best_legacy is None or rank < (
-                    best_legacy[0],
-                    0 if best_legacy[1].kind == PENG else 1,
-                ):
-                    best_legacy = (after_legacy, action)
+                peng_rank = 0 if action.kind == PENG else 1
+                # 同向听的多种吃法之间：按进张宽度次排序（默认关 ⇒ ukeire_rank 恒 0，
+                # 逐位等于旧行为）。仅对 CHI 生效（PENG 的结构固定，无需次排序）。
+                ukeire_rank = 0
+                if self.config.meld_chi_tiebreak and action.kind == CHI:
+                    ukeire_rank = -self._meld_ukeire_copies(
+                        situation, offered, action, after_legacy
+                    )
+                rank = (after_legacy, peng_rank, ukeire_rank)
+                if best_legacy is None or rank < best_legacy[0]:
+                    best_legacy = (rank, action)
             if best_legacy is None:
                 self.last_reason = f"不副露：向听 {current} 无改善"
                 return fallback
-            suffix = "（向听不变，放宽档）" if best_legacy[0] == current else ""
+            chosen_shanten = best_legacy[0][0]
+            suffix = "（向听不变，放宽档）" if chosen_shanten == current else ""
             self.last_reason = (
-                f"副露 {best_legacy[1].describe()}：向听 {current}→{best_legacy[0]}{suffix}"
+                f"副露 {best_legacy[1].describe()}：向听 {current}→{chosen_shanten}{suffix}"
             )
             return best_legacy[1]
 
@@ -1517,7 +1555,7 @@ class HeuristicDecider:
         for action in actions:
             if action.kind not in (PENG, CHI):
                 continue
-            after_shanten = self._shanten_after_meld(situation, offered, action.kind)
+            after_shanten = self._meld_after_shanten(situation, offered, action)
             if after_shanten is None or after_shanten >= current:
                 continue
             plan = self._meld_plan(situation, offered, action)
@@ -1546,6 +1584,50 @@ class HeuristicDecider:
         )
         return best[1]
 
+    def _meld_after_shanten(self, situation: Situation, offered: int, action: Action) -> int | None:
+        """某个具体吃/碰动作执行后的最小向听。
+
+        **与旧实现的差别**：开启 `meld_chi_best` 时把 ``action.tiles``（具体吃哪两张）
+        传下去，而不是让每个 CHI 选项共用 `chi_combinations()[0]`。关闭时保持旧行为（逐位等于 v5）。
+        """
+        chi_tiles = action.tiles if (action.kind == CHI and self.config.meld_chi_best) else None
+        return self._shanten_after_meld(situation, offered, action.kind, chi_tiles)
+
+    def _meld_ukeire_copies(
+        self, situation: Situation, offered: int, action: Action, after_shanten: int
+    ) -> int:
+        """某个具体吃法之后、打出最优一张时的**剩下张数**（`cheap_ukeire`，次排序用）。
+
+        只在同级向听的多种吃法之间打破平局（见 `PolicyConfig.meld_chi_tiebreak`），
+        不做进动作链、不改变是否副露。开销 ~1.5ms/候选。
+        """
+        plan = self._meld_plan(situation, offered, action)
+        if plan is None:
+            return 0
+        _, after_counts = plan
+        meld_after = situation.hand.meld_count + 1
+        # 吃后是**未打牌**态（张数 = 14 − 3×副露）：先选出「打哪张能留下最好的形」——
+        # 判据即 `shape_value`（已含向听项 `2×sets + len(taken)`，并正则化到块均权重）。
+        # 用 `shape_value` 而非 `cheap_ukeire`：后者内部 `quick_shanten` 贪心，实测连
+        # 「两面 vs 愚形」这种量级都分不出（两种吃法都给同样的 29 张）。
+        base = max(
+            (self._drop_one(after_counts, tile) for tile in range(tiles.TILE_KINDS) if after_counts[tile] > 0),
+            key=lambda candidate: shanten_module.shape_value(
+                candidate, meld_after, keep_extra_pairs=self.config.keep_extra_pairs
+            ),
+            default=after_counts,
+        )
+        return round(1000 * shanten_module.shape_value(
+            base, meld_after, keep_extra_pairs=self.config.keep_extra_pairs
+        ))
+
+    @staticmethod
+    def _drop_one(counts: list[int], tile: int) -> list[int]:
+        """打出一张后的暗手计数。"""
+        out = list(counts)
+        out[tile] -= 1
+        return out
+
     def _meld_plan(
         self, situation: Situation, offered: int, action: Action
     ) -> tuple[tuple[Meld, ...], list[int]] | None:
@@ -1560,10 +1642,17 @@ class HeuristicDecider:
                 return None
             counts[offered] -= 2
             return hand.melds + (Meld(kind=MELD_KIND_PENG, tiles=(offered,) * 3),), counts
-        combos = chi_combinations(counts, offered)
-        if not combos:
-            return None
-        first, second = combos[0]
+        # **多选择吃法**：开启 `meld_chi_best` 时按 `action.tiles`（具体吃哪两张）算；
+        # 否则保持旧行为（`combos[0]`）——旧代码在这里也有同一个 `combos[0]` 缺陷。
+        if self.config.meld_chi_best and action.tiles:
+            first, second = action.tiles
+            if counts[first] < 1 or counts[second] < 1:
+                return None
+        else:
+            combos = chi_combinations(counts, offered)
+            if not combos:
+                return None
+            first, second = combos[0]
         counts[first] -= 1
         counts[second] -= 1
         return (
@@ -1580,8 +1669,19 @@ class HeuristicDecider:
         pairs = sum(amount // 2 for amount in situation.hand.counts if amount >= 2)
         return pairs >= self.config.pair_route_pairs
 
-    def _shanten_after_meld(self, situation: Situation, offered: int, kind: str) -> int | None:
-        """吃/碰后（并打出多余一张）能达到的最小向听。"""
+    def _shanten_after_meld(
+        self,
+        situation: Situation,
+        offered: int,
+        kind: str,
+        chi_tiles: tuple[int, ...] | None = None,
+    ) -> int | None:
+        """吃/碰后（并打出多余一张）能达到的最小向听。
+
+        ``chi_tiles``：**具体吃法**（两张手牌）。给了就用它算——同一张 `offered` 可能有多
+        种吃法，不同吃法的「吃后最小向听」可以**不同**（实测 39.8% 的多选择局面如此），
+        不给则退回旧行为（取 `chi_combinations()[0]`）。
+        """
         hand = situation.hand
         counts = list(hand.counts)
         if kind == PENG:
@@ -1589,10 +1689,15 @@ class HeuristicDecider:
                 return None
             counts[offered] -= 2
         else:
-            combos = chi_combinations(counts, offered)
-            if not combos:
+            if chi_tiles is not None:
+                first, second = chi_tiles
+            else:
+                combos = chi_combinations(counts, offered)
+                if not combos:
+                    return None
+                first, second = combos[0]
+            if counts[first] < 1 or counts[second] < 1:
                 return None
-            first, second = combos[0]
             counts[first] -= 1
             counts[second] -= 1
         return _best_after_drop(counts, hand.meld_count + 1)
