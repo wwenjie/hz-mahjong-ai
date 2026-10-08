@@ -46,7 +46,22 @@ export MAJIANG_SERVER="https://<服务器地址>:<端口>"   # 可选，覆盖�
 
 ## 四、启动
 
-单身份：
+### 正式比赛（2026-10-10 19:30）
+
+参赛档位为 **`v5`**（真机 484 场一位率 10.3%、场均分最优；更新档 v6 真机显著更差已弃用）。
+晋级轮用 `--mode qualifier`；若晋级决赛，用 `--mode final` 重启（决赛纯总得分制，策略自动切激进参数）。
+
+```bash
+export MAJIANG_TOKEN="<参赛令牌>"
+export MAJIANG_SERVER="https://<比赛服务器地址>"
+uv run python -m majiang --token-env MAJIANG_TOKEN --decider v5 --mode qualifier
+```
+
+启动后程序自动完成「确认到位 → 对局 → 阶段晋级判断 → 下一阶段重新确认」的多阶段循环，
+无需人工干预；中途崩溃重赛、决赛加赛新桌均会自动发现并接入。`--duration 0`（默认）
+持续运行直至赛事终态。
+
+单身份（测试/联调）：
 
 ```bash
 uv run python -m majiang --token-env MAJIANG_TOKEN
@@ -82,7 +97,8 @@ uv run python -m majiang --env-prefix MAJIANG_TOKEN_ --duration 600
 
 | 名称 | 说明 |
 | --- | --- |
-| `heuristic` | **主策略**（默认）。启发式期望值决策 |
+| `v5` | **参赛档位**。精确进张比较候选面 3 张，真机验证最优 |
+| `heuristic` | 基础启发式（默认）。等价于 v5 之前的基线配置 |
 | `ukeire` | 同向听时改用「进张最多」做次排序（实测打平，保留备查） |
 | `risk` | 用对手听牌模型驱动风险估计；模型缺失时自动回退手写启发式 |
 | `value` | 用价值模型为出牌打分；模型缺失时自动回退启发式 |
