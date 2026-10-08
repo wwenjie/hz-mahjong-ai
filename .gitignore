@@ -81,3 +81,17 @@ agent/out/*-chunks/
 src/majiang/rules/shanten_fast.c
 src/majiang/rules/shanten_fast.cpython-*.so
 notes/THREAD.md.bak-*
+
+# 嵌套 agent 仓目录（各自带 .git，主仓不追踪，由各自仓自行提交）
+agent/agent-e-agent-e-coordinator/
+agent/agent-e-researcher/
+agent/agent-e-reviewer/
+agent/agent-e-writer/
+agent/agentb-coordinator/
+agent/agentb-researcher/
+agent/agentb-reviewer/
+agent/agentb-writer/
+agent/team-researcher/
+agent/team-reviewer/
+agent/team-team-coordinator/
+agent/team-writer/
