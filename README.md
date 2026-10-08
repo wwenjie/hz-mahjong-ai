@@ -93,7 +93,7 @@ uv run python -m majiang --env-prefix MAJIANG_TOKEN_ --duration 600
 
 ### 决策器档位
 
-默认 `heuristic` 即比赛使用的主策略，无需任何模型文件即可运行。
+默认 `heuristic` 为基线启发式；**正式比赛请显式指定 `--decider v5`**。所有档位均无需模型文件即可运行。
 
 | 名称 | 说明 |
 | --- | --- |
