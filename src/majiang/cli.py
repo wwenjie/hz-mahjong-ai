@@ -618,6 +618,70 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               ukeire_candidates=3, ukeire_preselect=5, piao_threshold_scale=1.3,
                               meld_tolerance="equal")
     ),
+    # **`v7-keeppairs` = 保留多余对子**（B'/coordinator 2026-10-08 立；用户 21:10 指示修复）。
+    #
+    # **现象（本日实测）**：`shape_value` 的 `weights[:need]` 裁剪把「排不进前 need 名的块」
+    # 当 0 ⇒「多余的对子」在估值里完全消失。构造 1200 副「唯一对子=东东」手牌，打出东 **0** 次
+    # （唯一对子不会被拆）；但 1500 副「恰好 2 张东」的随机手牌里有 **9** 次打出东，
+    # **全部**是「东东」与另一个孤立字牌同分、被平局规则选中——即多余对子被当 0 后才与孤张并列。
+    # 这与麻将常识相背：对子（尤其**字牌对子，不能被吃**）是最优碰材，不该在平局里被拆。
+    #
+    # **改动（只改一处）**：`shanten.shape_value(..., keep_extra_pairs)` 给被裁掉的对子一个
+    # 折扣正值（字牌 0.5×、数牌 0.3×）。幅度 < 1 ⇒ 只打破并列、不覆盖块数差（与 shape_value 同约束）。
+    # 其余旋钮与 `v5` 完全一致，唯一差别就是 `keep_extra_pairs` ⇒ 可归因。
+    #
+    # **预登记判据（先机制门、后 A/B）**：
+    #   机制门（离线）：① 在「恰好 2 张东」的随机手牌上打出东的次数**显著下降**（目标 ≤ 原来的 1/3）；
+    #     ② 默认档（keep_extra_pairs=0）逐位不变；③ 单决策 `shape_value` 成本不升（仍微秒级）。
+    #   A/B 门：`v7-keeppairs vs v5`，同场 4 种子，合并名次分 >0 且 t≥2 ⇒ 采纳，建 `v7` 快照；
+    #     否则回退（默认档与冠军档均保持 `keep_extra_pairs=0`）。
+    "v7-keeppairs": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, keep_extra_pairs=1.0)
+    ),
+    # 消融：同样保留多余对子，但权重减半（字牌 0.25 / 数牌 0.15）。用来分清「是有用」还是「过冲」。
+    "v7-keeppairs-half": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, keep_extra_pairs=0.5)
+    ),
+    # **`v7-chibest` = 多选择吃法【根因修复】（B'/coordinator 2026-10-08；A 22:12 裁定为该臂）**
+    #
+    # **现象（本日实测）**：`HeuristicDecider._shanten_after_meld`（及 `_meld_plan`）旧实现
+    # **无视 `action.tiles`**，对每个 CHI 选项都取 `chi_combinations(counts, offered)[0]`（固定第一种吃法）。
+    # 同一张 `offered` 的两种吃法可以有**不同**的「吃后最小向听」：扫 4000 副 13 张手牌，
+    # 上家出牌能形成 ≥2 种吃法的 2904 个局面里 **1155 个（39.8%）** 不同。
+    # 后果包括**漏吃**（不是选错、是该吃不吃）：手牌 `1w6w6w8w9w2b3b9b1t北北白白`，
+    # 上家出 `7w`，吃 `8w9w` 真能到**向听 1**（连默认 STRICT 也该吃），
+    # 但 `combos[0]=(6w,8w)` 只到向听 2 ⇒ 误判「无改善」而 PASS。
+    #
+    # **改动（只一处）**：吃牌按 `action.tiles` 算「吃后最小向听」。
+    # 其余旋钮与 `v5` 完全一致，唯一差别就是 `meld_chi_best` ⇒ 可归因。
+    # **默认档与冠军档 `meld_chi_best=False` ⇒ 逐位等于 v5**（未改默认档，§6/§7.3）。
+    #
+    # **预登记判据（先机制门、后 A/B）**：
+    #   机制门（离线）：① 已知漏吃局面（`7w` 那个）必须从 PASS 变为吃 `8w9w`；
+    #     ② 默认档 `meld_chi_best=False` 逐位不变。
+    #   A/B 门：`v7-chibest vs v5`，同场 4 种子，合并「每场名次分」>0 且 t≥2 ⇒ 采纳建 `v7` 快照；
+    #     |t|<1.2 ⇒ 关闭；1.2~2 ⇒ 补到 6 种子。
+    "v7-chibest": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, meld_chi_best=True)
+    ),
+    # **`v7-keepchi` = 多选择吃法【根因修复 + 同向听次排序】**（A 22:12 裁定：②是①的**下游**、
+    # **单独成第二臂**，故 = `v7-chibest` 再叠加 `meld_chi_tiebreak=True`）。
+    # 只有 ① 修好后才会出现「同降幅的多种吃法」这个比较（此前不存在）。
+    # 用户局面 `5w 4b5b6b7b7b8b 1t4t6t7t8t9t` 上家出 `7t`：吃 `8t9t`（留 `6t7t` 两面，`shape_value=4.18`）
+    # 优于吃 `6t8t`（`3.955`）；精确进张 65 vs 71 张（旧代码恒选前者）。
+    # 判据 `shape_value`（打哪张 + 吃哪两张都按它取最优），开销微秒级。
+    # **A ③ 要求两臂独立预登记、不得合并计入同一次裁决**（本文只登记机制；A/B 各自跑）。
+    "v7-keepchi": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, meld_chi_best=True, meld_chi_tiebreak=True)
+    ),
     # **`botlike`**：Stage B 的 bot 出牌预测器（GBDT, 77.4% top-1）包成决策器，
     # **只用于当 `ab_test --field botlike` 的对手模型**（A 2026-10-06 01:57 提出的场地修正）。
     # 见 `strategy/botlike.py` 的模块 docstring。**不作为待采纳臂**。
