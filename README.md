@@ -200,6 +200,47 @@ uv run python tools/selfplay.py   # 本地自对弈，比较策略强弱
 uv run python tools/calibrate.py  # 按路线校准胜率与番数
 ```
 
+## 八之二、深度学习训练管线（rl2 并入）
+
+深度策略网络的完整训练管线已并入本仓：`src/nnrl2/` 为模型与推理代码，`scripts/rl2/` 为训练与评测脚本。
+**训练需要 GPU 与 `requirements-rl.txt` 中的额外依赖（torch 等）；参赛运行不经过本管线。**
+
+### 模型
+
+`MahjongTransformerV7`（`src/nnrl2/model_v7.py`）：128 维嵌入 / 8 注意力头 / 4 层，
+**940,968 参数**，策略/价值双头。推理包装见 `src/nnrl2/policy_v7.py`（对齐主仓决策器接口）。
+
+### 核心脚本（scripts/rl2/）
+
+| 脚本 | 用途 |
+| --- | --- |
+| `gen_bc_data_v7.py` | 行为克隆数据生成（真机日志 → (obs, action) 对） |
+| `build_expert_dataset.py` | 强对手子集筛选（expert 微调数据） |
+| `rebuild_situations_from_logs.py` | 从日志重建对局快照（审计/回放用） |
+| `convert_audit_to_bc_v7_split.py` | 审计数据转 BC 训练格式（带切分） |
+| `train_bc_v7.py` | BC 训练 |
+| `train_ppo_v7.py` | PPO 训练（自对弈 + KL 约束） |
+| `run_ab_v7.py` / `run_ab_v7_dup.py` | A/B 评测（dup = 加倍重复协议） |
+| `run_ab_v7_hybrid.py` | 混合策略评测（模型 + v5 接管胡/碰） |
+
+### 模型产物与基线（runs/）
+
+| 模型 | 评测胡率 | 说明 |
+| --- | --- | --- |
+| `bc_v7_base` | 19.2% | 全量真机数据行为克隆基线 |
+| `bc_v7_expert_ft` | 21.6% | 最强对手子集上微调（单 seed 孤例，待复现） |
+| `bc_v7_expertv3_ft` | 19.1% | expert v3 修复版（撞 19.2% 天花板） |
+| `ppo_v7_kl02_50k` | 18.4% | PPO 5 万局自对弈（KL=0.02） |
+
+### 评测协议
+
+- **方案 1**：固定 seat0、双 seed 对 3×v5 基线
+- **方案 2**：同牌四位置镜像（消除座位与发牌运气）
+- **Hybrid**：模型决策 + v5 接管胡/碰响应点
+
+**当前最优为 Hybrid：22.2%**（注：与 v5 对手同源，增益能否迁移到真机真人对手待验证）。
+神经网络各方案均未超过启发式 v5 的真机战绩，故参赛档位仍为 v5（见「四、启动」）。
+
 ## 九、运行看护
 
 比赛期间程序须持续在线（平台判据：最近 90 秒内有已认证请求）。仓库提供两种守护方式：
