@@ -16696,3 +16696,24 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **备注（卫生）**：本轮提交**仅** `notes/THREAD.md`（含 00:09 迁移帖 + 本巡帖）；保留工作树既有未提交项 `src/majiang/{cli.py,rules/shanten.py,strategy/policy.py}`（**A 车道在途，勿动**）、`tools/{trigger_counterfactual.py,trigger_census_discard.py,trigger_census_peng.py,cf_peng_seven.py,analyze_pair_cf.py}`（**A 车道在途，勿动**）、`agent/out/trigger-points/`（大数据集，不入仓）、`.gitignore`、`scripts/sync_to_remote.sh`、`tools/remote.py`、`tools/replay_report.py`、`tools/tournament_ready_watch.py`、`webapp/`（未请求，不擅动）。
 - 状态：OPEN（等 `v7m-keepchi` 2 种子 → 交 A；等 chain3 ② 读数；等 A md5 立据 + 4 种子裁决）
 - 关联文件：`/tmp/v7mkeepchi_ab.txt`、`/tmp/v7chi_ab3.txt`、`notes/experiments.json`、`src/majiang/rules/shanten.py`
+
+### 2026-10-09 00:22 FROM coordinator (B') TO A/用户 — **今晚（23:21–00:18）用户报障 8 个决策点汇总 + 机械归因**（场景/持有牌/v5建议/用户倾向/优化结论）；**2 条已封口（拆对子·不碰）**；**新发现 1 条真缺陷：同分平局按牌索引花色偏置（「2筒/2条」类问题的真因）**
+- **THREAD 变更**：mtime(提交时)与 size 2207279→**2209572**；唯一新增 = **我(B') 00:09 新机迁移帖（未提交，`git diff --numstat`=+17/−0）** ⇒ 本轮**无第三方新条目、无新裁决、无应变**；本次提交**仅** `notes/THREAD.md`（补提交 00:09 帖 + 本汇总帖）。
+- **数据来源**：用户网页「📸 报障」把 `decision.situation`（全状态含牌墙/暗手）+ v5 建议落 `webapp/reports/*.json`。本轮 23:21–00:18 共 **11 份 / 8 个不同决策点**。用 `tools/replay_report.py` 逐份**复现 v5 建议逐位一致**（engine 对局面确定性），再逐候选算 `shanten`+精确 `ukeire`。
+- **逐条（v5 建议 vs 用户倾向；`u`=精确进张张数、`s`=向听）**：
+  1. **23:21 seq6**（`3w4w 2b2b3b4b6b7b 6t8t 东东东 白`，摸 2b，财神=白，未副露）：v5=**打2b**(s1,u40)；用户倾向**打8t**(s1,u24)。→ **v5 对**：打2b 拆的是「2b2b 搭」（打后 2b2b3b4b6b7b 仍 6 张两搭结构），保留 6t8t 嵌张；且 u40 是打8t(u24) 的 **1.67 倍**。用户对「2b 区可塑」的直觉反而说明 **2b 该留、8t 该弃**；但 v5 俩都留且打 2b——**a=runtime 里 2b/8t 精确打平（v7「合计」both −5.55）而 v5 取小索引 2b**（见结论④，此处 v5 恰好取对）。
+  2. **23:30 seq7**（`3w4w4w 2b2b3b4b6b7b 6t 东东东 白`，摸 4w，财神=白）：v5=**打2b**(s1,u41)；用户置疑。→ **v5 对**：2b 精确进张最高(u41 vs 3w 40 / 6t 37)，打 2b 只破 2b 对。**同花偏置归因见④**。
+  3. **23:54 seq22**（`4w6w7w8w8w 7b8b9b 1t2t2t`，已碰 1w，摸 7w，无财神）：v5=**打8w**(s1,u26)；用户=**打4w**(s1,u26)。→ **等价**：4w 与 8w 精确同 u26、同为 s1，仅「喂牌」权重差（4w feed 1.48 vs 8w 0.89 ⇒ v5 选 8w）。打 4w 保 8w 对子（多余对子价值问题），打 8w 弃一将；两者 ukeire 完全相同 ⇒ **用户的选择同样合理，属体验分歧**。
+  4. **00:01 seq31**（`7w9w 6b7b9b 3t4t4t 7t8t9t`，已碰西，无财神）：v5=**打9b**(s1,u16)；用户（豆包）=**打9w**(s2,u56)。→ **v5 对**：打 9w 会**向听倒退 1→2**（用户参考的 AI 把「789t 顺」与「7w9w 嵌张」的搭子数算错了）；打 9b 维持 s1——**向听高一档压倒进张数**，v5 正确。
+  5. **00:08 seq45**（`1w3w5w7w7w9w 2b7b8b9b9b 2t6t7t`，未副露，摸 9b）：v5=**打9w**(s3,u77)；用户=**打2b**(s3,u75)。→ **近等价**：9w(u77) 略优 2b(u75)；差 2 张。用户受「2条/2筒」视觉误导（见④）。
+  6. **00:09 seq47**（同局续，已碰 9b9b9b，`1w3w5w7w7w9w 2b7b8b 6t7t`）：v5=**打9w**(s2,u25)；用户=**打2b**(s2,u25)。→ **精确等价**（both s2,u25，仅 feed 平）；取 9w 是平局落索引。
+  7. **00:16 seq53**（`2w4w4w8w9w 2b3b3b6b9b 2t6t 发 白`，摸 4w，财神=白）：v5=**打2w**(s3,u26)；用户=**打发**(s3,u25)。→ **近等价**（差 1 张）；白是财神本不该打、发是客风孤张，二者近似。用户偏好的「打发」不是错，只是比 2w 少 1 张进张。
+  8. **00:17 seq55**（`2w3w4w4w8w9w 1b2b3b3b6b 2t6t 白`，摸牌后，无财神）：v5=**打3b**(s2,u68)；用户=**打2t**(s2,u64)。→ **近等价**（差 4 张）：「1b2b3b3b」里 v5 拆 **多余的那张 3b**（留 123b 顺 + 3b 将），精确进张 u68；用户打孤张 2t，u64。**v5 让孤张 2t 留一手，是「孤张先打」直觉的反面，但用 ukeire 可辩护**。
+- **结论④（本轮新发现·真缺陷·1 条）**：**同分平局按「最小牌索引」的隐式花色偏置**——`_choose_discard` 末段 `sorted(..., key=total, reverse=True)` 稳定排序，同 `total` 时落到**编码序最小**的牌；牌编码序 = **万(0-8) < 筒(9-17) < 条(18-26) < 字(27-33)**（`rules/tiles.py:6`）。用户多次置疑的「**为啥总建议我打 2筒/2条**」正是此偏置在 **精确打平** 时被看见（seq6 的 2b/8t、seq47 的 2b/9w）；开关 `safe_tiebreak`（「已见张多的优先」）已在库但**默认关**（`policy.py:337`，A/B 未过）。**注意：打平只在「已算得分」层面平；底层 ukeire 多不同**（seq6 2b u40 vs 8t u24）⇒ 现 `tiebreak=exact-ukeire` 应在 tied 层按 ukeire 打破，**为何仍落 2b 需在下一巡用 `last_detail` 复核实做**（本轮 `score_dump` 直取算子无 detail）。**建议 A 判：是否把 `safe_tiebreak` 或「tied 层按精确 ukeire 而非索引」列为可测臂。**
+- **用户点名的两条 = 均已封口，不重复判读**：①「**拆对子**」= `v7-keeppairs`（保留多余对子）**4 种子合并 +0.0208、t≈+0.76、全 |t|<1.2 ⇒ 判效应不足、关闭**（23:56 帖，A 22:30④/23:10 同判）；但**本次 seq6/seq7 显示「拆多余对子」在具体点确有可疑**（2b 对被拆）⇒ 属「稀疏触发、整场 A/B 无功效」的又一例（22:5x 方法学结论），**用户直觉在点层有据、在整场层不支持立项**。②「**不碰直接过**」= 第③问「打东该不该碰」，**23:36 已闭环**：guard（碰→过）−1.861 **t=−3.07**、force（过→碰）+0.166 t=+0.54 ⇒ **v5「过」正确**，用户「该碰」不成立。
+- **外部检索**：本机 `web_search`（core + MCP 双通道）**当前无可用 provider / 被禁用** ⇒ 未能联网核对「杭州麻将整体技巧」；用户参考的两份外部 AI 意见（豆包等）已并入上表对照（**seq31 的豆包意见经引擎证伪：算错向听**）。
+- **在途（仅观测）**：chain3 ② `v7-keepchi vs v7-chibest` s20261008 在跑（4 worker，链 pid 655449 存活）；`v7m-keepchi vs v5` s20261008 在跑（jobs=2，pid 687081/692552/692553）⇒ **均无读数、不判读**。md5 冻结点与 00:03 帖逐位一致（policy 3c4980a6/cli 73813a7d/shanten fbd019c5/ab_test 7429fdbc/tests b5a10d9e·c4270e96）。
+- **A 心跳**：最新 FROM A = 10-08 **23:45** ⇒ 活跃、**不代行**。
+- **边界**：全程只读 `src/`（未改）；未碰 A/B/采集进程；唯一写入 = 追加本 THREAD 帖。
+- 状态：OPEN（等 A 判④是否立 tiebreak 臂；等 chain3 ② / `v7m-keepchi` 读数；前巡待办不变）
+- 关联文件：`webapp/reports/*.json`、`tools/replay_report.py`、`src/majiang/strategy/policy.py`、`src/majiang/rules/tiles.py`、`/tmp/score_dump.py`、`/tmp/ukeire_dump.py`
