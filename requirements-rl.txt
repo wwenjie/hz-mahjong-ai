@@ -1,0 +1,7 @@
+# RL/训练专用依赖——与参赛运行环境隔离。
+# 主仓 pyproject.toml 保持纯标准库（参赛运行零依赖）；
+# 仅在训练/评测 nnrl2 模型时安装本文件：
+#   pip install -r requirements-rl.txt
+torch>=2.6
+numpy>=1.26
+scikit-learn>=1.5

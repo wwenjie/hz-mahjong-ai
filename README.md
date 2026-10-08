@@ -137,12 +137,60 @@ src/majiang/
   runtime/     并发对局运行时：调度、限速、决策窗口、结构化日志
   strategy/    决策策略：启发式策略、风险模型、价值模型、搜索
   sim/         本地模拟器：单局推演、批量自对弈、仅测量用完全信息决策器
+src/nnrl2/     Transformer 策略/价值网络（BC/PPO 训练所得，推理走 policy_v7）
 tools/         离线工具：数据生成、模型训练、A/B 检验、官方番型对拍、实战采集
 scripts/       运行看护：守护脚本与 systemd 单元
-docs/          运维手册
+scripts/rl2/   nnrl2 配套训练脚本（BC 数据生成、BC/PPO 训练、A/B 评测）
+research/      早期研究脚本（NN vs GBDT、序列模型探索、占用容量扫描等，冻结存档）
+docs/          运维手册与评审版使用说明（USAGE.md）
 tests/         测试套件
 openspec/      变更提案、设计决策与任务清单
 ```
+
+## 七之二、模型与训练
+
+参赛程序**推理时零外部依赖**（纯 Python 标准库），所有神经网络产物均已预训练完毕并随仓提供；
+以下训练代码仅用于复现与后续迭代，**比赛运行不需要执行**。
+
+### 模型清单
+
+| 模型 | 架构 | 训练方式 | 用途 | 状态 |
+| --- | --- | --- | --- | --- |
+| **v5 启发式** | 规则引擎 | 手工特征 + 参数调优 | **参赛档位**（`--decider v5`） | 现役 |
+| BC v7 base | Transformer（11M 参数） | 行为克隆 105 万条真机出牌 | 实验臂（botlike 场 19.2% 天花板） | 未采用 |
+| BC v7 expert_ft | 同上，微调 | 在最强 20 名对手数据上微调 | 实验臂（21.6%，孤例不可复现） | 未采用 |
+| PPO v7 | 同上 | 5 万局自对弈强化学习 | 待判决（agent-e 评测中） | 待定 |
+| Hybrid（expert_ft + v5 接管胡/碰） | 混合 | 响应点 v5 裁决，其余交模型 | 首个超 expert_ft（22.2%） | 待验证 |
+| GBDT 对手模型 | 梯度提升树 | 真机对手行为特征 | `risk` 档位的风险估计 | 可选组件 |
+
+### 训练代码路径
+
+| 路径 | 内容 |
+| --- | --- |
+| `src/nnrl2/model_v7.py` | Transformer 架构定义（obs 编码、多头注意力、策略/价值双头） |
+| `src/nnrl2/policy_v7.py` | 推理包装（`PolicyV7Decider`，对齐主仓 `sim.round._ask` 接口） |
+| `src/nnrl2/obs.py` | 公开信息 → token 序列编码器（369 维，含财神/副露/牌墙状态） |
+| `scripts/rl2/gen_bc_data_*.py` | BC 数据生成（从真机日志提取 (obs, action) 对） |
+| `scripts/rl2/train_bc*.py` | BC 训练（v1→v3 迭代史，v7 为当前架构） |
+| `scripts/rl2/train_ppo*.py` | PPO 训练（自对弈 + KL 约束 + GAE） |
+| `tools/train_pfirst.py` | 一胡先制模型（GBDT，用于 `risk` 档位） |
+| `tools/train_value.py` | 价值模型（MLP，用于 `value` 档位） |
+| `research/` | 早期探索（NN vs GBDT 对比、序列模型、占用容量等），已冻结 |
+
+### 训练环境（与运行环境隔离）
+
+```bash
+# 训练需要额外依赖（不进主 pyproject，不影响参赛运行）
+pip install -r requirements-rl.txt   # torch + numpy + scikit-learn
+
+# BC 训练示例
+PYTHONPATH=src python scripts/rl2/train_bc_v3.py --data data/rl2/bc_v7.npz
+
+# PPO 训练示例（需 GPU）
+PYTHONPATH=src python scripts/rl2/train_ppo_oracle.py --init runs/bc_v7_base.pt
+```
+
+模型产物（`runs/*.pt`、`data/*.npz`）体积大，不入 git；参赛运行不依赖它们。
 
 ## 八、开发与验证
 
