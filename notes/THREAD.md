@@ -16397,3 +16397,32 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **备注（卫生）**：本轮提交**仅** `notes/THREAD.md`；保留工作树既有未提交项 `agent/out/trigger-points/`（49MB 数据集，不入仓）、`tools/trigger_census_discard.py`、`tools/tournament_ready_watch.py`、`.gitignore`、`webapp/`（未请求，不擅动）。
 - 状态：OPEN（等 ①`v7-chibest` 4 种子非劣读数 → A 判；等 ②增量 A/B；等 A 建 `v7` 快照）
 - 关联文件：`/tmp/v7chi_ab3.txt`、`/tmp/run_v7chi_chain3.sh`、`agent/out/trigger-points/cf-chi-gap.jsonl`、`tools/ab_test.py`、`tools/trigger_counterfactual.py`、`tools/trigger_census_discard.py`、`notes/experiments.json`
+
+
+### 2026-10-08 23:10 FROM coordinator (B') TO A/用户 — 回答用户第③问「打东该不该碰」：**结论=应该过（不碰）**，引擎实证
+- **局面**（webapp 实测，`/api/state`）：我方手牌 `9w 3b5b 3t6t9t 东东 南南 中中 白`（白=财神，手留 1），0 副露，13 张；上家打 `东`；v5 建议 `pass`，理由「不副露：向听 2 无改善」。
+- **关键事实**：这是**七对牌型**，不是面子牌型。
+  - `seven_pairs_shanten = 2`（3 真对 + 财神补 1 单张 = 4 对）；`natural_shanten = 3`（做面子慢）；`shanten_any = 2`。
+  - 杭州番值（`rules/win.py::BRANCH_FAN`）：**七对 = 2 番、平胡 = 1 番**；且**七对禁止任何吃碰杠副露**（`win.py` 头注）。
+- **引擎实证（`routes.evaluate`）**：
+  - **过**：七对路线 期望 **6.6**（番≈1.7） / 副露路线 期望 5.6（番≈1.1）。
+  - **碰东+打9w**：七对路线 **不可行（作废，期望 −1e9）** / 副露路线仍 5.6。
+  - ⇒ **碰 = 用「七对 6.6」换「副露 5.6」= 净亏约 1.0 期望**；且碰后向听仍 2（2→2 不降）。
+- **进张（ukeire，独立暴力复算一致）**：过 = **7 种 21 张**（9w 3b 5b 3t 6t 9t 白）；碰打9w = **13 种 44 张**（4b 1t–9t 南 中 白）。**44 张是"面子型伪进张"**：七对要的是「凑第 2 张成对」，不是「连张搭子」；碰把 3 对拆成搭子、并把路线永久锁成低番面子型。
+- **v5 为什么说"过"（且是碰巧对）**：`_is_pair_route` 门槛 `pair_route_pairs=5`，本手仅 **3 对 + 财神 ⇒ 未触发七对保护支**，落到 `meld_tolerance=STRICT` 的向听闸门；碰后 2→2 不降 ⇒ PASS。**结论正确，但理由是"向听没改善"而非"保七对"** ⇒ 存在**理由/机制错配**（`route_aware=False`、门槛 5 偏高）。
+- **潜在真缺口（值得挖）**：若某局面「碰能降向听」但会毁掉 ≥N 对的七对路线，v5 会因 STRICT 通过而误碰。建议按 A 的对拍引擎起**第三类触发点**「碰掉七对」（`--mode` 新增或复用 discard 思路：我方碰后 `seven_pairs_shanten` 由小变不可行）。**置信度：中**（未扫全量、未构造反例），需 A 定口径。
+- 状态：OPEN（用户第③问已答；是否立项对拍由 A/用户定）
+- 关联文件：`webapp/session.py`、`/tmp/ws.json`、`src/majiang/strategy/routes.py`、`src/majiang/rules/win.py`、`src/majiang/strategy/policy.py:1665`
+
+### 2026-10-08 23:13 FROM coordinator — 机械心跳（cron 巡检）：THREAD 变更=**我(B') 23:10 帖自身回声（未提交，本轮入库）**；**无新增非 coordinator 条目** ⇒ 无新裁决、无应变；chain3 ①`v7-chibest vs v5` **s1 已封口（23:02 判读）、s2(seed 771013) 在跑无读数**；冻结 md5 逐位一致；防线复核通过；A 23:10 活跃、不代行
+- **THREAD 变更**：mtime 1791471615（23:00:15）→**1791472241（23:10:41）**/ size 2128949→**2131431**。新增**仅 1 条**，来自 **coordinator（我本人 23:10 (B') 帖：回答用户第③问「打东该不该碰」）**，触发通知时**仍在工作树、未提交**（`git diff --numstat -- notes/THREAD.md` = `16 0`，新增行全部为该帖）⇒ **本轮无非 coordinator 新条目、无新裁决、无需应变**。A 23:10 P1 全量读数帖已于 `af80026` 入库并封口，**不重复判读**。
+- **机械判读（按预登记 kill_criteria）**：chain3 ①`v7-chibest vs v5` **s1 (seed 20261008) 读数已于上轮 23:02 帖封口**（总得分 −0.373/t=−1.00、每场名次分 −0.008/t=−0.31，全不显著 ⇒ 非劣门方向一致、不触发 kill）；**s2 (seed 771013) 在跑、尚无读数** ⇒ **本轮无新判读动作、不代行**；`v7-keeppairs`（A 22:30④/23:10 维持关闭）、P1 对拍（A 23:10 已正式读数）**均已封口，不重复判读**。
+- **chain3 活（我交付）**：`/tmp/v7chi_ab3.txt`（2436B，mtime 22:59:35）—— ① s1 已 `DONE … exit=0`；**s2 `SEED 771013` 在跑**（leader pid 663003 etime 13:12 + 4 worker 664478–664481 各 99.9% CPU etime ~10:11；120 场×8 局、四座位旋转、`--jobs 4 --field v5`）；**无读数，ETA≈23:15+**。链脚本 pid 655449 存活、`setsid` 已脱离会话 ✓。**无重复离线树**（CF 已收、仅 chain3 单树）✓。
+- **冻结点（按 A ④ + 23:10 追认）**：`strategy/policy.py b9543b69cccd8154d6911a4243781d5e`、`rules/shanten.py 5ac888c532645cfda4d85b1ab1ac6adf`、`cli.py 3457a318ce45e241d8869329fe0caaaa`、`tests/test_meld_gate.py b5a10d9e369330ac7c485cb4bc63ef35`、`tests/test_shape_value.py c4270e96b9e8c44c3bd0ce773c6de234`、`tools/ab_test.py 7429fdbc930ed135d586eb39c812ce9b` 与 22:10 冻结点**逐位一致** ✓ ⇒ `src/` 核心自冻结后未再漂移。**仍待 A 重立据的漂移**：`tools/trigger_counterfactual.py` 现读 **`8452bd4aef130bc876517d869290c4a1`**（A 22:58 `--mode discard` 改动，A 23:10 追认值为旧版 `7c84dab821…`）；**新文件** `tools/trigger_census_discard.py` 现读 **`43f1ed8a82ac762105cba5d0fcfa5495`**（untracked，A 22:58 新增）⇒ 请 A 补此二文件 md5 作为第二类触发点线冻结点。**我不代 A 裁决、不擅动其工具。**
+- **防线（采集线）**：`collector_supervisor` pid 88038 在线（etime ~1-09:35）✓；子进程 auto_session pid 666202（uv）/666205（.venv python）`--decider v5` ✓；`ss -ltn` 无 53838 监听 ✓；`data/experiments` 仅 `.lock` + `logs/`（无 experiments 数据）✓；`ps` 无 queue_supervisor/iterate_loop/ppo/ready_watch 残留 ✓。
+- **A 心跳**：最新 FROM A = 10-08 **23:10**（P1 全量读数 + 追认 md5）⇒ 活跃、心跳正常、**不代行**。A 名下在途：①`v7-chibest`/`v7-keepchi` 4 种子非劣读数 → 出最终裁决 + 建 `v7` 快照；②`trigger_counterfactual.py`(discard)/`trigger_census_discard.py` **新 md5 立据**；③第二类拆对子触发点普查/对拍（工具已备）；C 第二臂预登记；赛事资格判据（另线）。
+- **球权快照**：A＝上列 5 项；**我(B')＝chain3 出数（①4 种子进行中→②增量 2 种子）+ P1 全量已交付 + 用户三问已答**；C＝tie-break 第二臂（待 A 立案）。**我名下无阻塞待办，继续值守。**
+- **下巡检查点**：chain3 `v7-chibest` s2 是否出读数（→4 种子齐后归 A 判）；A 是否补 `trigger_counterfactual.py`/`trigger_census_discard.py` 新 md5；`src/` md5 是否再漂移（每巡必查）；上游 502 复发；decider 校验（每巡必查）。
+- **备注（卫生）**：本轮提交**仅** `notes/THREAD.md`（含我 23:10 未提交帖 + 本巡帖）；保留工作树既有未提交项 `agent/out/trigger-points/`（大数据集，不入仓）、`tools/trigger_counterfactual.py`+`tools/trigger_census_discard.py`（**A 车道在途，勿动**）、`.gitignore`、`tools/tournament_ready_watch.py`、`webapp/`（未请求，不擅动）。
+- 状态：OPEN（等 ①`v7-chibest`/`v7-keepchi` 4 种子非劣读数 → A 判；等 ②增量 A/B；等 A 建 `v7` 快照；等 A 补第二类触发点工具 md5）
+- 关联文件：`/tmp/v7chi_ab3.txt`、`/tmp/run_v7chi_chain3.sh`、`tools/trigger_counterfactual.py`、`tools/trigger_census_discard.py`、`agent/out/trigger-points/cf-chi-gap.jsonl`、`notes/experiments.json`
