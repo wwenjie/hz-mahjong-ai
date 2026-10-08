@@ -22045,12 +22045,13 @@
     20261008
    ],
    "field": "v5",
-   "status": "pending",
+   "status": "skipped",
    "registered_at": "2026-10-08T22:06:17+08:00",
    "registered_by": "coordinator (B')",
    "hypothesis": "**多选择吃法：按具体吃法算向听 + 同向听按进张宽度打破平局**（`v7-keepchi`，B'/coordinator 2026-10-08；用户 21:57 指示「按流程修复」）。**代码缺陷**：`HeuristicDecider._shanten_after_meld`（及其调用链 `_meld_plan`）**无视 `action.tiles`**，对每个 CHI 选项都取 `chi_combinations(counts,offered)[0]`。同一张 `offered` 的两种吃法可给出**不同**的「吃后最小向听」：扫 4000 副 13 张手牌，≥2 种吃法的 2904 个局面里 **1155 个（39.8%）**不同。后果包含**漏吃**：手牌 `1w6w6w8w9w2b3b9b1t北北白白`，上家出 `7w`，吃 `8w9w` 真能到向听 1（默认 STRICT 也该吃），但 `combos[0]=(6w,8w)` 只到向听 2 ⇒ 误判「无改善」而 PASS。第二个缺陷：同向听时恒选 `combos[0]`。用户局面 `5w 4b5b6b7b7b8b 1t4t6t7t8t9t` 上家出 `7t`，吃 `8t9t`（留 `6t7t` 两面，`shape_value=4.18`）> 吃 `6t8t`（`3.955`）；精确进张 71 vs 65 张。**改动（两处：①根因 + ②次排序）**：① 吃牌按 `action.tiles` 算向听（`_shanten_after_meld`与`_meld_plan`）；② 同向听以 `shape_value` 结构最优值次排序（打哪张 + 吃哪两张）。其余旋钮与 `v5` 完全一致 ⇒ 可归因。**默认档与冠军档 `meld_chi_best=False` ⇒ 逐位等于 v5**（未改默认档）。",
    "kill_criteria": "**机制门（并联，任一不满足即停）**：① 已知漏吃局面必须从 PASS 变为吃 `8w9w`（已过）；② 用户局面在放宽档下从吃 `6t8t` 变为吃 `8t9t`（已过）；③ `meld_chi_best=False` 时逐位等于 v5（已过）。**胜负门（A 22:30 ② 改「增量臂」）**：比较必须是 **`v7-keepchi` vs `v7-chibest`**（只比 ② 的增量，不 vs v5），主指标 `每场名次分`，4 种子合并，正显著（t ≥ 2 且 >0）⇒ 采纳 ②；否则关闭。剂量 4.09/场 ⇒ 功效足够。",
-   "field_note": "A 22:30 ②：②是①的下游增量，比较基准改为 `v7-chibest`（`v7-keepchi` vs `v7-chibest`），不是 vs v5。"
+   "field_note": "A 22:30 ②：②是①的下游增量，比较基准改为 `v7-chibest`（`v7-keepchi` vs `v7-chibest`），不是 vs v5。",
+   "skip_reason": "superseded by A 22:30 ② judging-unit change: the comparison baseline for arm ② was reset from v5 to v7-chibest (incremental arm). This job is not run as-is; the corresponding experiment is v7-keepchi-vs-chibest-samefield-s20261008/-s771013 (both done). Recorded by coordinator (B') 2026-10-09 02:20."
   },
   {
    "id": "v7-keepchi-vs-v5-samefield-s771013",
@@ -22061,12 +22062,13 @@
     771013
    ],
    "field": "v5",
-   "status": "pending",
+   "status": "skipped",
    "registered_at": "2026-10-08T22:06:17+08:00",
    "registered_by": "coordinator (B')",
    "hypothesis": "**多选择吃法：按具体吃法算向听 + 同向听按进张宽度打破平局**（`v7-keepchi`，B'/coordinator 2026-10-08；用户 21:57 指示「按流程修复」）。**代码缺陷**：`HeuristicDecider._shanten_after_meld`（及其调用链 `_meld_plan`）**无视 `action.tiles`**，对每个 CHI 选项都取 `chi_combinations(counts,offered)[0]`。同一张 `offered` 的两种吃法可给出**不同**的「吃后最小向听」：扫 4000 副 13 张手牌，≥2 种吃法的 2904 个局面里 **1155 个（39.8%）**不同。后果包含**漏吃**：手牌 `1w6w6w8w9w2b3b9b1t北北白白`，上家出 `7w`，吃 `8w9w` 真能到向听 1（默认 STRICT 也该吃），但 `combos[0]=(6w,8w)` 只到向听 2 ⇒ 误判「无改善」而 PASS。第二个缺陷：同向听时恒选 `combos[0]`。用户局面 `5w 4b5b6b7b7b8b 1t4t6t7t8t9t` 上家出 `7t`，吃 `8t9t`（留 `6t7t` 两面，`shape_value=4.18`）> 吃 `6t8t`（`3.955`）；精确进张 71 vs 65 张。**改动（两处：①根因 + ②次排序）**：① 吃牌按 `action.tiles` 算向听（`_shanten_after_meld`与`_meld_plan`）；② 同向听以 `shape_value` 结构最优值次排序（打哪张 + 吃哪两张）。其余旋钮与 `v5` 完全一致 ⇒ 可归因。**默认档与冠军档 `meld_chi_best=False` ⇒ 逐位等于 v5**（未改默认档）。",
    "kill_criteria": "**机制门（并联，任一不满足即停）**：① 已知漏吃局面必须从 PASS 变为吃 `8w9w`（已过）；② 用户局面在放宽档下从吃 `6t8t` 变为吃 `8t9t`（已过）；③ `meld_chi_best=False` 时逐位等于 v5（已过）。**胜负门（A 22:30 ② 改「增量臂」）**：比较必须是 **`v7-keepchi` vs `v7-chibest`**（只比 ② 的增量，不 vs v5），主指标 `每场名次分`，4 种子合并，正显著（t ≥ 2 且 >0）⇒ 采纳 ②；否则关闭。剂量 4.09/场 ⇒ 功效足够。",
-   "field_note": "A 22:30 ②：②是①的下游增量，比较基准改为 `v7-chibest`（`v7-keepchi` vs `v7-chibest`），不是 vs v5。"
+   "field_note": "A 22:30 ②：②是①的下游增量，比较基准改为 `v7-chibest`（`v7-keepchi` vs `v7-chibest`），不是 vs v5。",
+   "skip_reason": "superseded by A 22:30 ② judging-unit change: the comparison baseline for arm ② was reset from v5 to v7-chibest (incremental arm). This job is not run as-is; the corresponding experiment is v7-keepchi-vs-chibest-samefield-s20261008/-s771013 (both done). Recorded by coordinator (B') 2026-10-09 02:20."
   },
   {
    "id": "v7-chibest-vs-v5-samefield-s20261008",
@@ -22077,44 +22079,22 @@
     20261008
    ],
    "field": "v5",
-   "status": "pending",
+   "status": "done",
    "registered_at": "2026-10-08T22:10:21+08:00",
    "registered_by": "coordinator (B')",
    "hypothesis": "**多选择吃法【根因修复】①**（`v7-chibest`，2026-10-08；A 22:12 裁定：②是①的下游、须**单独成第二臂**，本臂=只修①）。**代码缺陷**：`HeuristicDecider._shanten_after_meld`（及 `_meld_plan`）**无视 `action.tiles`**，对每个 CHI 选项都取 `chi_combinations(counts,offered)[0]`。同一张 `offered` 的两种吃法可给出**不同**的「吃后最小向听」：扫 4000 副 13 张手牌，≥2 种吃法的 2904 个局面里 **1155 个（39.8%）**不同。后果包含**漏吃**：手牌 `1w6w6w8w9w2b3b9b1t北北白白`，上家出 `7w`，吃 `8w9w` 真能到向听 1（默认 STRICT 也该吃），但 `combos[0]=(6w,8w)` 只到向听 2 ⇒ 误判「无改善」而 PASS。**改动（只一处）**：吃牌按 `action.tiles` 算「吃后最小向听」。其余旋钮与 `v5` 完全一致 ⇒ 可归因。**默认档与冠军档 `meld_chi_best=False` ⇒ 逐位等于 v5**（未改默认档）。A 独立复现的空干预门：4000 个≥2吃法局面中「各吃法吃后向听不同」占 51.7%（条件采样）；`v5` vs `v7-chibest` 决策分歧 18.15%、**100% 为 pass→吃（漏吃）**、其他分歧 0 ⇒ 过门（≥5%）。",
    "kill_criteria": "**机制门（并联，任一不满足即停）**：① 已知漏吃局面必须从 PASS 变为吃 `8w9w`（已过）；② `meld_chi_best=False` 时逐位等于 v5（`test_meld_chi_best_default_is_bit_identical` 钉住：150 个随机响应局面逐位相同）。**胜负门（A 22:30 ① 改判据：机制正确 + 非劣）**：主指标 `每场名次分`，4 种子合并，点估计 ≥ −0.05 且不显著为负（t > −2）⇒ 采纳并建 `v7` 快照；显著为负（t ≤ −2）⇒ 回退。理由：这是度量错（不是偏好）；剂量 0.69/场 ⇒ 最坏伤害有界；不再要求正显著（480 场功效不足以检出）。",
    "field_note": "A 22:30 ①：改判据为「机制正确 + 非劣」（点估计≥−0.05 且不显著为负）。主指标每场名次分。",
    "result": {
-    "note": "B'(coordinator) 2026-10-08 23:55 机械读取（单种子，中间读数，非最终裁决）。全指标不显著；主指标「每场名次分」点估计 −0.008 ≥ −0.05 且 t=−0.31 > −2 ⇒ 与本臂非劣门一致。最终 4 种子合并判读归 A。",
+    "note": "B'(coordinator) 2026-10-09 02:20 机械补记（单种子 s20261008，中间读数，非最终裁决）。主指标「每场名次分」-0.008(t=-0.31)，总得分 -0.373(t=-1.00)，全不显著；点估计 -0.008 ≥ −0.05 且 t=-0.31 > −2 ⇒ 与本臂非劣门（A 22:30 ①）一致。4 种子合并裁决归 A。",
     "metrics": {
      "每场名次分": {
       "mean": -0.008,
-      "se": 0.027,
       "t": -0.31
      },
      "总得分": {
       "mean": -0.373,
-      "se": 0.373,
       "t": -1.0
-     },
-     "名次分": {
-      "mean": -0.019,
-      "se": 0.038,
-      "t": -0.49
-     },
-     "白板数": {
-      "mean": -0.021,
-      "se": 0.014,
-      "t": -1.48
-     },
-     "胡次数": {
-      "mean": -0.004,
-      "se": 0.011,
-      "t": -0.38
-     },
-     "番数总和": {
-      "mean": -0.013,
-      "se": 0.019,
-      "t": -0.66
      }
     },
     "verdict": "中间读数，非最终裁决（最终归 A）"
@@ -22129,44 +22109,22 @@
     771013
    ],
    "field": "v5",
-   "status": "pending",
+   "status": "done",
    "registered_at": "2026-10-08T22:10:21+08:00",
    "registered_by": "coordinator (B')",
    "hypothesis": "**多选择吃法【根因修复】①**（`v7-chibest`，2026-10-08；A 22:12 裁定：②是①的下游、须**单独成第二臂**，本臂=只修①）。**代码缺陷**：`HeuristicDecider._shanten_after_meld`（及 `_meld_plan`）**无视 `action.tiles`**，对每个 CHI 选项都取 `chi_combinations(counts,offered)[0]`。同一张 `offered` 的两种吃法可给出**不同**的「吃后最小向听」：扫 4000 副 13 张手牌，≥2 种吃法的 2904 个局面里 **1155 个（39.8%）**不同。后果包含**漏吃**：手牌 `1w6w6w8w9w2b3b9b1t北北白白`，上家出 `7w`，吃 `8w9w` 真能到向听 1（默认 STRICT 也该吃），但 `combos[0]=(6w,8w)` 只到向听 2 ⇒ 误判「无改善」而 PASS。**改动（只一处）**：吃牌按 `action.tiles` 算「吃后最小向听」。其余旋钮与 `v5` 完全一致 ⇒ 可归因。**默认档与冠军档 `meld_chi_best=False` ⇒ 逐位等于 v5**（未改默认档）。A 独立复现的空干预门：4000 个≥2吃法局面中「各吃法吃后向听不同」占 51.7%（条件采样）；`v5` vs `v7-chibest` 决策分歧 18.15%、**100% 为 pass→吃（漏吃）**、其他分歧 0 ⇒ 过门（≥5%）。",
    "kill_criteria": "**机制门（并联，任一不满足即停）**：① 已知漏吃局面必须从 PASS 变为吃 `8w9w`（已过）；② `meld_chi_best=False` 时逐位等于 v5（`test_meld_chi_best_default_is_bit_identical` 钉住：150 个随机响应局面逐位相同）。**胜负门（A 22:30 ① 改判据：机制正确 + 非劣）**：主指标 `每场名次分`，4 种子合并，点估计 ≥ −0.05 且不显著为负（t > −2）⇒ 采纳并建 `v7` 快照；显著为负（t ≤ −2）⇒ 回退。理由：这是度量错（不是偏好）；剂量 0.69/场 ⇒ 最坏伤害有界；不再要求正显著（480 场功效不足以检出）。",
    "field_note": "A 22:30 ①：改判据为「机制正确 + 非劣」（点估计≥−0.05 且不显著为负）。主指标每场名次分。",
    "result": {
-    "note": "B'(coordinator) 2026-10-08 23:55 机械读取（单种子，中间读数，非最终裁决）。全指标不显著；主指标「每场名次分」点估计 −0.015 ≥ −0.05 且 t=−0.55 > −2 ⇒ 与本臂非劣门一致。最终 4 种子合并判读归 A。",
+    "note": "B'(coordinator) 2026-10-09 02:20 机械补记（单种子 s771013，中间读数，非最终裁决）。主指标「每场名次分」-0.015(t=-0.55)，总得分 -0.325(t=-1.06)，全不显著；点估计 -0.015 ≥ −0.05 且 t=-0.55 > −2 ⇒ 与本臂非劣门（A 22:30 ①）一致。4 种子合并裁决归 A。",
     "metrics": {
      "每场名次分": {
       "mean": -0.015,
-      "se": 0.026,
       "t": -0.55
      },
      "总得分": {
       "mean": -0.325,
-      "se": 0.305,
       "t": -1.06
-     },
-     "名次分": {
-      "mean": -0.015,
-      "se": 0.046,
-      "t": -0.32
-     },
-     "白板数": {
-      "mean": -0.008,
-      "se": 0.012,
-      "t": -0.69
-     },
-     "胡次数": {
-      "mean": 0.0,
-      "se": 0.013,
-      "t": 0.0
-     },
-     "番数总和": {
-      "mean": -0.002,
-      "se": 0.014,
-      "t": -0.15
      }
     },
     "verdict": "中间读数，非最终裁决（最终归 A）"
