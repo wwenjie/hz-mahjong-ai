@@ -1,0 +1,41 @@
+{
+  "model": "runs/ppo_v5.pt",
+  "matches": 40,
+  "rounds": 8,
+  "seed": 20261002,
+  "elapsed_s": 1375.4772083150456,
+  "seats": [
+    {
+      "label": "bc",
+      "total_score": -1325,
+      "place_points": -205,
+      "god_count": 193,
+      "wins": 18,
+      "rounds": 320
+    },
+    {
+      "label": "v5",
+      "total_score": -40,
+      "place_points": -17,
+      "god_count": 189,
+      "wins": 78,
+      "rounds": 320
+    },
+    {
+      "label": "v5",
+      "total_score": 496,
+      "place_points": 57,
+      "god_count": 219,
+      "wins": 97,
+      "rounds": 320
+    },
+    {
+      "label": "v5",
+      "total_score": 869,
+      "place_points": 165,
+      "god_count": 204,
+      "wins": 124,
+      "rounds": 320
+    }
+  ]
+}

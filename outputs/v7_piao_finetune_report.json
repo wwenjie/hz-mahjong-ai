@@ -1,0 +1,57 @@
+{
+  "overall_subset": {
+    "n": 21979,
+    "base": 87.57,
+    "ft": 73.46,
+    "delta": -14.11
+  },
+  "tingpai": {
+    "n": 16979,
+    "base": 84.21,
+    "ft": 69.37,
+    "delta": -14.84
+  },
+  "piao": {
+    "n": 1285,
+    "base": 13.62,
+    "ft": 99.84,
+    "delta": 86.23,
+    "base_pred_hu": 1106,
+    "ft_pred_hu": 0,
+    "base_pred_hu_pct": 86.1,
+    "ft_pred_hu_pct": 0.0,
+    "engine_discard": 1285
+  },
+  "per_action": {
+    "discard": {
+      "n": 11810,
+      "base": 81.96,
+      "ft": 93.49,
+      "delta": 11.53
+    },
+    "chi": {
+      "n": 539,
+      "base": 83.67,
+      "ft": 0.0,
+      "delta": -83.67
+    },
+    "peng": {
+      "n": 405,
+      "base": 79.26,
+      "ft": 0.0,
+      "delta": -79.26
+    },
+    "gang": {
+      "n": 1986,
+      "base": 92.5,
+      "ft": 0.05,
+      "delta": -92.45
+    },
+    "pass": {
+      "n": 7239,
+      "base": 96.13,
+      "ft": 70.49,
+      "delta": -25.64
+    }
+  }
+}

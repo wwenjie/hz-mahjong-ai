@@ -1,24 +1,24 @@
 {
  "snapshot": {
-  "files": 2896,
-  "files_finished": 2887,
+  "files": 3546,
+  "files_finished": 3537,
   "files_abandoned": 9,
   "files_without_game_ended": 10,
-  "rounds": 23105
+  "rounds": 28305
  },
  "stats": {
-  "draws_total": 761727,
+  "draws_total": 931902,
   "draws_max_per_round": 63,
-  "chi": 45539,
-  "peng": 41401,
-  "gang_ming": 2354,
-  "gang_bu": 1529,
-  "gang_an": 904,
+  "chi": 55756,
+  "peng": 50531,
+  "gang_ming": 2886,
+  "gang_bu": 1892,
+  "gang_an": 1074,
   "files_with_seq_gaps": 0,
   "seq_gaps": 0,
-  "summary_rule_全收": 2573,
-  "summary_rule_只收非流局": 268,
-  "summary_rule_非流局+末位": 45
+  "summary_rule_全收": 3157,
+  "summary_rule_只收非流局": 332,
+  "summary_rule_非流局+末位": 47
  },
  "violations_by_kind": {
   "round_ended_count": 1,

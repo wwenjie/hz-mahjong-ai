@@ -1,0 +1,26 @@
+评估子集: 21979 条 (piao=1285, tingpai=16979, random=5000)
+GPU加载: 1.0s mem=0.07GB
+推理完成
+
+=== v2 对比报告 ===
+子集总体:  base=2.36%  ft=3.32%  d=+0.96pp
+听牌点:    base=2.75%  ft=4.25%  d=+1.50pp
+Piao点:    base=0.86%  ft=5.14%  d=+4.28pp
+   discard: base=0.66%  ft=1.41%  d=+0.75pp
+       chi: base=0.37%  ft=2.78%  d=+2.41pp
+      peng: base=1.23%  ft=1.23%  d=+0.00pp
+      gang: base=13.44%  ft=26.03%  d=+12.59pp
+      pass: base=2.29%  ft=0.36%  d=-1.93pp
+
+验收:
+  [XX] piao >= 90
+  [XX] tingpai >= 82 且 >= base-3pp
+  [XX] chi >= 75
+  [XX] peng >= 75
+  [XX] gang >= 75
+  [XX] pass >= 93
+  [XX] overall >= 86
+
+结论: FAIL: v2 未达标，建议转方案 A（混合架构）
+
+已保存: outputs/v7_piao_finetune_v2_report.json

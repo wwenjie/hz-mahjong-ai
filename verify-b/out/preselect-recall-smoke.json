@@ -1,0 +1,101 @@
+{
+  "config": {
+    "seeds": 1,
+    "matches_per_seed": 5,
+    "base_seed": 20261001,
+    "knobs": {
+      "wait_aware_tenpai": true,
+      "shape_value": true,
+      "ukeire_order": "blocks",
+      "ukeire_max_shanten": 3,
+      "ukeire_candidates": 10,
+      "ukeire_preselect": 0
+    },
+    "wall_sec": 22.9
+  },
+  "n_events": 35,
+  "mean_tied": 4.685714285714286,
+  "recall": {
+    "5": {
+      "recall@1": 0.9142857142857143,
+      "recall@3": 0.8285714285714286,
+      "n_events": 35,
+      "by_shanten": {
+        "0": {
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "n": 6
+        },
+        "1": {
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "n": 14
+        },
+        "2": {
+          "recall@1": 0.875,
+          "recall@3": 0.625,
+          "n": 8
+        },
+        "3": {
+          "recall@1": 0.7142857142857143,
+          "recall@3": 0.5714285714285714,
+          "n": 7
+        }
+      }
+    },
+    "6": {
+      "recall@1": 1.0,
+      "recall@3": 0.9714285714285714,
+      "n_events": 35,
+      "by_shanten": {
+        "0": {
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "n": 6
+        },
+        "1": {
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "n": 14
+        },
+        "2": {
+          "recall@1": 1.0,
+          "recall@3": 0.875,
+          "n": 8
+        },
+        "3": {
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "n": 7
+        }
+      }
+    },
+    "8": {
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "n_events": 35,
+      "by_shanten": {
+        "0": {
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "n": 6
+        },
+        "1": {
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "n": 14
+        },
+        "2": {
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "n": 8
+        },
+        "3": {
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "n": 7
+        }
+      }
+    }
+  }
+}

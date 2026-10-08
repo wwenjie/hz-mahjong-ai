@@ -1,0 +1,110 @@
+======================================================================
+bc_v7 conversion report: audit_config1.npz
+======================================================================
+
+Input: data/audit_config1.npz
+Total samples: 435353
+
+[CHECK 1] avail legality: y_action ∈ avail = 435353/435353 (100.00%)
+  PASS
+
+[CHECK 2] tile legality (discard, n=247116):
+  y_tile ∈ [0,33]: 247116/247116 (100.00%)
+  hand[y_tile] > 0: 247116/247116 (of in-range)
+  PASS
+
+[CHECK 3] pass y_tile values (n=169241):
+  y_tile=-1: 169241 (100.0%)
+
+[CHECK 4] sample count: 435353
+
+  Action distribution:
+    discard :  247116 ( 56.8%)  [ref: 78.0%]
+    chi     :   10969 (  2.5%)  [ref: 4.1%]
+    peng    :    7184 (  1.7%)  [ref: 3.5%]
+    gang    :     843 (  0.2%)  [ref: 0.7%]
+    hu      :       0 (  0.0%)  [ref: 0.0%]
+    pass    :  169241 ( 38.9%)  [ref: 11.5%]
+
+[CHECK 5] match_id coverage: 397 unique matches
+  Samples per match: min=896, max=1718, mean=1096.6, median=1076
+  Top 5 matches by sample count:
+    a_df7304f178eb: 1718
+    a_3230cb70615a: 1621
+    a_7ddf7b498311: 1569
+    a_6ffce13511b9: 1546
+    a_8c0c7f7b11fc: 1513
+
+======================================================================
+Splitting by match_id (valid_frac=0.05, seed=42)
+======================================================================
+  Total matches: 397
+  Train matches: 378 (95.2%)
+  Valid matches: 19 (4.8%)
+  Train samples: 413710 (95.0%)
+  Valid samples: 21643 (5.0%)
+
+  No leakage: train and valid share no match_ids ✓
+
+  Train action distribution:
+    discard :  234888 ( 56.8%)
+    chi     :   10451 (  2.5%)
+    peng    :    6818 (  1.6%)
+    gang    :     797 (  0.2%)
+    hu      :       0 (  0.0%)
+    pass    :  160756 ( 38.9%)
+
+  Valid action distribution:
+    discard :   12228 ( 56.5%)
+    chi     :     518 (  2.4%)
+    peng    :     366 (  1.7%)
+    gang    :      46 (  0.2%)
+    hu      :       0 (  0.0%)
+    pass    :    8485 ( 39.2%)
+
+Saving full (with match_id) to data/bc_v7_config1_full.npz ...
+  Saved 435353 samples
+Saving train split (no match_id) to data/bc_v7_config1_train_split.npz ...
+  Saved 413710 samples
+Saving valid split (no match_id) to data/bc_v7_config1_valid.npz ...
+  Saved 21643 samples
+Saving split mapping to data/bc_v7_config1_split.json ...
+  Saved 397 match_id -> split mappings
+
+[CHECK 6] Verify no object arrays in train/valid npz:
+  train: no object arrays ✓ (loadable with allow_pickle=False)
+  train keys: ['action_history', 'avail', 'dealer', 'discards', 'god', 'hand', 'melds', 'phase', 'scores', 'seat', 'target', 'turn', 'wall_remaining', 'y_action', 'y_tile']
+    action_history: (413710, 200) int8
+    avail: (413710, 6) float32
+    dealer: (413710,) int8
+    discards: (413710, 4, 24) int8
+    god: (413710,) int8
+    hand: (413710, 34) int8
+    melds: (413710, 4, 4, 3) int8
+    phase: (413710,) int8
+    scores: (413710, 4) int32
+    seat: (413710,) int8
+    target: (413710,) int8
+    turn: (413710,) int8
+    wall_remaining: (413710,) int32
+    y_action: (413710,) int64
+    y_tile: (413710,) int64
+  valid: no object arrays ✓ (loadable with allow_pickle=False)
+  valid keys: ['action_history', 'avail', 'dealer', 'discards', 'god', 'hand', 'melds', 'phase', 'scores', 'seat', 'target', 'turn', 'wall_remaining', 'y_action', 'y_tile']
+    action_history: (21643, 200) int8
+    avail: (21643, 6) float32
+    dealer: (21643,) int8
+    discards: (21643, 4, 24) int8
+    god: (21643,) int8
+    hand: (21643, 34) int8
+    melds: (21643, 4, 4, 3) int8
+    phase: (21643,) int8
+    scores: (21643, 4) int32
+    seat: (21643,) int8
+    target: (21643,) int8
+    turn: (21643,) int8
+    wall_remaining: (21643,) int32
+    y_action: (21643,) int64
+    y_tile: (21643,) int64
+
+ALL CHECKS PASSED ✓

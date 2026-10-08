@@ -1,0 +1,41 @@
+{
+  "model": "/home/wuwenjie01/majiang_rl/runs/winner_bc_gpu.pt",
+  "matches": 40,
+  "rounds": 8,
+  "seed": 20261002,
+  "elapsed_s": 1493.4523705439642,
+  "seats": [
+    {
+      "label": "bc",
+      "total_score": -1178,
+      "place_points": -186,
+      "god_count": 200,
+      "wins": 23,
+      "rounds": 320
+    },
+    {
+      "label": "v5",
+      "total_score": 581,
+      "place_points": 54,
+      "god_count": 189,
+      "wins": 97,
+      "rounds": 320
+    },
+    {
+      "label": "v5",
+      "total_score": 485,
+      "place_points": 79,
+      "god_count": 214,
+      "wins": 102,
+      "rounds": 320
+    },
+    {
+      "label": "v5",
+      "total_score": 112,
+      "place_points": 53,
+      "god_count": 188,
+      "wins": 94,
+      "rounds": 320
+    }
+  ]
+}

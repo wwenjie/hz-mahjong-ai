@@ -1,0 +1,47 @@
+{
+  "subset_size": 21979,
+  "model": "runs/bc_v7_piao_finetuned_v2_lr3e5.pt",
+  "base": {
+    "overall": 87.57,
+    "piao": 13.62,
+    "tingpai": 84.21,
+    "per_action": {
+      "discard": 81.96,
+      "discard_n": 11810,
+      "chi": 83.67,
+      "chi_n": 539,
+      "peng": 79.26,
+      "peng_n": 405,
+      "gang": 92.5,
+      "gang_n": 1986,
+      "pass": 96.13,
+      "pass_n": 7239
+    }
+  },
+  "finetuned_v2": {
+    "overall": 92.95,
+    "piao": 60.31,
+    "tingpai": 91.33,
+    "per_action": {
+      "discard": 92.03,
+      "chi": 98.52,
+      "peng": 96.3,
+      "gang": 98.09,
+      "pass": 92.44
+    }
+  },
+  "acceptance": {
+    "checks": {
+      "piao >= 90": false,
+      "tingpai >= 82 且 >= base-3pp": true,
+      "chi >= 75": true,
+      "peng >= 75": true,
+      "gang >= 75": true,
+      "pass >= 93": false,
+      "overall >= 86": true
+    },
+    "passed": false,
+    "hard_fail": false,
+    "recommendation": "FAIL: v2 未达标，建议转方案 A（混合架构）"
+  }
+}

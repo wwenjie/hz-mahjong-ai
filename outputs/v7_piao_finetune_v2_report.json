@@ -1,0 +1,187 @@
+{
+  "subset_size": 21979,
+  "model": "runs/bc_v7_piao_finetuned_v2.pt",
+  "base": {
+    "overall": 87.57,
+    "piao": 13.62,
+    "tingpai": 84.21,
+    "per_action": {
+      "discard": 81.96,
+      "discard_n": 11810,
+      "chi": 83.67,
+      "chi_n": 539,
+      "peng": 79.26,
+      "peng_n": 405,
+      "gang": 92.5,
+      "gang_n": 1986,
+      "pass": 96.13,
+      "pass_n": 7239
+    }
+  },
+  "finetuned_v2": {
+    "overall": 96.37,
+    "piao": 90.27,
+    "tingpai": 95.76,
+    "per_action": {
+      "discard": 98.04,
+      "chi": 97.4,
+      "peng": 86.42,
+      "gang": 96.07,
+      "pass": 94.21
+    }
+  },
+  "acceptance": {
+    "checks": {
+      "piao >= 90": true,
+      "tingpai >= 82 且 >= base-3pp": true,
+      "chi >= 75": true,
+      "peng >= 75": true,
+      "gang >= 75": true,
+      "pass >= 93": true,
+      "overall >= 86": true
+    },
+    "passed": true,
+    "hard_fail": false,
+    "recommendation": "PASS: v2 微调达标，可进入 A/B 评测"
+  },
+  "winning_config": {
+    "base_model": "runs/bc_v7_base.pt",
+    "data": "data/audit_v56_with_model.npz",
+    "finetune_indices": "data/finetune_indices_v2.npy",
+    "out": "runs/bc_v7_piao_finetuned_v2_pw12.pt",
+    "epochs": 1,
+    "batch_size": 512,
+    "lr": 5e-05,
+    "weight_decay": 0.0001,
+    "kl_coef": 0.5,
+    "piao_kl_weight": 0.0,
+    "piao_bce_weight": 12.0,
+    "tile_loss_weight": 0.3,
+    "seed": 42
+  },
+  "winning_train": {
+    "steps": 37,
+    "train_seconds": 65.991014146,
+    "avg_loss": 0.8040735858517725,
+    "avg_bce": 0.28606287098011457,
+    "avg_tile": 1.5200531257165444,
+    "avg_kl": 0.12398951652938046
+  },
+  "dataset": {
+    "finetune_indices": "data/finetune_indices_v2.npy",
+    "total": 19411,
+    "piao_oversampled_5x": 6425,
+    "piao_pct": 33.1,
+    "stratified_control": {
+      "discard": 3000,
+      "pass": 2000,
+      "chi": 2000,
+      "peng": 2000,
+      "gang": 1986,
+      "tingpai_discard": 2000
+    }
+  },
+  "sweep_history": [
+    {
+      "name": "kl0.5_lr1e-5",
+      "kl": 0.5,
+      "lr": 1e-05,
+      "piao_bce_weight": 1.0,
+      "piao": 42.88,
+      "overall": 91.06,
+      "pass": 93.81,
+      "note": "KL 过强，piao 严重不足"
+    },
+    {
+      "name": "kl0.1_lr1e-5",
+      "kl": 0.1,
+      "lr": 1e-05,
+      "piao_bce_weight": 1.0,
+      "piao": 47.78,
+      "overall": 91.59,
+      "pass": 93.77,
+      "note": "KL 放松收益有限 → 真正瓶颈是 lr"
+    },
+    {
+      "name": "lr3e-5_kl0.1",
+      "kl": 0.1,
+      "lr": 3e-05,
+      "piao_bce_weight": 1.0,
+      "piao": 60.31,
+      "overall": 92.95,
+      "pass": 92.44,
+      "note": "piao 上涨但 pass 跌破 93"
+    },
+    {
+      "name": "lr3e-5_kl0.1_piaoExempt",
+      "kl": 0.1,
+      "lr": 3e-05,
+      "piao_bce_weight": 1.0,
+      "piao_kl_weight": 0.0,
+      "piao": 80.93,
+      "overall": 95.11,
+      "pass": 92.68,
+      "note": "piao 豁免 KL（关键修复：KL 在 piao 点对抗学习）"
+    },
+    {
+      "name": "lr5e-5_kl0.2",
+      "kl": 0.2,
+      "lr": 5e-05,
+      "piao_bce_weight": 1.0,
+      "piao": 83.04,
+      "overall": 95.48,
+      "pass": 92.44,
+      "note": "pass 仍低 → kl 提到 0.5 保护 pass"
+    },
+    {
+      "name": "lr5e-5_kl0.5",
+      "kl": 0.5,
+      "lr": 5e-05,
+      "piao_bce_weight": 1.0,
+      "piao": 84.82,
+      "overall": 95.77,
+      "pass": 93.29,
+      "note": "pass 救回，piao 还差 5pp"
+    },
+    {
+      "name": "lr5e-5_kl0.5_pw2",
+      "kl": 0.5,
+      "lr": 5e-05,
+      "piao_bce_weight": 2.0,
+      "piao": 86.61,
+      "overall": 95.99,
+      "pass": 93.44,
+      "note": "piao 样本 BCE 加权生效"
+    },
+    {
+      "name": "lr5e-5_kl0.5_pw4",
+      "kl": 0.5,
+      "lr": 5e-05,
+      "piao_bce_weight": 4.0,
+      "piao": 88.4,
+      "overall": 96.15,
+      "pass": 93.62,
+      "note": "+1.8pp，继续"
+    },
+    {
+      "name": "lr5e-5_kl0.5_pw8",
+      "kl": 0.5,
+      "lr": 5e-05,
+      "piao_bce_weight": 8.0,
+      "piao": 89.49,
+      "overall": 96.26,
+      "pass": 93.99,
+      "note": "差 0.51pp"
+    },
+    {
+      "name": "lr5e-5_kl0.5_pw12 (WINNER)",
+      "kl": 0.5,
+      "lr": 5e-05,
+      "piao_bce_weight": 12.0,
+      "piao": 90.27,
+      "overall": 96.37,
+      "pass": 94.21,
+      "note": "全部达标"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "model": "runs/bc_v7_expert_ft.pt",
+  "protocol": "hybrid_v5_hu_peng",
+  "matches": 1,
+  "rounds": 1,
+  "seed": 123,
+  "elapsed_s": 0.9213825860060751,
+  "seats": [
+    {
+      "label": "hybrid",
+      "total_score": -8,
+      "place_points": -3,
+      "god_count": 0,
+      "wins": 0,
+      "rounds": 1
+    },
+    {
+      "label": "v5",
+      "total_score": -1,
+      "place_points": 0,
+      "god_count": 1,
+      "wins": 0,
+      "rounds": 1
+    },
+    {
+      "label": "v5",
+      "total_score": -1,
+      "place_points": 0,
+      "god_count": 1,
+      "wins": 0,
+      "rounds": 1
+    },
+    {
+      "label": "v5",
+      "total_score": 10,
+      "place_points": 3,
+      "god_count": 1,
+      "wins": 1,
+      "rounds": 1
+    }
+  ]
+}

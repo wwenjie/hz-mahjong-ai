@@ -1,0 +1,16 @@
+Device: cuda
+Args: {'base_model': 'runs/bc_v7_base.pt', 'data': 'data/audit_v56_with_model.npz', 'finetune_indices': 'data/finetune_indices_v2.npy', 'out': 'runs/bc_v7_piao_finetuned_v2_lr5e5k5.pt', 'epochs': 1, 'batch_size': 512, 'lr': 5e-05, 'weight_decay': 0.0001, 'kl_coef': 0.5, 'piao_kl_weight': 0.0, 'tile_loss_weight': 0.3, 'seed': 42}
+模型加载完成: 0.94M 参数 (runs/bc_v7_base.pt)
+微调样本: 19411
+加载数据: data/audit_v56_with_model.npz
+采样 19411 条
+数据已加载到 cuda（含基座分布，piao 样本 6425 条）
+
+=== 开始微调 v2 (1 epoch, lr=5e-05, kl_coef=0.5) ===
+  step 10 loss=1.2289 (bce=0.6278 tile=1.8879 kl=0.0694) (14.9s)
+  step 20 loss=0.9797 (bce=0.4255 tile=1.6856 kl=0.0971) (28.5s)
+  step 30 loss=0.8645 (bce=0.3447 tile=1.5400 kl=0.1157) (44.3s)
+
+训练完成: 37 steps, 55.2s, avg_loss=0.8118
+模型已保存: runs/bc_v7_piao_finetuned_v2_lr5e5k5.pt
+训练日志: runs/bc_v7_piao_finetuned_v2_lr5e5k5.train_log.json

@@ -1,0 +1,71 @@
+======================================================================
+bc_v7 conversion report: audit_v56_new216.npz
+======================================================================
+
+Input: data/audit_v56_new216.npz
+Total samples: 238542
+
+[CHECK 1] avail legality: y_action ∈ avail = 238542/238542 (100.00%)
+  PASS
+
+[CHECK 2] tile legality (discard, n=136568):
+  y_tile ∈ [0,33]: 136568/136568 (100.00%)
+  hand[y_tile] > 0: 136568/136568 (of in-range)
+  PASS
+
+[CHECK 3] pass y_tile values (n=91647):
+  y_tile=-1: 91647 (100.0%)
+  (reference bc_v7: y_tile=-1 (3335, 2.0%), y_tile=34 (160718, 98.0%))
+
+[CHECK 4] sample count: 238542
+
+  Action distribution:
+    discard :  136568 ( 57.3%)  [ref: 78.0%]
+    chi     :    5905 (  2.5%)  [ref: 4.1%]
+    peng    :    3930 (  1.6%)  [ref: 3.5%]
+    gang    :     492 (  0.2%)  [ref: 0.7%]
+    hu      :       0 (  0.0%)  [ref: 0.0%]
+    pass    :   91647 ( 38.4%)  [ref: 11.5%]
+
+[CHECK 5] game_id coverage: 2148 unique games
+  Samples per game: min=57, max=205, mean=111.1, median=110
+  Top 10 games by sample count:
+    a_df7304f178eb_r1_b9_t0: 205
+    a_7ddf7b498311_r1_b4_t0: 192
+    a_3f78c800bdfe_r1_b1_t0: 187
+    a_df7304f178eb_r1_b1_t0: 183
+    a_df7304f178eb_r1_b0_t0: 183
+    a_77c4e1433a30_r1_b6_t0: 179
+    a_df7304f178eb_r1_b7_t0: 179
+    a_77c4e1433a30_r1_b2_t0: 176
+    a_77c4e1433a30_r1_b1_t0: 176
+    a_df7304f178eb_r1_b8_t0: 175
+  Bottom 5 games by sample count:
+    a_62010bba8686_r1_b1_t0: 57
+    a_aef61f700ee8_r1_b5_t0: 60
+    a_2cb6010d075f_r1_b6_t0: 63
+    a_604d927582a3_r1_b4_t0: 65
+    a_faf88e43f100_r1_b0_t0: 66
+
+Saving to data/bc_v7_new216.npz ...
+Saved 238542 samples to data/bc_v7_new216.npz
+
+Output fields:
+  action_history: (238542, 200) int8
+  avail: (238542, 6) float32
+  dealer: (238542,) int8
+  discards: (238542, 4, 24) int8
+  god: (238542,) int8
+  hand: (238542, 34) int8
+  match_id: (238542,) object
+  melds: (238542, 4, 4, 3) int8
+  phase: (238542,) int8
+  scores: (238542, 4) int32
+  seat: (238542,) int8
+  target: (238542,) int8
+  turn: (238542,) int8
+  wall_remaining: (238542,) int32
+  y_action: (238542,) int64
+  y_tile: (238542,) int64
+
+ALL CHECKS PASSED ✓

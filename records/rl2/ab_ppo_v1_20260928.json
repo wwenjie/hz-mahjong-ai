@@ -1,0 +1,37 @@
+{
+  "model": "runs/ppo_v1.pt",
+  "matches": 40,
+  "rounds": 8,
+  "seed": 20260928,
+  "elapsed_s": 541.4823290609056,
+  "seats": [
+    {
+      "label": "bc",
+      "total_score": -1676,
+      "place_points": -246,
+      "wins": 0,
+      "rounds": 320
+    },
+    {
+      "label": "heuristic",
+      "total_score": 822,
+      "place_points": 65,
+      "wins": 92,
+      "rounds": 320
+    },
+    {
+      "label": "heuristic",
+      "total_score": 569,
+      "place_points": 98,
+      "wins": 102,
+      "rounds": 320
+    },
+    {
+      "label": "heuristic",
+      "total_score": 285,
+      "place_points": 83,
+      "wins": 96,
+      "rounds": 320
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "probe": "grp-v2-dynamic",
+  "label": "终局累计分名次分（1st=+3/2nd=+1/3rd=-1/4th=-3）",
+  "feature": "动态对局特征 20 维（当前局况 4 + 前3局轨迹 12 + 动量聚合 4），真人 auto_sessions",
+  "model": "HistGradientBoostingRegressor(max_iter=200, max_depth=6, lr=0.1)",
+  "config": {
+    "data_dir": "data/auto_sessions",
+    "max_files": 400,
+    "hist_len": 3,
+    "seed": 20261004,
+    "cv_folds": 5
+  },
+  "n_total": 7772,
+  "folds": [
+    {
+      "fold": 0,
+      "n_train": 6176,
+      "n_valid": 1596,
+      "pearson_r": 0.6827331084234856,
+      "r2": 0.4660881311759181
+    },
+    {
+      "fold": 1,
+      "n_train": 6304,
+      "n_valid": 1468,
+      "pearson_r": 0.7365230147054087,
+      "r2": 0.5419429472117057
+    },
+    {
+      "fold": 2,
+      "n_train": 6152,
+      "n_valid": 1620,
+      "pearson_r": 0.6878364726227568,
+      "r2": 0.47141933009628345
+    },
+    {
+      "fold": 3,
+      "n_train": 6216,
+      "n_valid": 1556,
+      "pearson_r": 0.668704260607057,
+      "r2": 0.4390797680981705
+    },
+    {
+      "fold": 4,
+      "n_train": 6240,
+      "n_valid": 1532,
+      "pearson_r": 0.6754425267629912,
+      "r2": 0.4513401745133938
+    }
+  ],
+  "cv_r2_mean": 0.4739740702190943,
+  "cv_r2_std": 0.03582844826851243,
+  "cv_pearson_r_mean": 0.6902478766243398,
+  "elapsed_s": {
+    "collect": 1.8,
+    "train": 3.9
+  },
+  "verdict": "GO: CV R²≥10% ⇒ 动态 GRP 有信号，可接进 PPO reward shaping",
+  "python": "3.12.14"
+}

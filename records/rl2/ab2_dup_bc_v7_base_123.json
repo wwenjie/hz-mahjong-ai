@@ -1,0 +1,14 @@
+{
+  "model": "runs/bc_v7_base.pt",
+  "protocol": "dup4",
+  "matches": 1,
+  "rounds": 8,
+  "seed": 123,
+  "elapsed_s": 5.174736340995878,
+  "total_score": 0,
+  "place_points": 0,
+  "god_count": 5,
+  "wins": 2,
+  "win_rate": 0.25,
+  "avg_score": 0.0
+}

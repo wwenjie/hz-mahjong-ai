@@ -1,0 +1,42 @@
+{
+  "model": "runs/bc_v6_ep01_timeout.pt",
+  "rule_fallback": false,
+  "matches": 40,
+  "rounds": 8,
+  "seed": 20261002,
+  "elapsed_s": 10872.590712752077,
+  "seats": [
+    {
+      "label": "bcv6",
+      "total_score": -1494,
+      "place_points": -251,
+      "god_count": 192,
+      "wins": 4,
+      "rounds": 320
+    },
+    {
+      "label": "v5",
+      "total_score": 579,
+      "place_points": 43,
+      "god_count": 185,
+      "wins": 91,
+      "rounds": 320
+    },
+    {
+      "label": "v5",
+      "total_score": 551,
+      "place_points": 105,
+      "god_count": 220,
+      "wins": 108,
+      "rounds": 320
+    },
+    {
+      "label": "v5",
+      "total_score": 364,
+      "place_points": 103,
+      "god_count": 208,
+      "wins": 112,
+      "rounds": 320
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "matches": 40,
+  "rounds": 320,
+  "flow_rate": 0.009375,
+  "seed": 20261003,
+  "seats": [
+    {
+      "label": "rule",
+      "total_score": -670,
+      "place_points": -106,
+      "god_count": 190,
+      "win_rate": 0.153125,
+      "average_score": -2.09375,
+      "wins": 49,
+      "rounds": 320
+    },
+    {
+      "label": "v5",
+      "total_score": 367,
+      "place_points": 57,
+      "god_count": 201,
+      "win_rate": 0.296875,
+      "average_score": 1.146875,
+      "wins": 95,
+      "rounds": 320
+    },
+    {
+      "label": "v5",
+      "total_score": -56,
+      "place_points": 17,
+      "god_count": 215,
+      "win_rate": 0.26875,
+      "average_score": -0.175,
+      "wins": 86,
+      "rounds": 320
+    },
+    {
+      "label": "v5",
+      "total_score": 359,
+      "place_points": 32,
+      "god_count": 206,
+      "win_rate": 0.271875,
+      "average_score": 1.121875,
+      "wins": 87,
+      "rounds": 320
+    }
+  ]
+}

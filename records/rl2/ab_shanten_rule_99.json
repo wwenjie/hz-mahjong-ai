@@ -1,0 +1,48 @@
+{
+  "matches": 1,
+  "rounds": 2,
+  "flow_rate": 0.0,
+  "seed": 99,
+  "seats": [
+    {
+      "label": "rule",
+      "total_score": -16,
+      "place_points": -4,
+      "god_count": 0,
+      "win_rate": 0.0,
+      "average_score": -8.0,
+      "wins": 0,
+      "rounds": 2
+    },
+    {
+      "label": "v5",
+      "total_score": 34,
+      "place_points": 6,
+      "god_count": 3,
+      "win_rate": 1.0,
+      "average_score": 17.0,
+      "wins": 2,
+      "rounds": 2
+    },
+    {
+      "label": "v5",
+      "total_score": -9,
+      "place_points": -1,
+      "god_count": 1,
+      "win_rate": 0.0,
+      "average_score": -4.5,
+      "wins": 0,
+      "rounds": 2
+    },
+    {
+      "label": "v5",
+      "total_score": -9,
+      "place_points": -1,
+      "god_count": 1,
+      "win_rate": 0.0,
+      "average_score": -4.5,
+      "wins": 0,
+      "rounds": 2
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "subset_size": 21979,
+  "model": "runs/bc_v7_piao_finetuned_v2_pw12.pt",
+  "base": {
+    "overall": 87.57,
+    "piao": 13.62,
+    "tingpai": 84.21,
+    "per_action": {
+      "discard": 81.96,
+      "discard_n": 11810,
+      "chi": 83.67,
+      "chi_n": 539,
+      "peng": 79.26,
+      "peng_n": 405,
+      "gang": 92.5,
+      "gang_n": 1986,
+      "pass": 96.13,
+      "pass_n": 7239
+    }
+  },
+  "finetuned_v2": {
+    "overall": 96.37,
+    "piao": 90.27,
+    "tingpai": 95.76,
+    "per_action": {
+      "discard": 98.04,
+      "chi": 97.4,
+      "peng": 86.42,
+      "gang": 96.07,
+      "pass": 94.21
+    }
+  },
+  "acceptance": {
+    "checks": {
+      "piao >= 90": true,
+      "tingpai >= 82 且 >= base-3pp": true,
+      "chi >= 75": true,
+      "peng >= 75": true,
+      "gang >= 75": true,
+      "pass >= 93": true,
+      "overall >= 86": true
+    },
+    "passed": true,
+    "hard_fail": false,
+    "recommendation": "PASS: v2 微调达标，可进入 A/B 评测"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "model": "runs/bc_v5.pt",
+  "matches": 40,
+  "rounds": 8,
+  "seed": 20261002,
+  "elapsed_s": 1367.5744733159663,
+  "seats": [
+    {
+      "label": "bc",
+      "total_score": -835,
+      "place_points": -155,
+      "god_count": 198,
+      "wins": 31,
+      "rounds": 320
+    },
+    {
+      "label": "v5",
+      "total_score": 552,
+      "place_points": 59,
+      "god_count": 191,
+      "wins": 97,
+      "rounds": 320
+    },
+    {
+      "label": "v5",
+      "total_score": 304,
+      "place_points": 60,
+      "god_count": 204,
+      "wins": 97,
+      "rounds": 320
+    },
+    {
+      "label": "v5",
+      "total_score": -21,
+      "place_points": 36,
+      "god_count": 198,
+      "wins": 88,
+      "rounds": 320
+    }
+  ]
+}
