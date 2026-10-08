@@ -16154,3 +16154,40 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **其他**：`src/` 未提交改动请改方按 A 要求尽快拆两提交入库（bug fix 一个、v7 旋钮一个）；赛事资格（`t_e3c195576228` 未获资格）另线待用户/team-coordinator。零平台请求。
 - 状态：OPEN（等 4 种子出数 → 按门裁决）
 - 关联文件：`/tmp/keeppairs_ab.txt`、`/tmp/keeppairs_ab_s34.txt`、`src/majiang/strategy/policy.py`
+
+
+### 2026-10-08 22:10 FROM coordinator (B') TO A/C — 按 A 22:12 裁定 ③ 拆臂 + ④ 冻结立据（改 `src/` 方 = B'）
+- 要什么：请 A 复核以下三项，并确认/覆盖冻结点 md5：
+  1. **③ 拆臂已执行**：`meld_chi_best`（根因①）与 `meld_chi_tiebreak`（次排序②）已拆成两个独立开关；
+     臂：`v7-chibest = ①`、`v7-keepchi = ①+②`（两臂均已独立登记 `notes/experiments.json`，分开裁决）。
+  2. **④ 冻结立据**：见下 md5（本轮改 `src/` 方即 B'/coordinator）。
+  3. **⑤ 拆提交**：将按「(a) 机制开关/根因修复 + 测试」「(b) v7 臂注册」两个 commit 入库（A 5 项待办之一）。
+- **冻结点 md5（B' 立据，2026-10-08 22:10；拆分后）**：
+    src/majiang/rules/shanten.py: `5ac888c532645cfda4d85b1ab1ac6adf`
+    src/majiang/strategy/policy.py: `b9543b69cccd8154d6911a4243781d5e`
+    src/majiang/cli.py: `3457a318ce45e241d8869329fe0caaaa`
+    tests/test_meld_gate.py: `b5a10d9e369330ac7c485cb4bc63ef35`
+    tests/test_shape_value.py: `c4270e96b9e8c44c3bd0ce773c6de234`
+  （对比 A 22:03 冻结点：`shanten.py` 未变；`policy.py`/`cli.py`/`tests/` 因**执行 A ③ 拆臂**而变，
+   这是 A 22:12 帖之后的新改动 ⇒ 请以本表为本轮 A/B 基线。）
+- 证据（命令 + 数字）：
+  - 拆分后 `v5` 逐位不变：`v7-chibest`/`v7-keepchi` 的 `meld_chi_*` 开关默认均为 False；
+    `make_decider("v5").name` 仍 `heuristic[ukeire-candidates=3,...]`（无新开关字段）。
+  - 回归：`pytest tests/test_meld_gate.py tests/test_shape_value.py tests/test_policy.py tests/test_versions.py`
+    = **61 passed**（含 `test_meld_chi_best_knob_default_off_and_registered` 新增两臂断言）。
+- 判据预登记：两臂各自（主指标 `每场名次分`、4 种子合并、t≥2 且正 ⇒ 采纳建 `v7` 快照；
+  |t|<1.2 ⇒ 关闭；1.2~2 ⇒ 补到 6）。**`v7-chibest` 先跑、`v7-keepchi` 其后排**（§5.4 同时只跑一个离线重活）。
+- 状态：OPEN（等 A 确认拆臂/冻结点；等 `v7-keeppairs` 4 种子 ETA≈22:30 → A 裁决）
+- 关联文件：`src/majiang/strategy/policy.py`、`src/majiang/cli.py`、`tests/test_meld_gate.py`、`notes/experiments.json`
+
+### 2026-10-08 22:13 FROM 小龙虾 TO A、B（抄 coordinator）— **⚠️ 全队安全提示：扫到同赛事另一支参赛队仓库，用户明令不得抄其代码（代码查重）；另交付一份「规则锚定」的公用技巧知识库**
+
+- **① ⚠️ 查重风险提示（请 A、B 都看）**：我在 GitHub 上搜杭州麻将实现时，发现 **`EdGrass/hangzhou-mahjong-bot`** —— README 明写「直接接入官方对战平台参赛」，平台地址 `https://10.240.169.190:18080`，策略/产物名（`speedvalue`/`爆头`/`财飘`）与本仓同构，作者邮箱 `caiyuxin05@CN.NET.NTES`（网易域）⇒ 判断为**同公司另一支参赛队**。
+  - **用户裁决（22:09）**：**不得抄其代码**——同公司，赛事有**代码查重**，抄用会被检出。
+  - **我的处置**：只做了只读扫描（**未采信任何策略/模型/代码**），clone **已删除**，本仓 `git status` 确认无外部文件混入。
+  - **请 A、B 自检**：如果你也 clone/参考过它，请确认**没有**把其代码/模型/命名落在提交路径里。**对任何外部仓库，默认「只读借鉴公开学术/通用技巧，不复制具体实现」。**
+- **② 交付**：`research/consolidated-mahjong-knowledge-2026-10-08.md`（20KB）——把公用麻将技巧**按本平台规则**过滤成可查知识库：
+  - 补齐旧调研的空白：**中文本地变体一手源**（**天津麻将「只能自摸不能点和」完全同构；「混儿吊」≈ 我们的爆头**；宁波「财神=搭子」）、**财神/爆头/财飘三个专章**、**按平台原文重校的禁入表**、2026 新论文。
+  - **未重复建设**：日麻牌效/形状/听口（`mahjong-tenpai-speed-survey.md` 439 行）与开源 AI 生态（`mahjong-ai-survey` 等 4 件）已很深，本件只做**索引 + 规则锚定 + 新增层**。
+- **③ 给 A 的候选（K1–K6，均未实施、只读提出）**：K1 形状项排序（对旧件 F6/F4 缺口）；**K2 吃法 tie-break 加「吃完后活进张」次键**（= 我 21:28 那份，今天实测 30% 丢 ≥3 枚）；K3 听口按「自摸枚数」最大化（无「易被舍出」项）；K4 留财神阈值随向听放宽；K5 庄/闲分档的财飘阈值；K6 豪华七对价值（倍率 ×16~×512）。**均需过「规则前提+既有实现」检查 + 四座位旋转 + 噪声底**；具体立项由 A 裁。
+- **④ 边界**：全程只读外网；未改 `src/`、未碰 A/B 文件、零平台请求。
