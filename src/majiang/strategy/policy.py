@@ -1475,6 +1475,7 @@ class HeuristicDecider:
 
         if self.config.commitment is Commitment.PAIR:
             self.last_reason = "路线承诺（标定用）：七对路线不吃不碰"
+            self._meld_trace(gate="commitment-pair", current=current)
             return fallback
 
         gang = next((action for action in actions if action.kind == GANG), None)
@@ -1503,7 +1504,9 @@ class HeuristicDecider:
         if not self.config.route_aware:
             if self._is_pair_route(situation):
                 self.last_reason = "保留七对路线：不吃不碰"
+                self._meld_trace(gate="pair-route", current=current)
                 return fallback
+            options: list[dict] = []
             best_legacy: tuple[tuple[int, int, int], Action] | None = None
             # 放宽档允许「向听不变」的副露，但**排除已听牌**（0 向听）——那时副露只会
             # 换掉听口，不会让你更接近胡牌。见 MeldTolerance 的实测依据。
@@ -1522,9 +1525,20 @@ class HeuristicDecider:
                 if action.kind not in (PENG, CHI):
                     continue
                 after_legacy = self._meld_after_shanten(situation, offered, action)
-                if after_legacy is None or after_legacy > current:
+                entry: dict = {
+                    "kind": action.kind,
+                    "tiles": list(action.tiles),
+                    "after_shanten": after_legacy,
+                }
+                options.append(entry)
+                if after_legacy is None:
+                    entry["reject"] = "no_shanten"
+                    continue
+                if after_legacy > current:
+                    entry["reject"] = f"after{after_legacy}>current{current}"
                     continue
                 if after_legacy == current and not accept_equal:
+                    entry["reject"] = "equal-not-allowed"
                     continue
                 # 同向听时优先碰：吃全局最多 2 副，碰不占这个额度
                 peng_rank = 0 if action.kind == PENG else 1
@@ -1535,16 +1549,34 @@ class HeuristicDecider:
                     ukeire_rank = -self._meld_ukeire_copies(
                         situation, offered, action, after_legacy
                     )
+                    # **注意字段名**：`_meld_ukeire_copies` 返回的是
+                    # `shape_value × 1000`（不是「张数」）——它用形质值而非精确进张宽度
+                    # 做次排序。命名成 `meld_shape` 以免读日志的人把它当进张数。
+                    entry["meld_shape"] = -ukeire_rank
                 rank = (after_legacy, peng_rank, ukeire_rank)
+                entry["rank"] = list(rank)
                 if best_legacy is None or rank < best_legacy[0]:
                     best_legacy = (rank, action)
             if best_legacy is None:
                 self.last_reason = f"不副露：向听 {current} 无改善"
+                self._meld_trace(
+                    gate="strict-pass",
+                    current=current,
+                    options=options,
+                    extra={"tolerance": str(tolerance), "accept_equal": accept_equal},
+                )
                 return fallback
             chosen_shanten = best_legacy[0][0]
             suffix = "（向听不变，放宽档）" if chosen_shanten == current else ""
             self.last_reason = (
                 f"副露 {best_legacy[1].describe()}：向听 {current}→{chosen_shanten}{suffix}"
+            )
+            self._meld_trace(
+                gate="accept",
+                current=current,
+                options=options,
+                chosen=best_legacy[1],
+                extra={"tolerance": str(tolerance), "accept_equal": accept_equal},
             )
             return best_legacy[1]
 
@@ -1552,14 +1584,23 @@ class HeuristicDecider:
         self.last_detail["routes"] = [pair_route.describe(), meld_route.describe()]
 
         best: tuple[int, Action, float] | None = None
+        route_options: list[dict] = []
         for action in actions:
             if action.kind not in (PENG, CHI):
                 continue
             after_shanten = self._meld_after_shanten(situation, offered, action)
+            route_entry: dict = {
+                "kind": action.kind,
+                "tiles": list(action.tiles),
+                "after_shanten": after_shanten,
+            }
+            route_options.append(route_entry)
             if after_shanten is None or after_shanten >= current:
+                route_entry["reject"] = "after>=current"
                 continue
             plan = self._meld_plan(situation, offered, action)
             if plan is None:
+                route_entry["reject"] = "no_plan"
                 continue
             hypothetical, after_counts = plan
             _, after_value = routes.evaluate(
@@ -1568,11 +1609,14 @@ class HeuristicDecider:
                 counts=after_counts,
                 melds=hypothetical,
             )
+            route_entry["after_value"] = round(after_value.value, 2)
             if pair_route.feasible and after_value.value <= pair_route.value:
+                route_entry["reject"] = "pair-route-better"
                 continue
             if best is None or after_value.value > best[2]:
                 best = (after_shanten, action, after_value.value)
         if best is None:
+            self._meld_trace(gate="route-aware-pass", current=current, options=route_options)
             self.last_reason = (
                 f"不副露：向听 {current} 无改善，或保留七对路线更优"
                 f"（七对 {pair_route.value:.1f} / 副露 {meld_route.value:.1f}）"
@@ -1581,6 +1625,9 @@ class HeuristicDecider:
         self.last_reason = (
             f"副露 {best[1].describe()}：向听 {current}→{best[0]}，"
             f"副露路线期望 {best[2]:.1f} 超过七对 {pair_route.value:.1f}"
+        )
+        self._meld_trace(
+            gate="route-aware-accept", current=current, options=route_options, chosen=best[1]
         )
         return best[1]
 
@@ -1661,6 +1708,37 @@ class HeuristicDecider:
             ),
             counts,
         )
+
+    def _meld_trace(
+        self,
+        *,
+        gate: str,
+        current: int,
+        options: list[dict] | None = None,
+        chosen: Action | None = None,
+        extra: dict | None = None,
+    ) -> None:
+        """把**响应窗口的候选明细**写进 ``last_detail``（随 `logs/*.jsonl` 的 `decision.made` 落盘）。
+
+        **为什么需要它**（2026-10-08 23:35 用户交办）：吃法类改动的盲点全在这里。今晚要回答
+        「这手为什么不吃了 `8t9t`」，必须**重放整局**才能拿到「各吃法的吃后向听」——
+        因为日志只记了 `reason` 的自由文本（如「不副露：向听 2 无改善」），
+        **看不出每个吃法各自算出来是多少**。补上后 `grep decision.made` 直接可查：
+        每个候选的 `after_shanten`、吃后进张宽度、以及闸门为什么放行/否决。
+
+        **成本与安全**：记的全部是**已经算出来**的量（`_meld_after_shanten` 的返回值、
+        已算过的 `ukeire_rank`），**不新增任何决策计算、不改变出牌**；
+        只往 `last_detail` 加一个键，老消费者（`audit_response.py` / `read_decision_traces.py`）
+        读的是 `reason`/`candidates`，不受影响。
+        """
+        item: dict = {"gate": gate, "current_shanten": current}
+        if options is not None:
+            item["options"] = options
+        if chosen is not None:
+            item["chosen"] = {"kind": chosen.kind, "tiles": list(chosen.tiles)}
+        if extra:
+            item.update(extra)
+        self.last_detail["meld"] = item
 
     def _is_pair_route(self, situation: Situation) -> bool:
         """粗糙的七对门槛（仅在 ``route_aware`` 关闭时使用）。"""

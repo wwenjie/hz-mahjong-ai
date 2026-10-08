@@ -37,7 +37,8 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from majiang.cli import make_decider  # noqa: E402
 from majiang.rules import tiles  # noqa: E402
-from majiang.rules.action import CHI, Action  # noqa: E402
+from majiang.rules.action import CHI, DISCARD, Action, legal_actions  # noqa: E402
+from majiang.rules.situation import PHASE_DRAW  # noqa: E402
 from majiang.sim import replay  # noqa: E402
 from majiang.sim import round as R  # noqa: E402
 from majiang.strategy.policy import Mode  # noqa: E402
@@ -205,35 +206,59 @@ def check(points: list[dict], limit: int) -> None:
           f" ⇒ {'**通过**' if bad_cons == 0 and bad_hand == 0 else '**部分不可信，只取通过者**'}")
 
 
-def run_one(doc: dict, point: dict, deciders: dict, mine: int) -> dict:
+def run_one(doc: dict, point: dict, deciders: dict, mine: int, mode: str = "response") -> dict:
     """两分支各重建一次状态，从触发点续跑到局末。
 
-    **任何单点异常都必须被收敛成 `ok=False`**：全量 7,744 点上总有个别重建/引擎边界
-    （实测：一个点的续跑抛 `ShantenError: 暗手牌张数应为 13，实际 14`），
+    **两种模式**：
+    - `response`（默认，吃法类）：触发点＝他家弃牌、我方响应窗口；分支差在「吃不吃/吃哪张」。
+    - `discard`（出牌类）：触发点＝**我方自己的弃牌**；分支差在「拆不拆对子」。
+
+    **任何单点异常都必须被收敛成 `ok=False`**：全量数万点上总有个别重建/引擎边界
+    （实测：有单点续跑抛 `ShantenError: 暗手牌张数应为 13，实际 14`），
     不能让一个坏点把整个进程池打掉。
     """
     outcomes = {}
     for branch in ("baseline", "treatment"):
         try:
-            state, events, anomalies, _drawn = rebuild(doc, point)
+            state, events, anomalies, drawn = rebuild(doc, point)
             prev = events[point["ev_index"]]
             if prev.get("type") != "tile_discarded":
                 return {"ok": False, "why": "触发事件不是弃牌"}
-            discarder = int(prev["seat"])
-            # 吃牌窗口只给下家（引擎 `resolve_responses` 的 `chi_seat = (discarder + 1) % 4`）。
-            # 普查是按「我方有 ≥2 种吃法」抽的，未筛下家身份 ⇒ 这里必须排除，否则是假触发点。
-            if (discarder + 1) % 4 != mine:
-                return {"ok": False, "why": "我方不是吃牌窗口（非下家）"}
-            offered = point["offered"]
-            R.apply_discard(state, discarder, offered, None)
             ours = deciders[branch]
             pick = [ours if s == mine else deciders["opponents"] for s in range(4)]
-            claim = R.resolve_responses(state, discarder, offered, pick)
-            if claim is None:
-                nxt, need_draw = (discarder + 1) % 4, True
+            if mode == "discard":
+                if int(prev.get("seat", -1)) != mine:
+                    return {"ok": False, "why": "触发事件不是我方弃牌"}
+                state.turn = mine  # PHASE_DRAW 的 legal_actions 要求 turn == seat
+                sit = R.situation_for(state, mine, PHASE_DRAW, drawn=drawn)
+                chosen = ours.choose(sit, tuple(legal_actions(sit)), budget_ms=1000)
+                if chosen is None or chosen.kind != DISCARD:
+                    return {"ok": False, "why": "决策器没给出弃牌"}
+                R.apply_discard(state, mine, chosen.tile, drawn)
+                claim = R.resolve_responses(state, mine, chosen.tile, pick)
+                if claim is None:
+                    nxt, need_draw = (mine + 1) % 4, True
+                else:
+                    nxt, need_draw = claim
+                outcome = R.play_round(state, pick, current=nxt, drawn=None, need_draw=need_draw)
+                flag = int(point["hand_counts"][chosen.tile]) >= 2  # 这次出牌是否拆掉一个对子
+                label = "breaks_pair"
             else:
-                nxt, need_draw = claim
-            outcome = R.play_round(state, pick, current=nxt, drawn=None, need_draw=need_draw)
+                discarder = int(prev["seat"])
+                # 吃牌窗口只给下家（引擎 `resolve_responses` 的 `chi_seat=(discarder+1)%4`）。
+                # 普查按「我方有 ≥2 种吃法」抽、未筛下家身份 ⇒ 这里必须排除，否则是假触发点。
+                if (discarder + 1) % 4 != mine:
+                    return {"ok": False, "why": "我方不是吃牌窗口（非下家）"}
+                offered = point["offered"]
+                R.apply_discard(state, discarder, offered, None)
+                claim = R.resolve_responses(state, discarder, offered, pick)
+                if claim is None:
+                    nxt, need_draw = (discarder + 1) % 4, True
+                else:
+                    nxt, need_draw = claim
+                outcome = R.play_round(state, pick, current=nxt, drawn=None, need_draw=need_draw)
+                flag = claim is not None and claim[0] == mine
+                label = "took_chi"
         except RebuildError as error:
             return {"ok": False, "why": f"不可重建: {error}"}
         except Exception as error:  # noqa: BLE001
@@ -244,18 +269,19 @@ def run_one(doc: dict, point: dict, deciders: dict, mine: int) -> dict:
             "flow": outcome.is_flow,
             "conservation_ok": conservation(state) == TOTAL_TILES,
             "anomalies": dict(anomalies),
-            "took_chi": claim is not None and claim[0] == mine,
+            label: flag,
+            "picked": chosen.tile if mode == "discard" else None,
         }
-    base_chi = outcomes["baseline"]["took_chi"]
-    treat_chi = outcomes["treatment"]["took_chi"]
+    base_flag = outcomes["baseline"][label]
+    treat_flag = outcomes["treatment"][label]
     return {
         "ok": True,
         "diff": outcomes["treatment"]["score"] - outcomes["baseline"]["score"],
         "baseline": outcomes["baseline"],
         "treatment": outcomes["treatment"],
-        "triggered": treat_chi and not base_chi,
-        "both_chi": base_chi and treat_chi,
-        "both_pass": not base_chi and not treat_chi,
+        "triggered": base_flag and not treat_flag,
+        "both_chi": base_flag and treat_flag,
+        "both_pass": not base_flag and not treat_flag,
         "conserved": outcomes["baseline"]["conservation_ok"] and outcomes["treatment"]["conservation_ok"],
     }
 
@@ -272,8 +298,9 @@ def _build_deciders(baseline: str, treatment: str, opponents: str) -> dict:
 _WORKER: dict = {}
 
 
-def _init_worker(baseline: str, treatment: str, opponents: str) -> None:
+def _init_worker(baseline: str, treatment: str, opponents: str, mode: str) -> None:
     _WORKER["deciders"] = _build_deciders(baseline, treatment, opponents)
+    _WORKER["mode"] = mode
 
 
 def _mine_of(file: str) -> int:
@@ -289,7 +316,7 @@ def _run_point(payload: tuple[str, dict]) -> dict:
     ids = [str(s.get("user_id", "")) for s in (doc.get("seats") or [])]
     if OUR not in ids:
         return {"ok": False, "why": "无我方座位"}
-    return run_one(doc, point, _WORKER["deciders"], ids.index(OUR))
+    return run_one(doc, point, _WORKER["deciders"], ids.index(OUR), _WORKER.get("mode", "response"))
 
 
 def _accumulate(
@@ -305,12 +332,13 @@ def _accumulate(
         stats["确实触发"] += 1
         diffs.append(float(out["diff"]))
     elif out["both_chi"]:
-        stats["两分支都吃(非触发)"] += 1
+        stats["两分支同决策(基线也触发)"] += 1
     elif out["both_pass"]:
-        stats["两分支都pass(非触发)"] += 1
+        stats["两分支同决策(都不触发)"] += 1
     else:
-        stats["反向(基线吃/处理不吃)"] += 1
-    rows.append({**{k: point[k] for k in ("room", "block", "ev_index", "klass")}, **out})
+        stats["反向(基线不触发/处理触发)"] += 1
+    # 逐点文件**自带全部分层字段**（手牌/副露/财神/向听/klass）⇒ 事后分层不必回读原局。
+    rows.append({**point, **out})
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -318,6 +346,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--points", required=True, help="普查数据集 JSONL")
     ap.add_argument("--limit", type=int, default=0, help="0 = 全部")
     ap.add_argument("--jobs", type=int, default=1, help="并行进程数")
+    ap.add_argument("--mode", default="response", choices=("response", "discard"),
+                    help="response=吃法类触发点；discard=出牌层（拆对子）触发点")
     ap.add_argument("--klass", default="漏吃", help="只对这些类别做对拍；空串=全部")
     ap.add_argument("--treatment", default="v7-keepchi")
     ap.add_argument("--baseline", default="v5")
@@ -350,7 +380,7 @@ def main(argv: list[str] | None = None) -> int:
         with ProcessPoolExecutor(
             max_workers=args.jobs,
             initializer=_init_worker,
-            initargs=(args.baseline, args.treatment, args.opponents),
+            initargs=(args.baseline, args.treatment, args.opponents, args.mode),
         ) as pool:
             results = pool.map(_run_point, payloads, chunksize=4)
             for index, (point, out) in enumerate(zip(points, results)):
@@ -363,7 +393,8 @@ def main(argv: list[str] | None = None) -> int:
                 json.loads(Path(file).read_text(encoding="utf-8")),
                 point,
                 deciders,
-                _mine_of(point["file"]),
+                _mine_of(file),
+                args.mode,
             )
             _accumulate(out, point, stats, diffs, rows)
             if (index + 1) % 50 == 0:

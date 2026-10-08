@@ -682,6 +682,23 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
                               ukeire_candidates=3, meld_chi_best=True, meld_chi_tiebreak=True)
     ),
+    # **`v7m-keepchi` = `v7-keepchi` 配置 + `meld_tolerance="equal"`**（A 2026-10-08 23:40 指派登记）。
+    #
+    # **为什么要这一档**：`v7-chibest`/`v7-keepchi` 都是 `meld_tolerance=STRICT`；用户要的行为
+    # （手牌 `5w4b5b6b7b7b8b1t4t6t7t8t9t`、上家打 `7t`，吃 `8t+9t` 留 `6t7t`）要求
+    # **equal 容差**（两吃法 `after_shanten=2 ⇒ 相等` 才进入比较）+ `meld_chi_best=1`（按 `action.tiles` 算真向听）
+    # + `meld_chi_tiebreak=1`（同降幅按 `shape_value` 选：`4.18 > 3.955`）。三者缺一不可，
+    # 而现有任何档位都没有同时带上这三旋钮（`meld-equal`/`v7m`/`v6-equal` 无 `meld_chi_*`；`v7-chibest`/`v7-keepchi` 是 STRICT）。
+    # 本档 = `v7-keepchi` 的全部旋钮 + `meld_tolerance="equal"`（**未加 `meld_conditional=True`**，见 THREAD 待 A 确认）。
+    # 默认档/冠军档不受影响（本档是新键，`for_mode` 默认与 `v5` 逐位不变）。
+    # 判据：先过空干预门（`tools/divergence_gate.py --arms v5,v7m-keepchi --tenpai-only` 与响应窗口口径），
+    # 再各自 A/B（§5.6 登记签）；登记 `notes/experiments.json`。
+    "v7m-keepchi": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, meld_chi_best=True, meld_chi_tiebreak=True,
+                              meld_tolerance="equal")
+    ),
     # **`botlike`**：Stage B 的 bot 出牌预测器（GBDT, 77.4% top-1）包成决策器，
     # **只用于当 `ab_test --field botlike` 的对手模型**（A 2026-10-06 01:57 提出的场地修正）。
     # 见 `strategy/botlike.py` 的模块 docstring。**不作为待采纳臂**。

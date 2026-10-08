@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Sequence
 
 from . import tiles
@@ -560,3 +561,33 @@ def shape_mix(counts: Sequence[int], meld_count: int = 0) -> tuple[float, int, i
                 kanchan += 1
     need = max(0, tiles.SETS_PER_HAND - meld_count - 0)
     return float(runs), int(pairs), int(kanchan) if need else int(kanchan)
+
+
+# ---------------------------------------------------------------------------
+# **Cython 快核（可选，默认关）**——2026-10-08 23:50 A 接。
+#
+# 背景：`shanten_fast.pyx`（agent-b 2026-10-05 写并编译）与纯 Python 实现同 API，
+# 本机已验证 **逐位一致**（`test_shanten_parity.py` 777/777；随机 300 手牌 300/300），
+# 且 `shanten` 快 **3.6×**（0.850 → 0.234 ms/次）。
+#
+# **为什么默认关**：这条路径会替换**冠军档**的向听计算，属「会移动出牌」的改动。
+# 纪律要求：不可默认生效、不可静默替换（`parity` 只覆盖 777 例，不是穷尽）。
+# 开启方式：环境变量 `MAJIANG_SHANTEN_FAST=1`（用于离线扫描/对拍，把 57ms/决策 打下来）。
+# 若要在冠军档默认启用，须先过：① `test_shanten_parity.py`；② 决策级逐位不变
+# （改前/改后在真机决策点上 0 分歧，见 `/tmp/dump_v5.py`、`/tmp/dump_resp.py`）；③ 全量测试。
+#
+# 注意：`.pyx` 版本**不做入参校验**（纯 Python 版会对张数不符抛 `ShantenError`）。
+# 决策热路径的入参本就合法，但离线脚本若靠异常做分支，开快核后会**静默走另一支**。
+_FAST_ENABLED = os.environ.get("MAJIANG_SHANTEN_FAST", "0") not in ("0", "", "False", "false")
+if _FAST_ENABLED:  # pragma: no cover - 环境相关
+    try:
+        from . import shanten_fast as _fast  # type: ignore[attr-defined]
+    except Exception:  # noqa: BLE001 —— 未编译/ABI 不符都退回纯 Python
+        _fast = None  # type: ignore[assignment]
+    if _fast is not None:
+        # 直接**重绑模块级名字**：`shanten_any` / `best_shanten` / `ukeire` 内部引用的是
+        # 全局名，重绑后它们的调用点自动走快核，无需改函数体。
+        shanten = _fast.shanten  # type: ignore[assignment]
+        best_shanten = _fast.best_shanten  # type: ignore[assignment]
+        seven_pairs_shanten = _fast.seven_pairs_shanten  # type: ignore[assignment]
+        ukeire = _fast.ukeire  # type: ignore[assignment]
