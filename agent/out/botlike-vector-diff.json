@@ -1,0 +1,16 @@
+{
+  "rooms": 8,
+  "target_bots": 7,
+  "points": 609,
+  "candidate_vectors": 6061,
+  "mismatch_points": 0,
+  "mismatch_vectors": 0,
+  "mismatch_rate_vectors": 0.0,
+  "mismatch_dims": {},
+  "errors": {
+    "no_choice": 108,
+    "situation_or_choose": 1
+  },
+  "examples": [],
+  "verdict": "PASS"
+}

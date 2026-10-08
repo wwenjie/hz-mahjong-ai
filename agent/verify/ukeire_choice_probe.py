@@ -87,7 +87,7 @@ def ukeire(after: list[int], meld_n: int, s: int, vis: list[int], memo: dict) ->
 
 def process_batch(batch, chunk_path, memo):
     """处理一批文件 → 聚合结果原子落盘 chunk_path。返回 (rooms, agg_dict, gaps_lists)。"""
-    agg: dict = collections.defaultdict(lambda: [0, 0, 0, 0, 0])
+    agg: dict = collections.defaultdict(lambda: [0, 0, 0, 0, 0, 0, 0, 0])
     gaps = {"our": [], "opp": []}
     rooms = 0
     for path in batch:
@@ -140,6 +140,7 @@ def process_batch(batch, chunk_path, memo):
                 vis[diff[0]] -= 1
                 u_actual = ukeire(list(after_actual), meld_n, s_actual, vis, memo)
                 best = u_actual
+                pool_u: list[int] = []
                 for t, c in enumerate(before):
                     if c <= 0 or t == diff[0]:
                         continue
@@ -152,8 +153,13 @@ def process_batch(batch, chunk_path, memo):
                     if s_c != s_actual:
                         continue
                     u_c = ukeire(cand, meld_n, s_actual, vis, memo)
+                    pool_u.append(u_c)
                     if u_c > best:
                         best = u_c
+                # A 18:55 的问题：实际选择在「精确进张」键上排第几（1=最优）。
+                # 若 rank 常为 1 却仍慢 ⇒ 瓶颈不在这个键上，M1 整个方向要换。
+                rank_u = 1 + sum(1 for u in pool_u if u > u_actual)
+                pool_n = len(pool_u) + 1
                 grp = "our" if ids[seat] == OUR else "opp"
                 n = draw_idx[seat]
                 n_bucket = "n≤4" if n <= 4 else ("n5-8" if n <= 8 else ("n9-12" if n <= 12 else "n≥13"))
@@ -166,6 +172,9 @@ def process_batch(batch, chunk_path, memo):
                 a[2] += 1 if best == u_actual else 0
                 a[3] += u_actual
                 a[4] += best
+                a[5] += rank_u
+                a[6] += 1 if rank_u <= 2 else 0
+                a[7] += pool_n
                 gaps[grp].append(best - u_actual)
     # 序列化 agg：key tuple → 字符串
     agg_ser = {"||".join(str(x) for x in k): v for k, v in agg.items()}
@@ -188,7 +197,8 @@ def main(argv: list[str] | None = None) -> int:
         files = files[::step][: args.rooms]
 
     chunk_root = ROOT / "agent" / "out" / "c31-chunks"
-    chunk_dir = chunk_root / f"cs{args.chunk_size}-n{len(files)}"
+    # v2：agg 行扩到 8 列（加 rank_u / rank≤2 / 池大小）——旧格式 chunk 不复用。
+    chunk_dir = chunk_root / f"v2-cs{args.chunk_size}-n{len(files)}"
     chunk_dir.mkdir(parents=True, exist_ok=True)
     done_marker = chunk_dir / "DONE"
     n_chunks = (len(files) + args.chunk_size - 1) // args.chunk_size
@@ -203,7 +213,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[chunk {ci+1}/{n_chunks}] rooms={rooms} 落盘", file=sys.stderr, flush=True)
 
     # 合并全部 chunk
-    agg: dict = collections.defaultdict(lambda: [0, 0, 0, 0, 0])
+    agg: dict = collections.defaultdict(lambda: [0, 0, 0, 0, 0, 0, 0, 0])
     gaps = {"our": [], "opp": []}
     rooms = 0
     for ci in range(n_chunks):
@@ -213,19 +223,19 @@ def main(argv: list[str] | None = None) -> int:
         for k_str, v in payload["agg"].items():
             k = tuple(k_str.split("||"))
             a = agg[k]
-            for i in range(5):
+            for i in range(8):
                 a[i] += v[i]
         gaps["our"].extend(payload["gaps"]["our"])
         gaps["opp"].extend(payload["gaps"]["opp"])
 
     print(f"房={rooms}")
-    print(f"\n{'组':>4} {'向听':>4} {'财神':>6} {'摸序':>6} {'决策数':>7} {'均ukeire':>9} {'均最优':>7} {'均gap':>7} {'最优率':>7}")
+    print(f"\n{'组':>4} {'向听':>4} {'财神':>6} {'摸序':>6} {'决策数':>7} {'均ukeire':>9} {'均最优':>7} {'均gap':>7} {'最优率':>7} {'均rank':>7} {'rank≤2':>7} {'均池':>6}")
     for key in sorted(agg):
         grp, s_b, god, n_b = key
-        n, sg, nm, su, sb = agg[key]
+        n, sg, nm, su, sb, sr, nr2, sp = agg[key]
         if n < 30:
             continue
-        print(f"{grp:>4} {s_b:>4} {god:>6} {n_b:>6} {n:7d} {su/n:9.2f} {sb/n:7.2f} {sg/n:7.2f} {nm/n:7.1%}")
+        print(f"{grp:>4} {s_b:>4} {god:>6} {n_b:>6} {n:7d} {su/n:9.2f} {sb/n:7.2f} {sg/n:7.2f} {nm/n:7.1%} {sr/n:7.2f} {nr2/n:7.1%} {sp/n:6.1f}")
     t, p = welch(gaps["our"], gaps["opp"])
     print(f"\n全体：我方均gap={st.mean(gaps['our']):.3f} 对手均gap={st.mean(gaps['opp']):.3f} "
           f"差={st.mean(gaps['our'])-st.mean(gaps['opp']):+.3f} (t={t:+.2f}, p={p:.4f})")

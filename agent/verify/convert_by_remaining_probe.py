@@ -275,7 +275,9 @@ def main_chunked(files, chunk_size, chunk_root) -> int:
         rounds += data["rounds"]
         merge_into(agg, agg_from_json(data["agg"]))
 
-    log_name = f"convert-cross{('-' + args.arm) if args.arm else ''}.log" if chunk_dir.name.startswith("c30x") else "convert-by-remaining.log"
+    # 修复：判断对象应是「是否交叉表模式」（args.cross），不是 chunk_dir.name（那是 cs250-nXXX 从不含 c30x）。
+    # 原逻辑 startswith("c30x") 永假 ⇒ 所有 cross 结果都误落到 convert-by-remaining.log（覆盖非 cross 口径）。
+    log_name = f"convert-cross{('-' + args.arm) if args.arm else ''}.log" if args.cross else "convert-by-remaining.log"
     log_path = REPO / "agent" / "out" / log_name
     tmp = log_path.with_suffix(".log.tmp")
     with tmp.open("w", encoding="utf-8") as fh:

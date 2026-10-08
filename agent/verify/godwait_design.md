@@ -24,15 +24,18 @@
 
 **改动点 B（备查，仅当 A 单独触发）**：预筛阶段在持财神时把 `ukeire_preselect` 从 5 放宽到 8（只在 `hand.god_count >= 1` 时）。**默认不开**，作为消融臂 `v5-godwait-presel8` 备选。
 
-## 3. 消融对照设计（A 23:50 强制要求）
+## 3. 消融对照设计（A 23:50/23:59 强制要求）
 
 | 臂 | 配置 | 回答的问题 |
 |---|---|---|
 | `v5` | 基线（现冠军） | 场 |
 | `v5-godwait` | v5 + `god_wait_boost=2.0` | 加权是否有效 |
-| `v5-godwait-presel8` | v5 + `god_wait_boost=2.0` + 持财神时预筛 5→8 | 缺口有多少在预筛截断（U1） |
+| `v5-godwait-noWA` | v5 + `god_wait_boost=2.0` + `wait_aware_tenpai=False` | 「加权有效」vs「覆盖了原本有效的听口排序」（A 23:59 定死） |
 
 三个臂同场（field=v5），每臂 4 种子，主指标**每场名次分**（平台口径）。
+A/B 通道排序（A 23:59 裁决）：`v6a pergameplace ×2`（在跑）→ `v5-piao05 ×2` → **`v5-godwait` ×4 + `v5-godwait-noWA` ×2** → `v7m` ×4 + `v7m-all` ×2。
+
+**备选消融**（不进首跑队列，仅当主对照归因到预筛后由 A 单独触发）：`v5-godwait-presel8`（v5 + `god_wait_boost=2.0` + 持财神时预筛 5→8，回答 U1 预筛截断贡献）。
 
 ## 4. 预登记判据（A 23:50 已认，此处固化）
 
