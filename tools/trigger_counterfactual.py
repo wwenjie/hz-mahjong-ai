@@ -53,6 +53,24 @@ class RebuildError(RuntimeError):
     """该触发点无法重建（起始手牌缺失等）——必须显式失败，不得退化成近似。"""
 
 
+def resolve_point_file(raw: str) -> Path:
+    """触发点里存的 `file` 是**产出时那台机器的绝对路径**。
+
+    跨机跑（本机普查 → 远端对拍）时该绝对路径在远端不存在 ⇒ 按 `data/` 后缀挂回本仓 ROOT。
+    这是 2026-10-09 03:20 远端首跑撞到的坑（`FileNotFoundError: /home/wuwenjie01/...`）。
+    """
+    path = Path(raw)
+    if path.exists():
+        return path
+    marker = "/data/"
+    index = raw.find(marker)
+    if index != -1:
+        candidate = Path(__file__).resolve().parents[1] / raw[index + 1 :]
+        if candidate.exists():
+            return candidate
+    return path
+
+
 def _hands_from_start(span: object) -> list[list[int]]:
     """把某一局的起始手牌转成计数；任一座位缺失（None）即无法重建。"""
     codes_list = list(getattr(span, "start_hands", ()) or ())
@@ -179,7 +197,7 @@ def check(points: list[dict], limit: int) -> None:
     """保真校验：守恒 + 与普查数据集里 `replay` 独立记录的我方手牌交叉验证。"""
     bad_cons = bad_hand = unbuildable = 0
     for point in points[:limit]:
-        doc = json.loads(Path(point["file"]).read_text(encoding="utf-8"))
+        doc = json.loads(resolve_point_file(point["file"]).read_text(encoding="utf-8"))
         try:
             state, _events, anomalies, _drawn = rebuild(doc, point)
         except RebuildError as error:
@@ -304,7 +322,7 @@ def _init_worker(baseline: str, treatment: str, opponents: str, mode: str) -> No
 
 
 def _mine_of(file: str) -> int:
-    doc = json.loads(Path(file).read_text(encoding="utf-8"))
+    doc = json.loads(resolve_point_file(file).read_text(encoding="utf-8"))
     ids = [str(s.get("user_id", "")) for s in (doc.get("seats") or [])]
     return ids.index(OUR) if OUR in ids else -1
 
@@ -312,7 +330,7 @@ def _mine_of(file: str) -> int:
 def _run_point(payload: tuple[str, dict]) -> dict:
     """子进程入口：每个点自己读文件、自己重建（决策器由 initializer 建好复用）。"""
     file, point = payload
-    doc = json.loads(Path(file).read_text(encoding="utf-8"))
+    doc = json.loads(resolve_point_file(file).read_text(encoding="utf-8"))
     ids = [str(s.get("user_id", "")) for s in (doc.get("seats") or [])]
     if OUR not in ids:
         return {"ok": False, "why": "无我方座位"}
@@ -390,7 +408,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         for index, (file, point) in enumerate(payloads):
             out = run_one(
-                json.loads(Path(file).read_text(encoding="utf-8")),
+                json.loads(resolve_point_file(file).read_text(encoding="utf-8")),
                 point,
                 deciders,
                 _mine_of(file),
