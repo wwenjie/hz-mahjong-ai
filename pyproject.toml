@@ -20,6 +20,7 @@ dev = [
     "numpy>=2.5.3",
     "pytest>=8.0",
     "scikit-learn>=1.9.1",
+    "torch>=2.6",
 ]
 
 [tool.pytest.ini_options]

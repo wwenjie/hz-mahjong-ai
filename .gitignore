@@ -39,3 +39,45 @@ verify/out/watch.log
 verify/out/inbox.log
 verify/out/clone_samples.npz
 verify/out/clone_model.pkl
+
+# 小龙虾（C）的运行时噪声：巡检心跳、告警队列、委派原始事件流、鉴权续期日志 —— 可再生成，不入库。
+# 注意 agent/out/ 整体**是证据目录**（已有一批 audit 产物入库），所以只逐项忽略噪声文件，
+# 不要整目录忽略，否则新证据会被静默挡住。
+agent/out/patrol.log
+agent/out/patrol.status
+agent/out/patrol.state.json
+agent/out/alerts.log
+agent/out/codemaker-delegate.log
+agent/out/last-delegate.json
+agent/out/last-delegate.err
+agent/out/mcp-auth-refresh.log
+
+# 训练检查点与导出的模型产物：体积大且可再生成；records/ 是证据，保留入库。
+# 若某个产物成为必需项，显式提交（`git add -f research/artifacts/xxx.json`，与 models/ 约定一致）。
+research/ckpt/
+research/artifacts/
+
+
+# rl2 并入产物（2026-10-08 拷贝自 majiang_rl2）
+# 仅忽略大体积可再生成的 checkpoint；outputs/（审计/微调日志）与 records/rl2/（A/B 判决 JSON）
+# 属证据类小文件，按仓内既有约定（见上文 records/ 注释）保留入库。
+runs/
+outputs/*.pt
+outputs/*.npz
+outputs/*.ckpt
+
+# agent 工作区噪声（2026-10-08 agent-e 修补单，提交 GitHub 前收口）：
+# chunks/ 是可再生成的数据分块（stage-a-dataset-chunks 123M npz 等），非证据；
+# work/ 是各 agent scratch；memory/与 MEMORY.md/USER.md 是 agent 记忆/会话状态。
+# 注意：AGENTS.md/SOUL.md/IDENTITY.md/TOOLS.md 是 persona 文件，必须保留入库。
+agent/*/work/
+agent/*/memory/
+agent/*/MEMORY.md
+agent/*/USER.md
+agent/out/*-chunks/
+# （EOF 文件已于早前消失，无需规则；10/3 heredoc 误操作产物）
+
+# 2026-10-08 提交前收尾：编译产物 / 备份文件
+src/majiang/rules/shanten_fast.c
+src/majiang/rules/shanten_fast.cpython-*.so
+notes/THREAD.md.bak-*
