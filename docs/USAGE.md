@@ -30,20 +30,32 @@ export MAJIANG_SERVER="https://<服务器>:<端口>"   # 可选，有默认值
 
 ## 4. 启动
 
+参赛档位为 **`v5`**（真机 484 场验证：一位率 10.3%、场均分优于其他档位）。
+晋级轮用 `--mode qualifier`（稳健）；若晋级决赛，用 `--mode final` 重启（决赛纯总得分制，策略自动切激进参数）。
+
 ```bash
-majiang --token-env MAJIANG_TOKEN            # 正式赛事（报名令牌）
-majiang --token-env MAJIANG_TOKEN --auto-match   # 自由匹配（全局令牌）
+# 正式赛事（参赛令牌）——晋级轮
+majiang --token-env MAJIANG_TOKEN --decider v5 --mode qualifier
+
+# 决赛（晋级后重启，切 final 模式）
+majiang --token-env MAJIANG_TOKEN --decider v5 --mode final
+
+# 自由匹配（全局令牌，练习/热身用）
+majiang --token-env MAJIANG_TOKEN --auto-match
 ```
 
-常用参数：`--mode qualifier|final`（晋级轮稳健/决赛激进）、`--duration 秒`、
-`--log-dir 目录`、`--rate 每秒请求上限（默认 14，低于平台 16/s）`。
+启动后程序自动完成「确认到位 → 对局 → 阶段晋级判断 → 下一阶段重新确认」的多阶段循环，
+无需人工干预；中途崩溃重赛、决赛加赛新桌均会自动发现并接入。`--duration 0`（默认）
+持续运行直至赛事终态。
+
+常用参数：`--duration 秒`、`--log-dir 目录`、`--rate 每秒请求上限（默认 14，低于平台 16/s）`。
 `Ctrl-C` 或 `SIGTERM` 优雅退出并打印汇总。
 
 ## 5. 自检（无需联网）
 
 ```bash
 bash scripts/verify_clean_env.sh   # 干净 venv：安装→CLI→模型求值→本地模拟 8 局
-python3 -m pytest tests/           # 全量测试（当前 438 项）
+python3 -m pytest tests/           # 全量测试（当前 379 项）
 ```
 
 `verify_clean_env.sh` 在全新虚拟环境中验证：零依赖安装成功、CLI 可用、
