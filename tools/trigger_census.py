@@ -98,6 +98,14 @@ def main(argv: list[str] | None = None) -> int:
                 if not acts:
                     replay.apply_event(state, event)
                     continue
+                # **吃牌窗口只给下家**（引擎 `resolve_responses` 的 `chi_seat=(discarder+1)%4`）。
+                # 不筛这个，CF 阶段会有 2/3 的点被判「非下家」丢掉（2026-10-09 13:35 实测：
+                # 5,000 点里 3,282 个被排除）⇒ 在普查侧就筛掉，省算力也省误读。
+                discarder_seat = event.get("seat")
+                if not isinstance(discarder_seat, int) or (discarder_seat + 1) % 4 != mine:
+                    stats["非下家跳过"] += 1
+                    replay.apply_event(state, event)
+                    continue
                 stats["可吃窗口"] += 1
                 if len(acts) < 2:
                     replay.apply_event(state, event)

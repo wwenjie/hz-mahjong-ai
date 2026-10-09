@@ -332,12 +332,21 @@ def run_one(doc: dict, point: dict, deciders: dict, mine: int, mode: str = "resp
         }
     base_flag = outcomes["baseline"][label]
     treat_flag = outcomes["treatment"][label]
+    # **两种模式的「触发」定义不同，必须分开写**（2026-10-09 13:40 自纠）：
+    # - `response`：基线（v5）没吃、处理臂吃了 ⇒ 触发（「处理分支新做了动作」）。
+    #   旧代码在加 discard 模式时把它统一成 `base and not treat`，**静默反转了响应模式语义**
+    #   ⇒ `equalchi` 那轮报「确实触发 0 / 反向 1654」（那 1,654 个其实就是触发点）。
+    # - `discard`：两分支**实际打的牌不同**（`force_tile` 时最忠实）。
+    if mode == "discard":
+        triggered = outcomes["baseline"]["picked"] != outcomes["treatment"]["picked"]
+    else:
+        triggered = treat_flag and not base_flag
     return {
         "ok": True,
         "diff": outcomes["treatment"]["score"] - outcomes["baseline"]["score"],
         "baseline": outcomes["baseline"],
         "treatment": outcomes["treatment"],
-        "triggered": base_flag and not treat_flag,
+        "triggered": triggered,
         "both_chi": base_flag and treat_flag,
         "both_pass": not base_flag and not treat_flag,
         "conserved": outcomes["baseline"]["conservation_ok"] and outcomes["treatment"]["conservation_ok"],
