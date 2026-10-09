@@ -303,10 +303,12 @@ def run_one(doc: dict, point: dict, deciders: dict, mine: int, mode: str = "resp
                 label = "breaks_pair"
             else:
                 discarder = int(prev["seat"])
-                # 吃牌窗口只给下家（引擎 `resolve_responses` 的 `chi_seat=(discarder+1)%4`）。
-                # 普查按「我方有 ≥2 种吃法」抽、未筛下家身份 ⇒ 这里必须排除，否则是假触发点。
-                if (discarder + 1) % 4 != mine:
-                    return {"ok": False, "why": "我方不是吃牌窗口（非下家）"}
+                # 我方要**可能被问到**才有意义：吃只给下家，碰任一家（手里有对子）。
+                # 只按「下家」筛会**误杀 2/3 的碰窗口**（2026-10-09 14:55 实测：5,000 碰点里 3,307 被误判）。
+                can_chi = (discarder + 1) % 4 == mine
+                can_peng = state.seats[mine].hand[offered] >= 2
+                if not (can_chi or can_peng):
+                    return {"ok": False, "why": "我方不是吃/碰窗口"}
                 offered = point["offered"]
                 R.apply_discard(state, discarder, offered, None)
                 if force_trigger and branch == "treatment":
