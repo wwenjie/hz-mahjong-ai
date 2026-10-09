@@ -16,6 +16,26 @@ bash webapp/start.sh --port 9000 --rounds 4 --seed 42 --human-seat 0
 启动后浏览器打开 **http://127.0.0.1:8848/**（WSL 里从 Windows 访问用 `http://<WSL-IP>:8848/`，
 `hostname -I` 查 IP；服务默认监听 `0.0.0.0`）。
 
+### 局域网 / 手机访问
+
+服务监听 `0.0.0.0`，但 **WSL2 默认 NAT**：局域网内其他机器看不到 WSL 的 `172.x` 地址。
+在 **Windows 侧**做两件事即可（需管理员 PowerShell/Cmd）：
+
+```bat
+:: 1) 端口转发：局域网 → WSL（把 <WSL-IP> 换成 `wsl hostname -I` 的值）
+netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=8848 connectaddress=<WSL-IP> connectport=8848
+
+:: 2) 防火墙放行入站 8848
+netsh advfirewall firewall add rule name="hz-mahjong-webapp 8848" dir=in action=allow protocol=TCP localport=8848
+```
+
+之后手机/其他电脑访问 **`http://<Windows-局域网IP>:8848/`**（`ipconfig` 查，形如 `10.x.x.x`）。
+注意：**WSL 重启后 IP 可能变化**，portproxy 需重设；用完可删规则
+（`netsh interface portproxy delete ...` / `netsh advfirewall firewall delete rule ...`）。
+
+界面已做**移动端适配**：窄屏（≤720px）自动关闭 980px 等比缩放，改为纵向流式布局——
+牌桌堆叠、记录栏下移、按钮加高便于点按，缩放控件隐藏。桌面端行为不变。
+
 ## 架构
 
 ```

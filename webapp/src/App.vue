@@ -91,6 +91,9 @@ const autoZoom = ref(1)
 const zoomBias = ref(1)
 const natW = ref(980)
 const natH = ref(760)
+// 移动端（窄屏）：关闭等比缩放，改用响应式布局（见 style.css 媒体查询）。
+// 缩放在手机上会把整桌压到 ~0.4 倍、牌小到点不中，故窄屏直接交给 CSS 流式排版。
+const isMobile = ref(typeof window !== 'undefined' && window.innerWidth <= 720)
 // 右侧「对局记录」栏 + 页面留白占用的总水平空间：缩放时须预留，否则会与牌桌重叠
 const LOG_W = 320
 
@@ -99,6 +102,9 @@ function applyZoom() {
   zoom.value = Math.max(minZoom.value, Math.min(maxZoom.value, z))
 }
 function recomputeZoom() {
+  // 窄屏：不做等比缩放（stage 宽度交给 CSS），仅维护 isMobile 标记
+  isMobile.value = window.innerWidth <= 720
+  if (isMobile.value) return
   const el = stageRef.value
   if (!el) return
   // offsetWidth / scrollHeight 不受 transform 影响，得到的即“真实尺寸”
@@ -116,17 +122,25 @@ function recomputeZoom() {
 function zoomIn() { zoomBias.value = Math.min(4, +(zoomBias.value + 0.1).toFixed(2)); applyZoom() }
 function zoomOut() { zoomBias.value = Math.max(0.4, +(zoomBias.value - 0.1).toFixed(2)); applyZoom() }
 
-// 缩放系数与容器尺寸
-const stageStyle = computed(() => ({
-  width: natW.value + 'px',
-  transform: `scale(${zoom.value})`,
-  transformOrigin: 'top left',
-}))
+// 缩放系数与容器尺寸（移动端不做等比缩放，宽度交给 CSS）
+const stageStyle = computed(() =>
+  isMobile.value
+    ? { width: '100%' }
+    : {
+        width: natW.value + 'px',
+        transform: `scale(${zoom.value})`,
+        transformOrigin: 'top left',
+      },
+)
 // 外层盒：按「缩放后」的真实尺寸占位，避免缩放后的牌桌与右侧记录栏重叠
-const boxStyle = computed(() => ({
-  width: natW.value * zoom.value + 'px',
-  height: natH.value * zoom.value + 'px',
-}))
+const boxStyle = computed(() =>
+  isMobile.value
+    ? {}
+    : {
+        width: natW.value * zoom.value + 'px',
+        height: natH.value * zoom.value + 'px',
+      },
+)
 
 // --------------------------------------------------------------------------- //
 // 座位相对位置：以人类为下方(base)，逆时针(0→1→2→3) → 右手边是下家
@@ -773,7 +787,7 @@ onUnmounted(() => {
           手留白 {{ state.view.god.hand_gods }} · 链 {{ state.view.god.chain_count }} · 飘 {{ state.view.god.piao_count }}
         </span>
         <span v-if="state.view?.catch_play" class="warn">抓打圈</span>
-        <span class="zoomctl">
+        <span class="zoomctl" v-if="!isMobile">
           <button class="zoombtn" @click="zoomOut" title="缩小">－</button>
           <span class="zoomval">{{ Math.round(zoom * 100) }}%</span>
           <button class="zoombtn" @click="zoomIn" title="放大">＋</button>
