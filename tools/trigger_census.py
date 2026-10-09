@@ -43,18 +43,23 @@ OUR = "u_a7f7c67bb14a"
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="真机触发点普查（≥2 种吃法的响应窗口）")
     ap.add_argument("--rooms", type=int, default=0, help="抽样房数，0 = 全部")
+    ap.add_argument("--arm", default="v7-keepchi", help="处理臂（默认 ①+②；测放宽副露闸门给 v7m）")
+    ap.add_argument("--shard", type=int, default=0)
+    ap.add_argument("--shards", type=int, default=1)
     ap.add_argument("--seed", type=int, default=20261008)
     ap.add_argument("--out", default="agent/out/trigger-points/all.jsonl")
     ap.add_argument("--examples", type=int, default=2, help="每类打印几个例子")
     args = ap.parse_args(argv)
 
     dec_off = make_decider("v5", Mode.QUALIFIER)  # 冠军口径：各吃法共用 combos[0]
-    dec_on = make_decider("v7-keepchi", Mode.QUALIFIER)  # ①+②
+    dec_on = make_decider(args.arm, Mode.QUALIFIER)  # 处理臂（默认 ①+②；测放宽闸门时给 v7m）
 
     files = sorted(glob.glob(str(ROOT / "data/auto_sessions/*/events/*.json")))
     if args.rooms:
         random.seed(args.seed)
         files = sorted(random.sample(files, min(args.rooms, len(files))))
+    if args.shards > 1:
+        files = files[args.shard::args.shards]
 
     stats = collections.Counter()
     points: list[dict] = []

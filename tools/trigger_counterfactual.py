@@ -37,7 +37,15 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from majiang.cli import make_decider  # noqa: E402
 from majiang.rules import tiles  # noqa: E402
-from majiang.rules.action import CHI, DISCARD, Action, legal_actions  # noqa: E402
+from majiang.rules.action import (  # noqa: E402
+    ANGANG,
+    BUGANG,
+    CHI,
+    DISCARD,
+    GANG,
+    Action,
+    legal_actions,
+)
 from majiang.rules.situation import PHASE_DRAW  # noqa: E402
 from majiang.sim import replay  # noqa: E402
 from majiang.sim import round as R  # noqa: E402
@@ -60,8 +68,13 @@ def resolve_point_file(raw: str) -> Path:
     这是 2026-10-09 03:20 远端首跑撞到的坑（`FileNotFoundError: /home/wuwenjie01/...`）。
     """
     path = Path(raw)
-    if path.exists():
-        return path
+    try:
+        if path.exists():
+            return path
+    except OSError:
+        # 跨机时会撞 `PermissionError: /root/...`（另一端的数据目录），
+        # 在 3.12 里 `Path.exists()` 会把它抛出来而不是返回 False ⇒ 这里显式吞掉再走后缀回退。
+        pass
     marker = "/data/"
     index = raw.find(marker)
     if index != -1:
@@ -166,11 +179,20 @@ def drive(state: R.RoundState, events: list, upto: int) -> tuple[collections.Cou
             except Exception:  # noqa: BLE001
                 anomalies["peng失败"] += 1
         elif kind in ("gang", "minggang", "ming_gang") and isinstance(seat, int) and tile is not None:
+            # **必须看 `data.kind`**（事件流实际取值：`ming`/`bu`/`an`）。
+            # 2026-10-09 12:20 B' 报的「加杠(bugang)重建 bug」根因就在这里：旧代码把补杠当作
+            # 明杠或新杠处理 ⇒ 既有的碰**没有原地升级**成杠 ⇒ 同一牌种出现 7 张 ⇒ 守恒失败，
+            # 约 6–7% 的点无法保真重建（被自动剔除、损失剂量）。
+            gkind = str(data.get("kind") or "")
             try:
-                if discarder is not None and state.seats[seat].hand[tile] < 4:
-                    R.apply_minggang(state, seat, discarder, tile)
+                if gkind in ("bu", "bugang"):
+                    R.apply_gang(state, seat, Action(GANG, tile=tile, gang_kind=BUGANG))
+                elif gkind in ("an", "angang"):
+                    R.apply_gang(state, seat, Action(GANG, tile=tile, gang_kind=ANGANG))
+                elif gkind == "ming" or discarder is not None:
+                    R.apply_minggang(state, seat, discarder if discarder is not None else 0, tile)
                 else:
-                    R.apply_gang(state, seat, Action("gang", tile=tile))
+                    anomalies["gang未知kind"] += 1
             except Exception:  # noqa: BLE001
                 anomalies["gang失败"] += 1
     return anomalies, drawn
@@ -197,7 +219,11 @@ def check(points: list[dict], limit: int) -> None:
     """保真校验：守恒 + 与普查数据集里 `replay` 独立记录的我方手牌交叉验证。"""
     bad_cons = bad_hand = unbuildable = 0
     for point in points[:limit]:
-        doc = json.loads(resolve_point_file(point["file"]).read_text(encoding="utf-8"))
+        try:
+            doc = json.loads(resolve_point_file(point["file"]).read_text(encoding="utf-8"))
+        except OSError:
+            unbuildable += 1
+            continue
         try:
             state, _events, anomalies, _drawn = rebuild(doc, point)
         except RebuildError as error:
@@ -346,7 +372,12 @@ def _mine_of(file: str) -> int:
 def _run_point(payload: tuple[str, dict]) -> dict:
     """子进程入口：每个点自己读文件、自己重建（决策器由 initializer 建好复用）。"""
     file, point = payload
-    doc = json.loads(resolve_point_file(file).read_text(encoding="utf-8"))
+    try:
+        doc = json.loads(resolve_point_file(file).read_text(encoding="utf-8"))
+    except OSError:
+        # 跨机/增量采集时该房可能不存在（远端缺新采集的房、或本地缺远端的房）⇒
+        # 只跳过该点。**不能让它把整个进程池打掉**（2026-10-09 13:20 实测踩过）。
+        return {"ok": False, "why": "房文件缺失(跨机/增量)"}
     ids = [str(s.get("user_id", "")) for s in (doc.get("seats") or [])]
     if OUR not in ids:
         return {"ok": False, "why": "无我方座位"}
