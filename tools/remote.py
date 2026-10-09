@@ -18,6 +18,7 @@ import argparse
 import os
 import posixpath
 import subprocess
+import time
 import sys
 from pathlib import Path
 
@@ -28,24 +29,39 @@ DEFAULT_PORT = int(os.environ.get("MAJIANG_REMOTE_PORT", "53838"))
 DEFAULT_USER = os.environ.get("MAJIANG_REMOTE_USER", "root")
 
 
-def connect(args: argparse.Namespace) -> paramiko.SSHClient:
+def connect(args: argparse.Namespace, attempts: int = 4) -> paramiko.SSHClient:
+    """建连（带重试）。
+
+    **为什么要重试**：AutoDL 端偶发 `Error reading SSH protocol banner`（握手被限流/排队），
+    2026-10-09 一次会话里连撞两次，导致「上传成功但起跑失败」这种半成品状态。
+    """
     password = os.environ.get("MAJIANG_REMOTE_PW")
     if not password and args.password_file:
         password = Path(args.password_file).read_text(encoding="utf-8").strip()
     if not password:
         raise SystemExit("缺少密码：请 `export MAJIANG_REMOTE_PW=...` 或给 --password-file（权限 600）")
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    client.connect(
-        hostname=args.host,
-        port=args.port,
-        username=args.user,
-        password=password,
-        timeout=25,
-        banner_timeout=25,
-        auth_timeout=25,
-    )
-    return client
+    last: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        try:
+            client.connect(
+                hostname=args.host,
+                port=args.port,
+                username=args.user,
+                password=password,
+                timeout=25,
+                banner_timeout=45,
+                auth_timeout=25,
+            )
+            return client
+        except Exception as error:  # noqa: BLE001 —— 瞬态握手/网络错误，重试
+            last = error
+            print(f"  [重试 {attempt}/{attempts}] 连接失败：{type(error).__name__}: {error}",
+                  file=sys.stderr, flush=True)
+            client.close()
+            time.sleep(min(30, 5 * attempt))
+    raise SystemExit(f"连接失败（{attempts} 次）：{last}")
 
 
 def run(client: paramiko.SSHClient, command: str, timeout: float = 120.0, quiet: bool = False) -> int:

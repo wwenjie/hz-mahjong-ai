@@ -224,12 +224,17 @@ def check(points: list[dict], limit: int) -> None:
           f" ⇒ {'**通过**' if bad_cons == 0 and bad_hand == 0 else '**部分不可信，只取通过者**'}")
 
 
-def run_one(doc: dict, point: dict, deciders: dict, mine: int, mode: str = "response") -> dict:
+def run_one(doc: dict, point: dict, deciders: dict, mine: int, mode: str = "response",
+            force_tile: bool = False) -> dict:
     """两分支各重建一次状态，从触发点续跑到局末。
 
     **两种模式**：
     - `response`（默认，吃法类）：触发点＝他家弃牌、我方响应窗口；分支差在「吃不吃/吃哪张」。
-    - `discard`（出牌类）：触发点＝**我方自己的弃牌**；分支差在「拆不拆对子」。
+    - `discard`（出牌类）：触发点＝**我方自己的弃牌**；分支差在「拆不拆对子」等。
+
+    `force_tile=True`（仅 discard 模式）：**treatment 分支强制打 `point["arm_tile"]`**，
+    而不是让处理臂自己决策——用于「早听窄 vs 晚听宽」这类**反事实强制**对照
+    （用户 2026-10-09 10:11 的机制缺口：v5 按构造不做跨向听权衡）。
 
     **任何单点异常都必须被收敛成 `ok=False`**：全量数万点上总有个别重建/引擎边界
     （实测：有单点续跑抛 `ShantenError: 暗手牌张数应为 13，实际 14`），
@@ -249,9 +254,18 @@ def run_one(doc: dict, point: dict, deciders: dict, mine: int, mode: str = "resp
                     return {"ok": False, "why": "触发事件不是我方弃牌"}
                 state.turn = mine  # PHASE_DRAW 的 legal_actions 要求 turn == seat
                 sit = R.situation_for(state, mine, PHASE_DRAW, drawn=drawn)
-                chosen = ours.choose(sit, tuple(legal_actions(sit)), budget_ms=1000)
-                if chosen is None or chosen.kind != DISCARD:
-                    return {"ok": False, "why": "决策器没给出弃牌"}
+                legal = tuple(legal_actions(sit))
+                if force_tile and branch == "treatment":
+                    wanted = int(point.get("arm_tile", -1))
+                    chosen = next(
+                        (a for a in legal if a.kind == DISCARD and a.tile == wanted), None
+                    )
+                    if chosen is None:
+                        return {"ok": False, "why": "强制牌不在合法候选内"}
+                else:
+                    chosen = ours.choose(sit, legal, budget_ms=1000)
+                    if chosen is None or chosen.kind != DISCARD:
+                        return {"ok": False, "why": "决策器没给出弃牌"}
                 R.apply_discard(state, mine, chosen.tile, drawn)
                 claim = R.resolve_responses(state, mine, chosen.tile, pick)
                 if claim is None:
@@ -316,9 +330,11 @@ def _build_deciders(baseline: str, treatment: str, opponents: str) -> dict:
 _WORKER: dict = {}
 
 
-def _init_worker(baseline: str, treatment: str, opponents: str, mode: str) -> None:
+def _init_worker(baseline: str, treatment: str, opponents: str, mode: str,
+                 force_tile: bool = False) -> None:
     _WORKER["deciders"] = _build_deciders(baseline, treatment, opponents)
     _WORKER["mode"] = mode
+    _WORKER["force"] = force_tile
 
 
 def _mine_of(file: str) -> int:
@@ -334,7 +350,10 @@ def _run_point(payload: tuple[str, dict]) -> dict:
     ids = [str(s.get("user_id", "")) for s in (doc.get("seats") or [])]
     if OUR not in ids:
         return {"ok": False, "why": "无我方座位"}
-    return run_one(doc, point, _WORKER["deciders"], ids.index(OUR), _WORKER.get("mode", "response"))
+    return run_one(
+        doc, point, _WORKER["deciders"], ids.index(OUR),
+        _WORKER.get("mode", "response"), _WORKER.get("force", False),
+    )
 
 
 def _accumulate(
@@ -364,6 +383,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--points", required=True, help="普查数据集 JSONL")
     ap.add_argument("--limit", type=int, default=0, help="0 = 全部")
     ap.add_argument("--jobs", type=int, default=1, help="并行进程数")
+    ap.add_argument(
+        "--force-tile",
+        action="store_true",
+        help="discard 模式：treatment 分支强制打 point[arm_tile]（反事实强制）",
+    )
     ap.add_argument("--mode", default="response", choices=("response", "discard"),
                     help="response=吃法类触发点；discard=出牌层（拆对子）触发点")
     ap.add_argument("--klass", default="漏吃", help="只对这些类别做对拍；空串=全部")
@@ -398,7 +422,7 @@ def main(argv: list[str] | None = None) -> int:
         with ProcessPoolExecutor(
             max_workers=args.jobs,
             initializer=_init_worker,
-            initargs=(args.baseline, args.treatment, args.opponents, args.mode),
+            initargs=(args.baseline, args.treatment, args.opponents, args.mode, args.force_tile),
         ) as pool:
             results = pool.map(_run_point, payloads, chunksize=4)
             for index, (point, out) in enumerate(zip(points, results)):
@@ -413,6 +437,7 @@ def main(argv: list[str] | None = None) -> int:
                 deciders,
                 _mine_of(file),
                 args.mode,
+                args.force_tile,
             )
             _accumulate(out, point, stats, diffs, rows)
             if (index + 1) % 50 == 0:
