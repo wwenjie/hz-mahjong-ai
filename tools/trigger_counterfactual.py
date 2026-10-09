@@ -251,7 +251,7 @@ def check(points: list[dict], limit: int) -> None:
 
 
 def run_one(doc: dict, point: dict, deciders: dict, mine: int, mode: str = "response",
-            force_tile: bool = False) -> dict:
+            force_tile: bool = False, force_trigger: bool = False) -> dict:
     """两分支各重建一次状态，从触发点续跑到局末。
 
     **两种模式**：
@@ -309,7 +309,20 @@ def run_one(doc: dict, point: dict, deciders: dict, mine: int, mode: str = "resp
                     return {"ok": False, "why": "我方不是吃牌窗口（非下家）"}
                 offered = point["offered"]
                 R.apply_discard(state, discarder, offered, None)
-                claim = R.resolve_responses(state, discarder, offered, pick)
+                if force_trigger and branch == "treatment":
+                    # **定向臂**：只在**这一次响应窗口**用处理臂裁决，之后一律用基线决策器
+                    # ⇒ 差分可干净归因到「这一次吃」。
+                    trig_pick = [
+                        deciders["treatment"] if s == mine else deciders["opponents"]
+                        for s in range(4)
+                    ]
+                    claim = R.resolve_responses(state, discarder, offered, trig_pick)
+                    pick = [
+                        deciders["baseline"] if s == mine else deciders["opponents"]
+                        for s in range(4)
+                    ]
+                else:
+                    claim = R.resolve_responses(state, discarder, offered, pick)
                 if claim is None:
                     nxt, need_draw = (discarder + 1) % 4, True
                 else:
@@ -366,10 +379,11 @@ _WORKER: dict = {}
 
 
 def _init_worker(baseline: str, treatment: str, opponents: str, mode: str,
-                 force_tile: bool = False) -> None:
+                 force_tile: bool = False, force_trigger: bool = False) -> None:
     _WORKER["deciders"] = _build_deciders(baseline, treatment, opponents)
     _WORKER["mode"] = mode
     _WORKER["force"] = force_tile
+    _WORKER["force_trigger"] = force_trigger
 
 
 def _mine_of(file: str) -> int:
@@ -393,6 +407,7 @@ def _run_point(payload: tuple[str, dict]) -> dict:
     return run_one(
         doc, point, _WORKER["deciders"], ids.index(OUR),
         _WORKER.get("mode", "response"), _WORKER.get("force", False),
+        _WORKER.get("force_trigger", False),
     )
 
 
@@ -423,6 +438,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--points", required=True, help="普查数据集 JSONL")
     ap.add_argument("--limit", type=int, default=0, help="0 = 全部")
     ap.add_argument("--jobs", type=int, default=1, help="并行进程数")
+    ap.add_argument(
+        "--force-trigger",
+        action="store_true",
+        help="response 模式：只在触发窗口用处理臂，之后回到基线（定向臂，去掉下游污染）",
+    )
     ap.add_argument(
         "--force-tile",
         action="store_true",
@@ -462,7 +482,8 @@ def main(argv: list[str] | None = None) -> int:
         with ProcessPoolExecutor(
             max_workers=args.jobs,
             initializer=_init_worker,
-            initargs=(args.baseline, args.treatment, args.opponents, args.mode, args.force_tile),
+            initargs=(args.baseline, args.treatment, args.opponents, args.mode, args.force_tile,
+                      args.force_trigger),
         ) as pool:
             results = pool.map(_run_point, payloads, chunksize=4)
             for index, (point, out) in enumerate(zip(points, results)):
@@ -478,6 +499,7 @@ def main(argv: list[str] | None = None) -> int:
                 _mine_of(file),
                 args.mode,
                 args.force_tile,
+                args.force_trigger,
             )
             _accumulate(out, point, stats, diffs, rows)
             if (index + 1) % 50 == 0:
