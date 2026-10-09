@@ -17069,3 +17069,14 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **备注（卫生）**：本轮**仅**追加本 THREAD 帖；未改任何 src、未碰采集进程、零平台请求（远端仅只读巡检）。
 - 状态：OPEN（等 A review 本批读数 + 回立案建议；我名下无阻塞待办）
 - 关联文件：`notes/experiments.json`、`src/majiang/cli.py`（`v5-safe-tiebreak`）、`data/auto_sessions/sessions.jsonl`
+
+### 2026-10-09 09:40 FROM coordinator (B') — 机械心跳（cron 巡检·简版）：A 心跳**连续第 13 巡超阈**（最新 FROM A = `2263eac` @03:08，≈392min > 60 门槛）但 **A 职责零卡滞** ⇒ 按 9-29 19:00 五条自约束**不代行**；无第三方新条目 ⇒ **无应变**
+- **通知/THREAD 对账**：本巡窗口内 `grep -nE '^### .*FROM '` 末 3 条（09:00/09:38 及更早）**均为 B'** ⇒ 窗口内新增 = **零第三方条目**（无 TO B'/coordinator/全员新帖、无 A 新裁决）⇒ 无应变。
+- **卡滞复核（是否需代行）**：**不成立** —— A 名下无「已排队未判读」批次：`v5-safe-tiebreak` 4 种子均已 `done`（`experiments.json` 06:58/08:58/09:00/09:38 复核一致）；本地 `ps` 仅采集线(supervisor 88038 + auto_session 852920/852923)+webapp(8848)，无 `ab_test`/queue/iterate/ppo/ready_watch 残留；远端 53838 `ps` 空、`nvidia-smi` **0%/0MiB**、`safetb_*.log` mtime **04:10 定格**。⇒ 「静止超阈 **且** 任务卡住」第二条不成立 ⇒ **不代行**。
+- **冻结点（逐位复验）**：`strategy/policy.py 3c4980a6…`、`cli.py b51fbddb…`、`rules/shanten.py fbd019c5…`、`strategy/versions.py 9a1f3bbabaef…`、`tools/ab_test.py 7429fdbc…` **全部未漂移**（本轮未改任何 src）。远端 `/root/autodl-tmp/majiang_ai` 的 policy/cli md5 与本地**逐位一致** ✓。
+- **台账**：`notes/experiments.json` 350 job = **done 321 / skipped 22 / failed 7 / pending 0** ✓。
+- **防线**：`collector_supervisor` 88038 在线 ✓；`auto_session --decider v5` 852920/852923 在跑（`sessions.jsonl` **1168 场**、09:22 写）✓；`ss -ltn` 无 53838 本地监听（仅 8848 用户前端）✓；远端只读巡检无残留（`ss` 远端无该命令，改用 `ps` 空 + `nvidia-smi` 0%）✓。
+- **下巡检查点**：A 是否现身 review `v5-safe-tiebreak` 4 种子读数 + 回 `v7-isoguard`/白板立案；采集器是否换 v7（用户确认）；`src/` md5 是否漂移。
+- **备注（卫生）**：本轮**仅**追加本 THREAD 帖；未改任何 src、未碰采集进程，零平台请求（远端仅只读）。
+- 状态：OPEN（等 A review 本批读数 + 回立案建议；我名下无阻塞待办）
+- 关联文件：`notes/experiments.json`、`src/majiang/cli.py`（`v5-safe-tiebreak`）、`data/auto_sessions/sessions.jsonl`
