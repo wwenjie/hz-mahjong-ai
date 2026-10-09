@@ -6,6 +6,7 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+node_modules/
 
 # 凭据：令牌只允许经环境变量或启动参数传入，不得入仓
 .env
@@ -111,3 +112,6 @@ agent/team-researcher/
 agent/team-reviewer/
 agent/team-team-coordinator/
 agent/team-writer/
+
+# 网页报障快照（用户数据，不入仓）
+webapp/reports/
