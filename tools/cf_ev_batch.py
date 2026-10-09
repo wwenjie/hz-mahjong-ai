@@ -146,20 +146,23 @@ def _init(mode_name: str):
 def _worker(payload: tuple) -> dict:
     file, point, samples, seed0 = payload
     local = _localize_point_file(file)
-    doc = json.loads(Path(local).read_text(encoding="utf-8"))
-    ids = [str(s.get("user_id", "")) for s in (doc.get("seats") or [])]
-    if tcf.OUR not in ids:
-        return {"ok": False, "why": "非我方房"}
-    mine = ids.index(tcf.OUR)
     try:
+        doc = json.loads(Path(local).read_text(encoding="utf-8"))
+        ids = [str(s.get("user_id", "")) for s in (doc.get("seats") or [])]
+        if tcf.OUR not in ids:
+            return {"ok": False, "why": "非我方房"}
+        mine = ids.index(tcf.OUR)
         real, _events, _anom, _drawn = tcf.rebuild(doc, point)
+        unknown, sizes = public_counts(real, mine)
     except Exception as error:  # noqa: BLE001
-        return {"ok": False, "why": f"重建失败:{type(error).__name__}"}
-    unknown, sizes = public_counts(real, mine)
+        return {"ok": False, "why": f"重建/池:{type(error).__name__}"}
     cands = tuple(int(t) for t in point["cands"])
     diffs = []
     for i in range(samples):
-        out = _one_world(real, mine, cands, unknown, sizes, seed0 + i, _MODE)
+        try:
+            out = _one_world(real, mine, cands, unknown, sizes, seed0 + i, _MODE)
+        except Exception as error:  # noqa: BLE001
+            return {"ok": False, "why": f"世界:{type(error).__name__}"}
         if len(out) == len(cands):
             a = out[cands[0]][0]   # v5_tile（基准）
             b = out[cands[-1]][0]  # arm_tile（反事实）

@@ -99,6 +99,11 @@ def public_counts(real: R.RoundState, mine: int) -> tuple[list[int], list[int]]:
             known[t] += 1
     remaining = []
     for t, n in known.items():
+        if n > tiles.COPIES_PER_KIND:
+            # 重建把「碰→加杠(bugang)」重复计数：引擎 `apply_gang(bugang)` 本应把碰**原地升级**
+            # 为杠，但 `trigger_counterfactual.drive` 对它另建了一个杠副露 ⇒ 同牌出现 3+4=7 张。
+            # 这种点物理不可能，必须显式失败（由调用方跳过），不得静默损坏池子。
+            raise ValueError(f"重建重复计数：牌种{t}计{n}张 > {tiles.COPIES_PER_KIND}（碰+杠叠加）")
         for _ in range(n):
             pool.remove(t)
     remaining = pool
