@@ -17315,3 +17315,14 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **备注**：本条与 A 11:25 更正、我 11:40 帖**三方同向**（都指向「原测法测错类→需按窄口+巡目重导」）；仅新增「剂量-反应梯度 + corr」这一 A 未算的分层。
 - 状态：OPEN（等 A 类 A 剂量；我名下无阻塞待办）
 - 关联文件：`agent/out/trigger-points/cf-early-A-20261009.jsonl`、`tools/trigger_census_tenpai.py`（A）、`tools/trigger_counterfactual.py`（A）
+
+### 2026-10-09 11:55 FROM coordinator (B') TO A/用户 — 正确口径普查出数 + 我的 EV 口径首测：**「晚听宽口」仍为负且更大**
+- **A 的 tenpai 普查 14/14 分片已完成**（`agent/out/trigger-points/tenpai-A-20261009-shard*.jsonl`，远端，11:26→~11:52）。我合并全量（2050 点）确认**剂量充足**（远超 A 自估 0.9%/场）：
+  - **类A「早听窄口≤6张 + 宽备选≥2×」= 1197 点**；`narrow_copies` 分布 6:752 / 5:323 / 4:102 / 3:11 / 2:9；按巡目 `1-6巡 211 / 7-10巡 516 / 11巡+ 470`；财神 0:1053 / 1:140 / 2:4。
+  - **类B「张数优先 vs 种数优先」= 853 点**；巡目 `1-6巡 354 / 7-10巡 382 / 11巡+ 117`；财神 1:464 / 0:205 / 2:173 / 3:11；种数提升幅度 1 居多（4→5、2→3、3→4）。
+- **我方 EV 口径首测（正确过滤类 = 类A）**：`tools/cf_ev_batch.py --points /tmp/tenpai-A-smoke.jsonl --samples 20 --jobs 8`（**15 点冒烟**）⇒ **regret(晚听宽口 − v5) = −2.546、se 1.222、t −2.08**（14 点 / 280 世界；<0:79 / =0:141 / >0:60；逐点均值 −2.546）。**⇒ 第一次在用户场景（打完即听牌、听口≤6张）的正确过滤类上测，效应仍为负且比旧口径更大。** 失败 1 例（`重建/池:ValueError`＝我加的 bugang 护栏命中，符合预期）。
+- **⇒ 与 A 的 `cf-early`（−1.148）同向、与理论「早听窄口该被权衡掉」的乐观预期相反**。仍需按巡目分层确认「早巡是否反转」（A 预登记了该预测）。
+- **在跑（远端，全量正确口径）**：`cf_ev_batch --points /tmp/tenpai-A.jsonl`（1197×40×13）→ `ev-tenpaiA.jsonl`；`--points /tmp/tenpai-B.jsonl`（853×40×13）→ `ev-tenpaiB.jsonl`。**已挂到点收数**（automation `collect-ev-tenpai`，约 13:20，含分层判读）。
+- **止损处置（记录）**：我此前起跑的 `cf_ev_batch --points /tmp/ev400.jsonl`（旧口径）**跑了 26min 零输出占 14 核**，已判定非本轴有效证据 ⇒ **已 `pkill` 清掉**，算力让给正确口径批次。
+- 状态：OPEN（等 A/B 两臂全量 EV 出数 + 按巡目分层；等 A：value head 立项 / bugang 护栏 / seq71 立案回判）
+- 关联：`tools/cf_ev_batch.py`、`agent/out/trigger-points/tenpai-A-20261009-shard*.jsonl`（A）、`agent/out/trigger-points/ev-tenpaiA.jsonl`（远端，在跑）
