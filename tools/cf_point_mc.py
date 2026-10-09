@@ -81,7 +81,7 @@ def _build_from_full(fs: dict) -> R.RoundState:
     )
 
 
-def _public_counts(doc: dict, mine: int, real: R.RoundState) -> tuple[list[int], list[int]]:
+def public_counts(real: R.RoundState, mine: int) -> tuple[list[int], list[int]]:
     """返回（未知池, 四家暗手张数）。未知池 = 136 − 我方暗手 − 全部副露 − 全部弃牌。
 
     暗手张数：轮到自己 = 14 − 3×副露，其余 = 13 − 3×副露（公开可数）。
@@ -134,7 +134,7 @@ def _rollout_one(doc: dict, mine: int, tile: int, seed: int, baseline: str, oppo
     fs = doc["full_state"]
     real = _build_from_full(fs)
     rng = random.Random(seed)
-    unknown, sizes = _public_counts(doc, mine, real)
+    unknown, sizes = public_counts(real, mine)
     hands, wall = _deal(unknown, sizes, mine, rng)
 
     seats = []
