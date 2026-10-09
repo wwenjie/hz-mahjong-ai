@@ -43,16 +43,23 @@ MatchOutcome = tuple[tuple[int, int, int, int, int], ...]
 
 
 def build(name: str):
+    # **档位名可带 Mode 后缀**：`v7@final` ⇒ 同一个 v7 快照但用 `Mode.FINAL` 构造
+    # （FINAL 会把 `feed_weight` 覆盖成 1.5、`piao_threshold_scale` 覆盖成 0.85）。
+    mode = Mode.QUALIFIER
+    if "@" in name:
+        base_name, _, mode_name = name.partition("@")
+        mode = Mode.FINAL if mode_name.startswith("final") else Mode.QUALIFIER
+        name = base_name
     if name in TALLY:
         return make_decider("heuristic", TALLY[name])
     resolved = ALIASES.get(name, name)
     # 允许直接指名版本号（`--treatment v2 --baseline v1`），见 strategy/versions.py
     if resolved not in DECIDERS and not versions.is_version(resolved):
         raise SystemExit(
-            f"未知策略 {name!r}，可选: {sorted(set(DECIDERS) | set(TALLY) | set(ALIASES))}"
+            f"未知策略 {name!r}（可用 `名字@final` 指定 Mode），可选: {sorted(set(DECIDERS) | set(TALLY) | set(ALIASES))}"
             f" 或版本号 {sorted(versions.BY_ID)}"
         )
-    return make_decider(resolved, Mode.QUALIFIER)
+    return make_decider(resolved, mode)
 
 
 def play(
