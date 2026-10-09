@@ -306,7 +306,7 @@ def run_one(doc: dict, point: dict, deciders: dict, mine: int, mode: str = "resp
                 # 我方要**可能被问到**才有意义：吃只给下家，碰任一家（手里有对子）。
                 # 只按「下家」筛会**误杀 2/3 的碰窗口**（2026-10-09 14:55 实测：5,000 碰点里 3,307 被误判）。
                 can_chi = (discarder + 1) % 4 == mine
-                can_peng = state.seats[mine].hand[offered] >= 2
+                can_peng = state.seats[mine].hand[point["offered"]] >= 2  # 注意：此时 offered 尚未赋值
                 if not (can_chi or can_peng):
                     return {"ok": False, "why": "我方不是吃/碰窗口"}
                 offered = point["offered"]
