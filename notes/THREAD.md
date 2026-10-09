@@ -17589,3 +17589,26 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **防线**：`collector_supervisor` pid 88038 在线 ✓；`auto_session` pid 946224/946227 在跑（`sessions.jsonl` 1184 场）✓；`ss -ltn` **无 53838 本地监听**（仅 8848 用户前端）✓；本地无 `ab_test`/queue/iterate/ppo/ready_watch 残留 ✓。**运行时**：无活动 exec / 无子代理 ✓。A 心跳正常（最新 FROM A `17ec732`@13:35:45，≈6min ≪ 60）⇒ **不代行**。
 - 状态：OPEN（等 A：设计稿立据裁决 → 我起路线1/2 双门；A 诊断轴已收口）
 - 关联文件：`tools/meld_opportunity.py`（A，`b5740bd`）、`tools/trigger_counterfactual.py`（`--force-trigger`）、`agent/out/fix-design-isolated-connectivity-2026-10-09.md`、`agent/out/research/isolated-vs-compound-2026-10-09.md`、`notes/experiments.json`
+
+### 2026-10-09 13:50 FROM coordinator (B') TO A/用户 — 「口味分歧」复核（关键校正）：检索简报的"人类对"不成立于本游戏；机制根因锁定=ukeire 层覆盖 total
+- **背景**：用户 13:27「口味分歧要修复」。我起独立检索 `a8b6809d`（孤张 vs 复合搭，中/日/英），并用**本仓引擎**逐点复算核对。
+- **检索简报结论（`agent/out/research/isolated-vs-compound-2026-10-09.md`，20 来源）**：默认序=「先比向听→比进张枚数→比种类/改良→场况」；判 6 点中 **点2/4 人类对、点1/3 引擎对、点5 平局**。**但我复核后认为其"人类对"不成立于本游戏**（见下）。
+- **本仓引擎独立复算（新工具 `tools/verify_isolated_ukeire.py` / `tools/compare_arms_taste.py`）**：
+  - 6 个"口味"点，v5 **全部**选出「最小向听下进张/听口最大」（或与之并列）；
+  - **seq141**（用户最关心的"拆778w"）v5 打 8w 得**听口 7 种/23 张** > 打 5w 6 种/19 张，且 8w 喂牌更低；`winning_draws` 逐张 `is_winning_shape` **自洽复核 ✓**（非听口 9b 为 False）⇒ 引擎听口计算**正确**；
+  - `two-ply / v5-twoply / v5-cand5-twoply` 四臂**全部不翻向用户** ⇒ 非"1步 vs 2步"能解决。
+- **口径错位（关键）**：简报判点2/4用**日麻口径（白=普通客风）**，但本游戏**白=财神（百搭）**；简报**自己算出**「财神口径下 8w 反超（23>19）」却仍以"日麻通理"判人类对 ⇒ **对本游戏不成立**。简报**唯一应保留的强结论**＝"含财神手牌必须单独建模"。
+- **机制根因（读源码确认）**：`_break_ties_by_ukeire` 在**同向听**候选里取 `max(精确进张)`，**会覆盖 total**：
+  - seq53：total 发 −26.95 > 2w −27.51，但 ukeire 2w 26 > 发 25 ⇒ 覆盖，v5 打 2w（**用户主张=发=total 最高**）；
+  - seq55：total 2t −16.27 > 3b −17.96，但 ukeire 3b 68 > 2t 64 ⇒ 覆盖，v5 打 3b（**用户主张=2t=total 最高**）；
+  - seq113：total 1w −5.88 > 3w −6.58，但 ukeire 3w 23 > 1w 21 ⇒ 覆盖，v5 打 3w（**用户主张=1w=total 最高**）。
+  ⇒ 这 3 点**用户直觉与 total 完全一致**，是**真·可修缺陷**（ukeire 层覆盖 total）。
+- **把「口味分歧」按口径拆开（修正我 `def7e8d` 的过强表述）**：
+  - **A 破平层覆盖主分**（seq53/55/113）＝**真缺陷**；用户主张==total 最高；修法＝让 total 权威、ukeire 仅在 **total 完全并列**时打破。
+  - **B ukeire 完全并列时用牌索引/喂牌破平**（seq150 1b/9b/1t/9t 全同；seq31/65 形质并列）＝**可修**；用户论点（9b 因 **8b 已见 1 张**而更弱）**有理**，破平应改用「改良路径枯竭度/可用性」。
+  - **C 复合形/雀头态估值**（seq141/124）＝机制缺口（简报 S6 有理），须 A/B。
+  - **D 目标函数（1步 vs 待形/打点）**（seq7/71）＝**非缺陷**，改动力度大。
+- **修正产出**：`agent/out/taste-divergence-recheck-2026-10-09.md`（`0d8e932`）；新工具 `tools/verify_isolated_ukeire.py`、`tools/compare_arms_taste.py`。
+- **待用户裁范围**：只修 **A+B**（窄、低风险、双门成本低），还是连 **C/D** 一并立项（须整场 A/B 预登记）。
+- 状态：OPEN（等用户裁范围；A 车道=ukeire 覆盖层的处置须 A/B）
+- 关联：`agent/out/taste-divergence-recheck-2026-10-09.md`、`agent/out/research/isolated-vs-compound-2026-10-09.md`、`tools/verify_isolated_ukeire.py`、`tools/compare_arms_taste.py`
