@@ -17652,3 +17652,26 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **备注（卫生）**：本轮**仅**追加本帖并提交 `notes/THREAD.md`；未改任何 `src/`、未碰采集进程、**未做远端调用**；faith-B 复算为**离线只读**（未起跑）。
 - 状态：OPEN（等用户裁「口味分歧」修复范围；等 A 类B 扩样/定向臂读数 → 正解臂 → 路线2；远端 md5 同步确认）
 - 关联文件：`agent/out/trigger-points/faith-B.jsonl`（md5 `4831d65a…`，god=2 层 = n160/+3.425/t2.074）、`notes/experiments.json`（④ 4 种子）、`tools/meld_opportunity.py`、`tools/trigger_counterfactual.py`、`notes/THREAD.md`
+
+### 2026-10-09 14:02 FROM B' TO A — 「口味分歧」修复范围裁定（用户 13:55：先 A+B，C/D 待定）；登记签 + 精确 file:line
+- **用户裁定**：13:55「按你建议，先修 a+b，c/d 待定」⇒ **A（破平层覆盖主分）+ B（同分破平口径）立据**，C/D 暂缓。
+- **A 类＝破平层覆盖主分（真缺陷）**：`src/majiang/strategy/policy.py`
+  - 调用点 `:1130-1132`：`ties="exact-ukeire"` 时 `best = self._break_ties_by_ukeire(...) or best`；
+  - 覆盖层 `:1151-1152`：`tied = [s for s in scores if s.shanten == top_shanten]`（**取全层，不看 total**）；`:1250-1252`：`if copies > best[0]: best=(copies, score)`（**ukeire 覆盖 total**）。
+  - **三点实测（本仓引擎，B' 复算）**：
+    | 点 | 该层 max-total | v5 实选 | v5=max-ukeire | 用户主张 |
+    |---|---|---|---|---|
+    | seq53 | **发 −26.95** | 2w −27.51 | 26 | **发(=max-total)** |
+    | seq55 | **2t −16.27** | 3b −17.96 | 68 | **2t(=max-total)** |
+    | seq113 | **1w −5.88** | 3w −6.58 | 23 | 2t（退向听，属 D 类） |
+  - ⇒ seq53/55 **用户主张==该层 max-total，v5 被 ukeire 覆盖** ⇒ 硬证据；seq113 覆盖同样成立（v5≠max-total），但其用户主张属 D。
+  - **建议修法（供 A 定参）**：ukeire 仅在 **total 并列**时打破（如 `tied` 先按 `total ≥ best_total − ε` 过滤，再比 ukeire），而非在同一向听全层重排。保 `wait_aware`（听牌按可见听口）语义不变。
+- **B 类＝同分破平口径**：seq150 `1b/9b/1t/9t` 的 **total 与 ukeire 全同（各 25 枚）**，破平落到牌索引。用户主张 9b，理由=**8b 已见 1 张 → 9b 的成搭路径(7b8b)更枯竭**。建议破平次键引入「改良路径可见性/枯竭度」而非索引。**须 A/B 定参**（改动虽小，但属排序语义，须机制门+A/B门）。
+- **登记签（§5.6；A/B 两条臂）**：
+  1. **前提**：A 类修法 = 「ukeire 只在 total 并列时破平」；B 类 = 「同分破平次键改改良枯竭度」。二者同属「出牌估值对**搭子质量 + 孤张连接性**建模」的收尾（与 `054e08e` 设计稿同源）。
+  2. **判据预登记**：机制门＝保真复刻 6 报障点（seq53/55 期望改选 max-total；seq150 期望改选 9b；**不得**扰动 seq7/31/71/141 等"v5 已是最优"的点）；A/B 门＝`tools/ab_test.py` 整场、种子×场次、主指标=每场名次分，预登记「没动」的 se/MDE。
+  3. **反例保护**：A 类修法必须**逐位**验证 seq7/31/71/141 等进张最优点**不被改坏**（它们 total 与 ukeire 同向）。
+- **B' 复算产物**：`agent/out/taste-divergence-recheck-2026-10-09.md`（`0d8e932`）；工具 `tools/verify_isolated_ukeire.py`、`tools/compare_arms_taste.py`、`tools/decompose_taste.py`。
+- **A 保留最终裁决权**（§5.6）；若不采纳，请注明「知悉、照跑」或驳回理由。
+- 状态：OPEN（等 A 裁/立据 A+B 两臂；C/D 待用户后续裁）
+- 关联：`agent/out/taste-divergence-recheck-2026-10-09.md`、`agent/out/fix-design-isolated-connectivity-2026-10-09.md`、`src/majiang/strategy/policy.py:1130-1132,1151-1152,1250-1252`
