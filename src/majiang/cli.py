@@ -699,17 +699,27 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               ukeire_candidates=3, meld_chi_best=True, meld_chi_tiebreak=True,
                               meld_tolerance="equal")
     ),
-    # **`v5-safe-tiebreak` = 裁定④残余并列的显式规则**（B' 2026-10-09 03:1x 按 A 03:25 裁定登记）。
+    # **`v5-safe-tiebreak` = 裁定④残余并列的显式规则**（B' 2026-10-09 03:1x 按 A 03:25 裁定登记；
+    # 理由/判据已于 10:25 按 A 自纠更正，见下）。
     #
-    # **背景**：A 用「翻转并列组内部顺序是否改选」（`/tmp/tie_rate.py`）量到**顺序敏感率
-    # 15.1% of 全部决策 / 18.2% of 进并列比较**——`_break_ties_by_ukeire` 先按 `total`、再按
-    # `-blocks` **稳定排序**后**截断到前 3 张**，最后只比精确进张、**完全不再看 total**
-    # ⇒ ①`blocks` 相等且并列组跨过第 3 名边界时，「谁进精确比较」由**输入顺序**决定；
-    # ②被截断掉的高 `total` 候选永远没机会。
+    # **背景（A 2026-10-09 10:25 更正后的真实口径，两行都是直测）**：
+    # ① 锚面：3,796 个决策中 **1,593 个（41.97%）的 top-`total` 存在并列**（且并列者同向听）
+    #    ⇒ `safe_tiebreak` 只改 `(total, seen)` 次键，可达面很大。
+    # ② 剂量（空干预门，直测）：`tools/divergence_gate.py --arms v5,v5-safe-tiebreak --rooms 40
+    #    --limit 400` ⇒ 不同 **25/400 = 6.2% ≥5% ⇒ 过门**（可进 A/B）。
+    # ⚠️ A 早前引用的「顺序敏感率 15.1% of 决策 / 18.2% of 进并列比较」（`/tmp/tie_rate.py`）
+    #    **已作废**：`_break_ties_by_ukeire` 在生产里只有一个调用点（本文件 `_choose_discard`），
+    #    且传入的 `scores` 永远已按 `total` 降序排好 ⇒ 那次翻转的是**生产不会出现的输入顺序**，
+    #    故为伪影、不得再引用。
+    #
+    # **机制（键序）**：`_break_ties_by_ukeire` 在 `ukeire_order="blocks"` 下把同向听并列项按
+    # `-blocks` **稳定排序**（保留上一层次序）后**截断到前 3 张**，最后只比精确进张
+    # ⇒ **截断的真实键序 = `(blocks 降序, total 降序)`**（不是「由输入顺序决定」）。
     #
     # **改动（只一处）**：`PolicyConfig.safe_tiebreak=True` —— 在 `_choose_discard` 的主排序键
-    # 从 `total` 改为 `(total, seen[tile])`（**已见张多者优先**：已被人打过 ⇒ 更不可能是他等的）。
-    # 它与 `v5` **只差这一个开关**，且**结构上只影响 `total` 完全相等的候选**，动不了任何一项的排序。
+    # 于 `total` 之后**插入 `seen[tile]` 次键**（`(total, seen[tile])`，**已见张多者优先**：
+    # 已被人打过 ⇒ 更不可能是他等的）。它与 `v5` **只差这一个开关**，且**结构上只影响 `total`
+    # 完全相等的候选**，动不了任何一项的排序。
     # 默认档/冠军档 `safe_tiebreak=False` ⇒ 逐位等于 `v5`（§6/§7.3，未改默认档）。
     #
     # **预登记判据（先空干预门、后 A/B）**：
