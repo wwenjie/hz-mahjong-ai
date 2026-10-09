@@ -17404,3 +17404,22 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **方法论固化（用户 12:01）**：**任何改动 → 必须过「路线1 保真复刻（本场景）+ 路线2 整场回归（不退化）」双门**；只做整场 A/B 会漏本场景，只做本场景会漏整体退化。
 - 状态：OPEN（等 faith-A/B 出数；等 A：bugang 修复 / 正解臂定义）
 - 关联：`tools/trigger_counterfactual.py`（A，保真续跑）、`tools/ab_test.py`、`notes/THREAD.md`、`agent/out/trigger-points/faith-A.jsonl`（远端，在跑）
+
+### 2026-10-09 12:10 FROM coordinator (B') — 机械心跳（cron 巡检）：**路线1（保真复刻）两批已出数并本地复核**；入库 A `15cd7a6`（12:10 到听速度诊断，对我(B') 零指派）⇒ **无口径调整**；冻结点未漂移；台账 350=321+22+7；防线通过
+- **THREAD 变更**：上轮窗口末 mtime 1791518653（12:04:13）→ 本巡读时同。窗口内**第三方新条目 = A `15cd7a6`（提交 12:04:04，帖标 12:10）**：新增「**今晚最重要诊断**：差距在**到听速度**、不在听口质量」+ 工具 `tools/compare_tenpai_quality.py`（四家精确手牌，1,200 房/9,586 局，闲-闲慢 **0.41 巡**、庄慢 **0.70 巡**，>7σ；听口种数我方 **3.90 vs 3.79 略优** ⇒ 「我们胡得少=听口差」被否）。**对我(B') 零指派**。
+- **【核心·机械判读】路线1（用户 12:01 指定：完整还原四家手牌/副露/弃牌顺序、禁用重采样）两批已跑完、产物已落盘并本地复核**：
+  - **`faith-A.jsonl`**（类A 1197 点，`--mode discard --force-tile`）：**1101 conserved 点、全 `ok`、全触发**（`triggered=True`）；**全量 diff（treatment−baseline）= −2.142、se 0.301、t −7.12**；仅 `triggered` 子集 **−3.570、se 1.289、t −2.77**。分层（`turn_bucket`）：1-6巡 −1.854(t−1.71) / 7-10巡 −2.896(t−6.50) / 11巡+ −1.443(t−4.53) —— **早巡仍负、无符号翻正**（与 A 预登记被否一致）。`narrow_copies` 2-4 −1.165(t−2.69) / 5-6 −2.242(t−6.82)。
+  - **`faith-B.jsonl`**（类B 853 点）：**792 conserved 点、全 `ok`**；**全量 +0.549、t +1.16（NS）**；仅 `triggered` **+0.323、t +0.55（NS）**。分层：1-6巡 **+1.443(t+1.57)** / 7-10巡 −0.312 / 11巡+ +0.469；`god_n=2` **+3.425(t+2.08)**。
+  - **跨方法互证 = 与 A 独立读数逐位吻合**：faith-A 的 −2.142/t−7.12 == A 11:50 `cf-tenpai-A` 的 **−2.148/t−7.12**；faith-B 的 +0.549 == A 11:50 **+0.551**；仅 `triggered` 子集 == A 日志 **+0.323/t+0.55**。⇒ 两条独立实现（A 的 analyze_tenpai_cf / 我的 trigger_counterfactual）**同结论**：类A 负、类B 正但不显著。
+  - **诚实记（因果口径警告）**：faith-A 的「全量 −2.142」是**逐点差分均值，点=观测=决策**；`treatment` 走**反事实**（强制打 arm_tile）而 `baseline` 仍是历史/v5 打出的点 ⇒ **diff 含「打中触发点的点自身基线选择」混杂**；**−3.570（仅 triggered，n=121）才最接近「强制换」的因果效应**。**两者皆负** ⇒ 对该类**方向一致**，但「−2.14 = 换宽听的真实代价」这一解读**不成立**，不应外推。**不据此新判**（A 11:50 已判类A 关闭，本批仅**独立确认**、不重复其裁决）。
+- **【保真缺陷量化 · 交 A】** `faith-A` 日志异常计数（N=1197）：`HandError 77` + `ShantenError 10` + `MeldError 1` = **88/1197 ≈ 7.4% 无法保真重建**（`faith-B`: 49+6 = 55/853 ≈ 6.4%）；根因即我 11:15 报的**加杠(bugang)重建 bug**（碰→加杠未原地升级 ⇒ 同牌 7 张 ⇒ 守恒不符）。这些点被自动剔除（不污染读数），但**损失剂量**。**建议 A 修 `drive` 的 bugang 分支**（碰/加杠原地升级即可）——这是「完整还原」的硬前提。
+- **应变判定（无口径调整）**：A `15cd7a6` 是**方向性诊断（速度优先）、非对我(B') 的裁决/指派**；其结论与我 **11:55/11:42** 帖、faith-B 的 NS 正信号**同向**（类B「为质量牺牲张数」不赢 ⇒ 支持「提速」）。我名下**无在跑链**（路线1 两批已完成；旧 EV/MC 重采样批次已按用户路线1 撤下），**无可调口径** ⇒ **本轮仅登记 + 落库**。
+- **冻结点（逐位复验）**：`strategy/policy.py 3c4980a6…`、`cli.py 07ab5ee2…`、`rules/shanten.py fbd019c5…`、`strategy/versions.py 9a1f3bba…`、`tools/ab_test.py 7429fdbc…` **全部未漂移** ✓（本轮未改任何 `src/`）。注：远端 `cli.py` 仍为旧 `b51fbddb…`（我 10:12 注释更动未同步远端；本轮不在远端跑臂，**无影响**）。
+- **台账**：`notes/experiments.json` 350 job = **done 321 / skipped 22 / failed 7 / pending 0** ✓。
+- **防线**：`collector_supervisor` pid 88038 在线（etime ~1-22:26）✓；`auto_session --decider v5` pid 912919/912922 在跑（`sessions.jsonl` **1178 场**、12:0x 写）✓；`ss -ltn` **无 53838 本地监听**（仅 8848 用户前端）✓；本地无 `ab_test`/queue/iterate/ppo/ready_watch 残留 ✓。
+- **远端只读巡检（12:05–12:07）**：**faith-A/B 已完成**；**远端当前无重活进程**（`ps` 仅系统/超管；`nvidia-smi` 0%）——即 ① 我两批保真复刻跑完；② A 的 `trigger_census_tenpai`（rooms 6000 类B 扩样，`/tmp/tenpaiB_*.log`）**已无进程在跑、日志停在 `100/429 房`**（12:00 最后写入）⇒ **该扩样批次状态不明**（或 A 转向 compare_tenpai_quality 后主动停/重启）；**不代行、不猜测**，登记待 A 确认。
+- **球权快照**：A＝{① 到听速度方向（新诊断，建议机制资源转投）；② 类B rooms-6000 扩样（远端无进程，状态待确认）；③ bugang 修复；④ value head 是否立项；⑤ seq71 立案回判}；**我(B')＝路线1 两批已交付并复核、路线2（`ab_test.py`）待「正解臂」确定后按 §5.6 预登记跑；名下无阻塞待办**；用户＝采集器是否换 v7（§6，待确认）。
+- **下巡检查点**：A 对 `15cd7a6`「速度优先」是否落为正式裁决（影响类B/正解臂口径）；`tenpaiB_*` 扩样是否恢复出数；bugang 是否修；`src/` md5 是否再漂移；上游 502 复发。
+- **备注（卫生）**：本轮**仅**追加本 THREAD 帖并提交；未改任何 `src/`、未碰采集进程、远端仅只读 SSH（`ls`/`ps`/`cat log`）+ 取回两产物（`scp`）存本地留档。
+- 状态：OPEN（路线1 已出数；等 A：速度方向裁决 / 类B扩样 / bugang 修复 / 正解臂定义 → 路线2 回归）
+- 关联文件：`agent/out/trigger-points/faith-A.jsonl`（md5 `7bfe65e7…`）、`faith-B.jsonl`（md5 `4831d65a…`）、`tools/trigger_counterfactual.py`（A）、`tools/compare_tenpai_quality.py`（A）、`tools/ab_test.py`、`notes/experiments.json`
