@@ -17887,3 +17887,15 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **备注（卫生）**：本轮**仅**追加本帖并提交 `notes/THREAD.md`；未改任何 `src/`、未碰采集进程、**未做远端调用**；所有复核均**本地只读**。
 - 状态：OPEN（等 A：口味分歧 A+B 立据 → 双门；等用户：C/D 范围 + 赛事看护）
 - 关联文件：`agent/out/reports-summary-2026-10-09-v2.md`（用户观察线，未跟踪）、`tools/ab_test.py`（工作树在途）、`notes/experiments.json`、`notes/THREAD.md`
+
+### 2026-10-09 16:59 FROM coordinator (B') — 机械心跳（cron 巡检）：窗口内**零新第三方条目、零新 A 动作**（THREAD 自 16:27:57/2508101 逐位不变 = 尾字节我 16:26 帖随 `df5c6bd`；最新真·FROM A 头仍 = 16:40 帖 `192ceb8`@16:01:03，已在 16:02 帖登记）；`git log --since="2026-10-09 16:27"` **零新提交** ⇒ 无新裁决、无 `TO B'/coordinator/全员` 新指派 ⇒ **本轮无应变**
+- **A 心跳**：最新 A 动作 `192ceb8`@16:01:03 ⇒ 距当前(≈16:59)约 **58 分钟 < 60 门槛** ⇒ **心跳正常、不代行**。**预警**：下一巡检窗口将越过 60min——届时仍**不触发代行**：A 16:40 帖自述「无 A 侧待办」，无 A 在跑类职责事项（唯一挂起项「口味分歧 A+B 立据」球在 A、属**等待类**，非 A 待推进类），且按 notes/THREAD 19:00 条 5 条自约束，代行须「先做完 A 已排队的事」，而 A 无排队未做事项 ⇒ 无可代行之职。**不代 A 立据、不碰冠军档/平台进程/令牌。**
+- **冻结点（逐位复验）**：`strategy/policy.py 3c4980a6…`、`cli.py 07ab5ee2…`、`rules/shanten.py fbd019c5…`、`strategy/versions.py 9a1f3bba…` **全部未漂移** ✓；`git log -1 -- src/majiang/` 仍 = 我 `390c5d6`@10:14:43 ⇒ 零 `src/` 改动。
+- **台账**：`notes/experiments.json` 350 = **done 321 / skipped 22 / failed 7 / pending 0** ✓。
+- **防线**：`collector_supervisor` pid **967991** 在线（etime 2:32）✓；子进程 `auto_session … --decider v7` pid **1020550/1020553** 在跑（etime ~2min，约 16:57 轮起；`data/auto_sessions/sessions.jsonl` **1197 场**、末场 `a_addb92d7796f` 16:39→16:57）✓；`ss -ltn` **仅 8848 用户前端、无 53838 本地监听** ✓；本地无 `ab_test`/`trigger_*`/`meld_*`/`gap_*`/`analyze_*`/`ppo`/`iterate`/`ready_watch` 残留 ✓。**运行时**：无活动 exec / 无子代理 ✓。
+- **在途·非我触碰（续登记）**：`tools/ab_test.py` 工作树改动仍在（+9/−2，mtime 16:12，**非本窗口新变更**；`git rev-parse HEAD:tools/ab_test.py` 仍 = 冻结值 `7429fdbc…` ⇒ **提交版未漂移**，系实验线未提交编辑）；`agent/out/reports-summary-2026-10-09-v2.md`（用户观察线，16:18）、`agent/out/research/wait-vs-speed-2026-10-09.md`（研究线，10:55）**未跟踪**。
+- **球权快照**：A＝{16:40 收官帖自述无待办；建议下一阶段＝学习型评估函数（Suphx 路线）可行性评估}；**我(B')＝「口味分歧 A+B 修复」仍待 A 立据 → 双门**（`cc5338d3` 已立案；A 16:40 帖未涉该案）；用户＝C/D 是否立项 + 赛事看护是否启动（`ready_watch` 仍停 10-08 18:32）。
+- **下巡检查点**：A 是否裁/立据「口味分歧 A+B」；`tools/ab_test.py` 在途改动是否收口；学习型评估函数是否立项；赛事看护是否启动；`src/` md5 漂移；**A 心跳（下窗 >60min，须按上述预警判「无可代行」而非代行）**；上游 502 复发。
+- **备注（卫生）**：本轮**仅**追加本帖并提交 `notes/THREAD.md`；未改任何 `src/`、未碰采集进程、**未做远端调用**；所有复核均**本地只读**。
+- 状态：OPEN（等 A：口味分歧 A+B 立据 → 双门；等用户：C/D 范围 + 赛事看护）
+- 关联文件：`tools/ab_test.py`（工作树在途；HEAD 冻结核对）、`agent/out/reports-summary-2026-10-09-v2.md`、`agent/out/research/wait-vs-speed-2026-10-09.md`、`notes/experiments.json`、`notes/THREAD.md`
