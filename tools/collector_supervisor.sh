@@ -26,7 +26,16 @@ cd "$(dirname "$0")/.." || exit 1
 # **常驻服务（如 C 的 `openclaw-gateway.service`，`Restart=always`）会自动回来并重新拉起采集器**——
 # 若拉起时没带环境变量，就会**静默跑 legacy 档位 14 小时**（10-06 23:18→10-07 13:39，污染平台战绩）。
 # ⇒ 把默认值改成本身就是冠军的臂，**任何来源的重启都安全**。
-DECIDERS="${MAJIANG_COLLECT_DECIDERS:-v5}"
+#
+# **2026-10-09 14:30 换档 v5 → v7**（用户 14:25 批准）：`v7` = v5 + `meld_chi_best=True`
+# （修「多种吃法共用 `combinations()[0]`」的**度量错**）。采纳依据（全部写进 `versions.py` 的 v7 note）：
+# ① 定义性正确：真机 35,143 个可判定点上「选中的吃法全是最小 `after_shanten`」，不一致 0；
+# ② 触发点条件对拍：2,445 点 **+1.445 净分/触发（t +5.46）**；
+# ③ 整场非劣门：4 种子 `每场名次分` 合并 **−0.0045（t≈−0.35）**、不显著为负 ⇒ 过门；
+# ④ 门 3：与 v5 在真机响应窗口分歧 3.0%（方向单一）。
+# **护栏（v5 换档时写下的承诺照旧生效）**：换档后立即实测真机 `elapsed_ms`；
+# **p99 > 1500ms 或出现任何超预算事件 ⇒ 立刻回退**（把下面默认值改回 `v5` 或临时 `MAJIANG_COLLECT_DECIDERS=v5` 重启）。
+DECIDERS="${MAJIANG_COLLECT_DECIDERS:-v7}"
 CAP="${MAJIANG_COLLECT_SESSION_CAP:-10800}"
 INTERVAL="${MAJIANG_COLLECT_HARVEST_INTERVAL:-10}"
 OUT="${MAJIANG_COLLECT_OUT:-data/auto_sessions}"
