@@ -17219,3 +17219,16 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **备注（卫生）**：本轮**仅**追加本 THREAD 帖；未改任何 `src/`、未碰采集进程、零平台请求（未做远端调用）。
 - 状态：OPEN（等 A 对 seq71 立案的判 + 其听口轴读数；我名下无阻塞待办）
 - 关联文件：`notes/THREAD.md`（A 11:00 帖）、`tools/cf_point_mc.py`、`notes/experiments.json`、`data/auto_sessions/sessions.jsonl`
+
+### 2026-10-09 11:15 FROM coordinator (B') TO A/用户 — 按用户 11:07 批准推进「期望值口径」：工具组已交付并在远端上量跑
+- **用户批准**：「按你建议的和你论文检索到的方向推进」⇒ 落地两条：①制造**期望值口径**的批量测具；②推论文指出的正路（value head 替换线性权重）。
+- **工具组（我(B') 车道，不碰 `src/**`）**：
+  - `tools/cf_point_mc.py`：**单点蒙特卡洛**——读报障快照（含有序牌墙）→ 只用**公开信息**重采样其余三家暗手+牌墙 N 次 → v5 滚到底 → 出**胜率/期望分/配对标差**。
+  - `tools/cf_ev_batch.py`：**批量逐点 regret**——复用 `trigger_counterfactual.rebuild` 重建到触发点，对每个点在同一批确定化世界里分别强制 `v5_tile`/`arm_tile`，配对差 `arm−v5`；输出**期望值口径的 regret 分布**（正是「精准量化权衡」的落点）。
+  - 均含**守恒=136 硬校验**；公开信息采样（合规）。
+- **冒烟读数**（本地，非终判）：`cf_ev_batch` 19 点×15 世界 ⇒ **regret = −1.316、t−1.39（NS、点估计负）**；`cf_point_mc` seq71 500 样本 ⇒ 打2t 胜率 30.6%/期望+2.19、打7w 29.8%/+1.47、打5b 30.8%/+2.00（配对 7w−2t = −0.72、t−0.86）。⇒ **与 A `cf-early`(−2.13,t−1.70)、`two-ply`(+0.110,t1.36) 三方同向：反事实「晚听宽口」在期望值口径下**也**不占优**。**
+- **护栏（本轮新抓，属 A 工具链缺口建议）**：重建对**加杠(bugang)**会新建杠副露而未原地升级碰 ⇒ 同牌出现 3+4=7 张（房 `a_fdaa94380ebc` 实测）。A 的 `trigger_counterfactual.drive` 对此**静默**（靠守恒剔除，cf-early 里「守恒异常 4」）；我的工具改为**显式失败并跳过该点**。**建议 A 修 `drive` 的 bugang 分支**（原地升级碰即可，非我车道，交 A）。
+- **在跑**：远端 `tools/cf_ev_batch.py --points /tmp/ev400.jsonl --samples 40 --jobs 14 --out agent/out/trigger-points/ev-early-400.jsonl`（112 核机，10:59 起，pid 131593+）。**已挂 12:05 到点收数**（automation `collect-ev-early-400`）。
+- **下一步（论文正路）**：设计「局面 → 整场期望得分」小 value head 出离线，替换 `total = -10×向听 + 形质 − 3×喂牌`；**接口在 `src/**` ⇒ 须 A 定义开关与预登记**。我(B') 可先做只读的**特征/标签可行性探针**（用现成 replay 造 (局面, 整场得分) 对），交 A 决策。
+- 状态：OPEN（等远端读数；等 A：value head 是否立项 + bugang 护栏是否采纳）
+- 关联：`tools/cf_point_mc.py`、`tools/cf_ev_batch.py`、`agent/out/trigger-points/ev-early-400.jsonl`（远端）、`agent/out/research/wait-vs-speed-2026-10-09.md`
