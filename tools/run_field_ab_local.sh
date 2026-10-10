@@ -8,15 +8,17 @@ cd "$(dirname "$0")/.." || exit 1
 
 PY=.venv/bin/python
 LOG=${LOG:-/tmp/field_ab_local.log}
+TREATMENT=${TREATMENT:-v7m-keepchi}
+BASELINE=${BASELINE:-v7}
 : > "$LOG"
 
 for field in ${FIELDS:-meld-equal}; do
   for seed in ${SEEDS:-20260923 20261011}; do
-    echo "=== [本机] field=$field seed=$seed 开始 $(date -Is) ===" >> "$LOG"
-    nice -n 15 "$PY" tools/ab_test.py --treatment v7m-keepchi --baseline v7 --field "$field" \
+    echo "=== [本机] treatment=$TREATMENT field=$field seed=$seed 开始 $(date -Is) ===" >> "$LOG"
+    nice -n 15 "$PY" tools/ab_test.py --treatment "$TREATMENT" --baseline "$BASELINE" --field "$field" \
       --matches "${MATCHES:-200}" --rounds "${ROUNDS:-8}" --seed "$seed" --jobs "${JOBS:-12}" \
       >> "$LOG" 2>&1
-    echo "=== [本机] field=$field seed=$seed 结束 $(date -Is) ===" >> "$LOG"
+    echo "=== [本机] treatment=$TREATMENT field=$field seed=$seed 结束 $(date -Is) ===" >> "$LOG"
   done
 done
-echo "=== [本机] 场地代表性 A/B 完成 $(date -Is) ===" >> "$LOG"
+echo "=== [本机] 场地 A/B 完成 $(date -Is) ===" >> "$LOG"

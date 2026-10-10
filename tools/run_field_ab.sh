@@ -23,16 +23,18 @@ cd /root/autodl-tmp/majiang_ai
 PY=/root/miniconda3/bin/python
 MATCHES=${MATCHES:-200}
 ROUNDS=${ROUNDS:-8}
-LOG=/tmp/field_ab.log
+TREATMENT=${TREATMENT:-v7m-keepchi}
+BASELINE=${BASELINE:-v7}
+LOG=${LOG:-/tmp/field_ab.log}
 : > "$LOG"
 
 for field in ${FIELDS:-meld-equal natural}; do
   for seed in ${SEEDS:-20261008 771013}; do
-    echo "=== field=$field seed=$seed 开始 $(date -Is) ===" >> "$LOG"
-    $PY tools/ab_test.py --treatment v7m-keepchi --baseline v7 --field "$field" \
+    echo "=== treatment=$TREATMENT field=$field seed=$seed 开始 $(date -Is) ===" >> "$LOG"
+    $PY tools/ab_test.py --treatment "$TREATMENT" --baseline "$BASELINE" --field "$field" \
       --matches "$MATCHES" --rounds "$ROUNDS" --seed "$seed" --jobs 14 \
       >> "$LOG" 2>&1
-    echo "=== field=$field seed=$seed 结束 $(date -Is) ===" >> "$LOG"
+    echo "=== treatment=$TREATMENT field=$field seed=$seed 结束 $(date -Is) ===" >> "$LOG"
   done
 done
-echo "=== 场地代表性 A/B 全部完成 $(date -Is) ===" >> "$LOG"
+echo "=== 场地 A/B 全部完成 $(date -Is) ===" >> "$LOG"

@@ -854,6 +854,54 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
                               ukeire_candidates=3, meld_chi_best=True, keep_extra_pairs=1.0)
     ),
+    # **财神/爆头路线两键**（A 2026-10-10 14:10 登记；这是当日新测出的**最大结构性缺口**的对策）。
+    #
+    # **缺口（真机 1,500 房 / 11,967 局，同批局内我方 vs 三家，`tools/baotou_census.py`）**：
+    #   - 胡率 **我方 20.9%/局 vs 三家各 25.7%**（0.81×）；
+    #   - **爆头占自己胡牌 我方 14.4% vs 三家 23.8%（1.66×）**；杠 1.73×；财飘 1.11×；
+    #   - 七对我方反而更多（4.0% vs 2.6%）。
+    # `爆头＝听任意`（`win.is_baotou`：**每一张还能摸到的牌都能成和**）＝财神百搭路线的终点，
+    # 番数高 ⇒ **这条比出牌层任何细调都值钱**。
+    #
+    # **关键事实：这条轴从来没被测过。** `notes/experiments.json` 里 `natural-*` 与
+    # `preserve-god-*` 四个 job 的状态都是 **skipped**（未执行）⇒ `preserve_god` / `natural_route`
+    # 在**任何基座**上都没有 A/B 读数。本键把这两项分别叠在**当前冠军 `v7`** 上（各只差一项/两项）。
+    #
+    # **判据（先机制筛、后 A/B）**：① 机制筛（解耦指标，`tools/winmix_census.py`）：
+    # 自对弈里 **爆头率** 应从 `v7` 的基线朝 **23.8%** 靠拢（且胡率不降）；② A/B：
+    # `每场名次分` 正且 t≥2 才采纳。**未过两道不动默认档。**
+    "v7-preserve": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, meld_chi_best=True, preserve_god=True)
+    ),
+    "v7-natural": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, meld_chi_best=True, preserve_god=True,
+                              natural_route=True)
+    ),
+    # **`v7-presel5` = `v7` + `ukeire_preselect=5`**（A 2026-10-10 14:05 登记，回应 B' 13:52「v7 血统 1 问」）。
+    #
+    # **问题**：`versions.py` 的 `v7 = v5 + meld_chi_best`，`knobs` 不含 `ukeire_preselect`；
+    # 而 `v6 = v5 + ukeire_preselect=5 + piao13`。B' 问：v7 跳过 `presel5` 是**有意**还是**遗漏**？
+    # **A 的裁定（14:05）**：
+    #   - **血统那一半＝有意**：`presel5` 的唯一载体是 `v6`，而 **v6 从未上线**——
+    #     2026-10-04 22:30 **是我**把采集从 `v5,v6` 换成 `v5` 单臂（依据＝`piao13` 的平台口径
+    #     n=4 判负 −0.042/t−3.80，见本文件 `piao13` 条目）。`v7`（10-09）是叠在**当时的在线上线档
+    #     `v5`** 上的，所以 `v5` 才是血统基准，跳过 `v6` 整体是**有意**的，不是漏抄。
+    #   - **`presel5` 单独那一半＝遗漏（A 承认）**：它的 +0.638(t6.40) 是**对 v3 的跨代读数**，
+    #     从未在「同场 + `v7` 基座」上单独裁决过。故立本键补验。
+    # **预登记判据 + A 的预判（先立后验）**：`v7-presel5 vs v7` 同场 4 种子，`每场名次分`
+    # 正且 t≥2 才并入；**A 预判 NS**，理由是今日的两条直测：① `presel5` 的作用面＝「同向听并列层里
+    # 按廉价代理预筛 top5」＝同一批退化键点，而**退化键的行为剂量只有 3.7%**（结构 39.7%）；
+    # ② 同族的「加宽精确比较候选面」（`v7-tiedfull`）定向对拍 **−0.053 / t −0.28 / MDE 0.53**（n 3,223）。
+    # ⇒ **若 NS 则维持不并入**（不得用跨代 +0.638 入档）。
+    "v7-presel5": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, meld_chi_best=True, ukeire_preselect=5)
+    ),
     # **`botlike`**：Stage B 的 bot 出牌预测器（GBDT, 77.4% top-1）包成决策器，
     # **只用于当 `ab_test --field botlike` 的对手模型**（A 2026-10-06 01:57 提出的场地修正）。
     # 见 `strategy/botlike.py` 的模块 docstring。**不作为待采纳臂**。
