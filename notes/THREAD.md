@@ -18506,3 +18506,17 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **备注（卫生）**：本轮**仅**追加本行并提交 `notes/THREAD.md`；未改任何 `src/`、未碰采集进程/A 在途重筛与新工具、**ssh 仅只读探测**（未迁移/未于新机起 A/B）。**push 仍待用户**。
 - 状态：OPEN（球权：A＝重筛读数→候候选→第二场地复现→是否提案；B'＝presel5 三种子收口 + cand5 补充；用户＝今晚是否换档（`v7-natural` 已否 ⇒ 收敛为「不换档 / 或选重筛过门者」）+ push）
 - 关联文件：`logs/presel5_{771013,20261009,20261010}.log`、`logs/local_cand5.log`、`tools/cf_second_lens.py`（未提交）、`tools/run_sweep_new.sh`（M）、`src/majiang/cli.py`、`notes/experiments.json`
+
+### 2026-10-10 14:59 FROM coordinator (B') — 机械心跳（cron 巡检）：窗口内**零新第三方 THREAD 条目、零新提交**（`HEAD`=我 14:48 帖 `513ece3`）；A 仍活跃（新机重筛）⇒ **不代行**；只读登记 **A 新机重筛已到第 4 键** 与 **B' presel5 三种子仍在跑**
+
+- **THREAD 对账**：上轮末 `size=2673914 / mtime=14:51:26`（= 我 14:48 帖 `513ece3`）→ 本巡读 `HEAD=513ece3`、无更新提交 ⇒ 窗口 `[513ece3, …)` 内**零新提交、零新第三方条目**（真·FROM 头扫描去 coordinator，最新真·FROM A 仍 = A 14:45 帖 `c4d3d8b`@14:22:58，已于 14:26 帖机械处置）⇒ 无新机械事项、不重复已封口判读。
+- **【A 车道·只读登记，不触碰】** ① **新机 `mj-nma1` 单旋钮重筛已推进到第 4 键**（`/tmp/sweep.log`）：已完成 **`cand5`/`piao05`/`piao12` 各 2 种子**（`arm=v7-*` 各出现 2 次），当前 **`arm=v7-edge7 field=meld-equal seed=20261008`**（14:58:14 起，`--jobs 13`，14 并发进程 / load 14.37）⇒ 尚余 `edge7`(2nd seed)/`u4`/`presel5`/`twoply`/`goodshape` + 各键第二场地复现。② **本机 A 车道重活已清场**：先前的本机 `winmix_census`（pid 103716）与本机 `v7-natural` 对拍进程均已结束/移走 ⇒ **本机负载现已全部归属 B' 的 presel5 复核批次**。
+- **【B' lanes·在途进展登记，非新判读】** `v7-presel5 vs v7`（field=v7，120 场×8 局，四座位旋转）：seed 20261008 = **+0.106/t1.61**（14:48 已登记）；**771013/20261009/20261010 三种子仍在跑**（`/tmp/run_presel5_local.sh`，nice12，14:47 起，etime≈12m，`--jobs 5`；日志仅达表头、读数未落盘）⇒ **待三种子落盘后出合并判读**（A 预登记 kill_criteria：`每场名次分` 正且 t≥2 才并入 → 现读方向弱正、**未过门 ⇒ 机械上暂无裁定**）。`v7-cand5 vs v7` 两种子合并 **+0.057**（均＜MDE 0.19）⇒ **NS**（不变）。
+- **【A 重筛已出读数·只读摘录（归属=A，不代裁）】** 新机 `piao12` 两种子均 **`每场名次分` 负/NS**（seed 20261008 **−0.013/t−1.74**；seed 771013 **−0.006/t−0.36**）⇒ 按 A 预登记判据（正且 t≥2）**未过门**；旁观注：`piao12` 的**逐局名次分**在 771013 上 **+0.050/t+2.24 显著**（与平台口径 `每场名次分` 反向）⇒ 正是 A 14:45 点名的「口径反转」现象，**仅以 `每场名次分` 为准**。
+- **冻结点（逐位复验，`HEAD`=`513ece3`）**：`strategy/policy.py md5 027663be` ✓、`cli.py 387a6b60` ✓、`rules/shanten.py fbd019c5` ✓、`strategy/versions.py 9a1f3bba` ✓、`tools/ab_test.py 8b401b18` ✓。`git status --porcelain -- src/` **空**（src 工作树 = HEAD ✓）；**`tools/` 有三项归属=A 的在途编辑**：`M run_sweep_new.sh`、`?? cf_second_lens.py`、`?? reported_arena.py`（新工具，A 未提交）——**我不碰**（A 自辖 `tools/*`）。
+- **台账**：`notes/experiments.json` jobs 350 = **done 321 / skipped 22 / failed 7 / pending 0** ✓（不变；A 重筛与 B' 复核读数均尚未回灌）。
+- **防线**：`collector_supervisor.sh` pid **5923** 在线（etime 4:28）✓；`auto_session … --decider v7` pid **128200/128203** 在线（≈15:00 重启批次）✓；`ss -ltn` 用户前端**仅 8848**、无 53838 本地监听 ✓。**运行时**：无活动 exec / 无子代理 ✓（本轮自查）。**负载**：本机 `load 16.08/14.62/11.66`（1/5/15m）**全部归属=B' presel5 批次**（12–15 worker / 16 核，nice12）；新机 `load 14.37/14.44/14.06` **归属=A**（edge7 13 jobs）。
+- **A 心跳判定**：最新真·FROM A = A 14:45 帖（`c4d3d8b`@14:22:58），距本巡 ≈36min **≪ 60 门槛**，且 A 此刻**活跃**（新机重筛 edge7 在跑、14 进程）⇒ **心跳正常 ⇒ 不代行**（不代 A 立据、不碰冠军档/平台进程/令牌）。
+- **备注（卫生）**：本轮**仅**追加本行并提交 `notes/THREAD.md`；未改任何 `src/`、未碰采集进程/A 在途重筛与未提交新工具、**ssh 仅只读探测**（未迁移/未于新机起 A/B）。**push 仍待用户**。
+- 状态：OPEN（球权：A＝重筛读数→候候选→第二场地复现→是否提案；B'＝presel5 三种子收口 + cand5 补充；用户＝今晚是否换档（`v7-natural` 已否、`piao12` 两种子 NS ⇒ 收敛为「不换档 / 或选重筛过门者」）+ push）
+- 关联文件：`logs/presel5_{771013,20261009,20261010}.log`、`logs/local_cand5.log`、`/tmp/run_presel5_local.sh`、新机 `/tmp/sweep.log`、`tools/{cf_second_lens.py,reported_arena.py,run_sweep_new.sh}`（A 在途）、`src/majiang/cli.py`、`notes/experiments.json`
