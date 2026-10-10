@@ -18415,3 +18415,17 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **备注（卫生）**：本轮**仅**追加本行并提交 `notes/THREAD.md`；未改任何 `src/`、未碰采集进程/A 在途 A/B 与普查、**未做远端调用**（`ssh` 探测仅对本机占位地址超时，非项目操作）。
 - 状态：OPEN（球权：A＝财神/爆头两场地 A/B 读数 + `v7-presel5` 补验；B'＝本轮机械帖；用户＝今晚是否接受「不换档 / 或换 `v7-natural`」+ push）
 - 关联文件：`notes/THREAD.md`、`src/majiang/cli.py`（`v7-natural`/`v7-preserve`/`v7-presel5`）、`tools/{baotou,winmix,ukeire_gate}_census.py`、`notes/experiments.json`
+
+### 2026-10-10 14:19 FROM coordinator (B') — 机械心跳（cron 巡检）：窗口 `[2642391, …)` **零新第三方 THREAD 条目、零新提交**（HEAD 仍 `a75b762`=我 14:10 帖）；**A 心跳正常 ⇒ 不代行**；只读登记 A 侧两项在途（新远端 `mj-nma1` 代码同步 + 冒烟、`v7-natural` 场地 A/B）；用户 14:19 报「新机器已重开、可同步代码跑 A/B」
+
+- **THREAD 对账**：上轮末 `2652344 / 14:10:56`（= 我 14:10 机械帖 `a75b762`）→ 本巡读 `size=2652344 / mtime=14:10:56`、`HEAD=a75b762` ⇒ 窗口内**零提交、零新第三方条目**（最新真·FROM A 仍 = A 14:15 裁定帖 `7b1828f`@14:07:26，已在我 14:10 帖机械处置）⇒ 无新机械事项、不重复已封口判读。
+- **【用户新指令·只读登记，归属=A】** 用户 14:19 报：**新机器已重开，可同步代码过去跑 A/B**（避免单机不够用）。我**只读核验**（`ssh mj-nma1`，`connect.nma1.seetacloud.com:17407`）：`/root/autodl-tmp/majiang_ai` 已含 A 提交 `7b1828f`（三键 `v7-presel5/v7-natural/v7-preserve` 在场，`grep` 命中 5）、工作树干净、`nproc=112`、`python 3.12.3`；A 已起远端**冒烟** `v7 vs v5, 2 场`（ssh 子进程进行中）。⇒ **代码迁移（A 车道）已在推进，我不重复搭环境、不代跑**。
+- **【A 车道·只读登记，不触碰】** ① 本机 `winmix_census.py --arms v7,v7-preserve,v7-natural,v7m-keepchi --matches 60`（pid **103716**，nice15，14:00:54 起，etime≈19m）仍在跑（财神/爆头轴机制筛，扩到 4 臂）；② A 的 `v7-natural vs v7 --field meld-equal`（原 pid 组 109726…，12 jobs，约 14:14 起）现已从进程表**消失**（结束或收缩，读数归 A）；③ 新远端 `mj-nma1` 冒烟在跑。以上**均归属=A，我不重复其跑、不代裁、不碰冠军档**。
+- **冻结点（逐位复验，`HEAD`=`a75b762`）**：`strategy/policy.py 027663be82cb8e1b6bb296f4dd592aa3` ✓、`cli.py 05a5924594fa3ef500a54b207c62d9cc`（=A 提交 7b1828f 基线）✓、`rules/shanten.py fbd019c5…` ✓、`strategy/versions.py 9a1f3bba…` ✓、`tools/ab_test.py 8b401b18…` ✓；`git status --porcelain -- src/ tools/` **空** ⇒ 工作树 = HEAD ✓。
+- **台账**：`notes/experiments.json` 350 = **done 321 / skipped 22 / failed 7 / pending 0** ✓（复核 `natural-s20260927`、`natural-s771014`、`preserve-god-s20260927`、`preserve-god-s771014` **4 条 `skipped`**，与 A 14:15 帖一致；系 `v5` 时代旧 job）。
+- **防线**：`collector_supervisor.sh` pid **5923** 在线（etime 3:48）✓；`auto_session … --decider v7` pid **103570/103567** 在跑（etime≈18m）✓；`ss -ltn` 用户前端**仅 8848**（+ 本机控制端口 18789/127.0.0.1 系 OpenClaw，非项目）✓、**无 53838 本地监听**✓。**运行时**：无活动 exec / 无子代理 ✓（本轮自查）。
+- **A 心跳判定**：最新真·FROM A = A 14:15 帖（`7b1828f`@14:07:26），距本巡 ≈4–12min **≪ 60 门槛**，且 A 此刻**活跃**（`winmix_census` 在跑 + 新远端同步/冒烟）⇒ **心跳正常 ⇒ 不代行**（「静止超阈 且 手头卡住」两条均不成立；不代 A 立据、不碰冠军档/平台进程/令牌）。
+- **负载**：`load 12.70/13.12/12.07`（1/5/15m）**全部归属=A**（`winmix_census` 16 核 + 远端/A_B 共振），非 B'/C 占用；续持建议：关键读数宜在低负载窗口交叉复核、离线工具对 `tiebreak_timeout=True` 判无效。**平台安全无虞**。
+- **备注（卫生）**：本轮**仅**追加本行并提交 `notes/THREAD.md`；未改任何 `src/`、未碰采集进程/A 在途机制筛与远端同步、**未做任何写远端/迁移操作**（`ssh` 仅只读探测）。**push 仍待用户**（上游领先 30+ 提交）。
+- 状态：OPEN（球权：A＝财神/爆头两场地 A/B 读数 + 新远端迁移/冒烟 + `v7-presel5` 补验；C＝已交付、待 A/用户是否就 seq21 立项；用户＝今晚是否接受「不换档 / 或换 `v7-natural`」+ push）
+- 关联文件：`src/majiang/cli.py`（`v7-presel5`/`v7-natural`/`v7-preserve`）、`tools/winmix_census.py`、`tools/run_field_ab*.sh`、`notes/experiments.json`、`notes/THREAD.md`
