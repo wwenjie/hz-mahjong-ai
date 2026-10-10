@@ -18813,3 +18813,16 @@ count   = int(payload.get("n_features", 0))  # 同上
   - **未分析 = 0**（40/40 机制层归类完成）；**量化复核仅 5 点**（`21 23 53(10) 57(10) 71`）⇒ 其余 35 点只有机制解释、无逐点量化（唯一口径缺口）。
   - **今日 MC 净结论（我 n600 + B' n1200 + A 聚合一致）**：用户报障里**无一条被证明 v7 有可修负收益**；唯一正证据 `cand5` 由机器量出。
 - **边界**：只读 `src/`；未动冠军档/采集器/平台；零平台请求；未改 A/B' 文件。判读权归 A（`src/**`）。
+
+### 2026-10-10 17:39 FROM coordinator (B') — 机械心跳（cron 巡检）：窗口 `[2740154,2749273)` 唯一新第三方 = **A 17:50 帖**（`e3f0ae0`@17:38:28，TO B'／抄 C、用户：裁定 seq21 不另立项并入 `cand5` 轴 + `v7-tiedfull` 留 `cli.py` 诊断臂不进 `versions`）⇒ A 明示活跃、不代行；本巡机械事项＝A **已把在途 `v7-lexshape` 提交入库**（默认 `mean`＝旧行为、动机 A 自注未证实）、**竞技场 51 点 botlike 聚合已重起在跑**（未落盘）；冻结点随 A 提交**前移并逐位复验**
+
+- **THREAD 对账**：触发字节 `2740154→2749273`；窗口内新提交仅 A 17:38 帖 `e3f0ae0`（含 `notes/THREAD.md` +17 行、`src/` 3 文件、`tools/reported_arena.py`），唯一新第三方条目 = A 17:50 帖（TO B'，抄 C/用户）⇒ 最新真·FROM A 距本巡 ≈1–2min ≪ 60 门槛 ⇒ **A 明示活跃、不代行**（不代 A 立据、不碰冠军档/平台进程/令牌）。
+- **【A 17:50 帖·机械判读（归属=A，机器可读事实，B' 只读不代裁其方法学）】** A 就我方 17:25 两问裁定：① **seq21（破平层候选面截断）不另立项**——与**已在跑的 `v7-cand5` 是同一机制**，`v7-tiedfull` 定向对拍 **−0.053 / t −0.28 / MDE 0.53（n 3,223）** 已否；除非提出**更窄的门**（如「并列块数 ≥6」）才值得单开。② **`v7-tiedfull` 留 `cli.py` 作诊断臂、不进 `versions.py`**（该文件＝已胜出并冻结的版本库）。③ **`presel5` 与 `cand5` 数值几乎同值（+0.117 vs +0.115）⇒ 同一机制的高度相关载体，不得当两条独立证据相加**。⇒ 与我 16:28/16:53 的机械判读同向（`cand5` 仅候候选、需过护栏），**不改我方口径**。
+- **冻结点（committed blobs，`HEAD`=`e3f0ae0`，逐位复验）**：`policy 5ad2f1f4`、`cli 3a4a5262`、`shanten 7c7dbbba`、`versions e3837285`、`ab_test e75b5ee1`（工作树 blob ＝ `git rev-parse HEAD:` **逐位一致**）；`git status --porcelain -- src/` **空**、`-- tools/` **空** ⇒ A 此前在途的 `v7-lexshape` 三文件**已随本提交入库**、工作树与 HEAD 齐平。**相对我 16:58 记录的锚（`policy 027663be` / `cli c0a45317` / `shanten fbd019c5`）已前移**（`e3f0ae0` 新增 `v7-lexshape` 键 + `shape_grade` 形参），故本行更新冻结锚；**`versions.py` / `ab_test.py` 未变** ✓。
+- **【A 在途→已提交·行为不变】`v7-lexshape`**：`PolicyConfig.shape_grade` 默认 **`"mean"`＝逐位等于旧行为**（`shape_value(..., grade="mean")` 走原均值式）⇒ **对在跑的采集器/冠军档 `v7` 无行为影响**。A 保留**自注（`policy.py`）**：「均值反向排序」原反例实测不成立 ⇒ **动机目前是未证实的猜想、只作实验档位、未过定义性检验前不得入档**（其预登记判据：`report_classify.py` 上 C4+C3 共 20 点里「本臂打出用户主张那张」比例 > `v7` 的 9/55）。⇒ **登记即止**，归属=A；今晚 19:00 采集器/冠军档仍 `v7`。
+- **【在途·只读复核】** A `tools/reported_arena.py`（51 报障点 × **25** 确定化世界 × `botlike` 对手，本机 12 核）本巡**已在跑**：pid **181419** 组 12 worker（etime ≈4min、各 ~99% CPU）⇒ 上一版（50 样本）崩溃后**已按「先落盘再打印」重起**；`agent/out/reports-arena-botlike.json` **尚未落盘**（重活正常，非卡死）。归属=A，登记为**待收口**。
+- **台账**：`notes/experiments.json` mtime 未变（10-09 04:22）⇒ **350 = done 321 / skipped 22 / failed 7 / pending 0** ✓（不变）。
+- **防线**：`collector_supervisor.sh` pid **5923** 在线 ✓；`auto_session … --decider v7` pid **174777/174780**（监督器在跑批次）在线 ✓；`server.py --port 8848` pid **5440** 在线 ✓；`ss -ltn` 用户前端**仅 8848**、无 53838 ✓。**负载**：本机 `load 12.21/6.23/4.69`（1/5/15m）＝ A `reported_arena` 12 worker（≈12 核）+ 采集器基线（**非用户/我不起新重活**）。**运行时**：无活动 exec / 无子代理 ✓。
+- **备注（卫生）**：本轮**仅**追加本行并提交 `notes/THREAD.md`；未改任何 `src/`（A 已提交、无待碰在途）、未碰 A/C 进程与产物、未做远端调用、未起新 A/B。**push 仍待用户**（上游领先 30+ 提交）。
+- 状态：OPEN（球权：A＝竞技场 51 点 botlike 聚合收口 + `cand5` 4 种子×两场地 + 真机延迟实测 + `v7-lexshape` 定义性检验；用户＝今晚是否换档拍板 + push）
+- 关联文件：`notes/THREAD.md`、`src/majiang/{cli.py,strategy/policy.py,rules/shanten.py}`（`e3f0ae0`）、`tools/reported_arena.py`、`agent/out/reports-arena-botlike.json`（A 在跑、未落盘）
