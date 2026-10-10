@@ -18732,3 +18732,12 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **备注（卫生）**：本轮**仅**追加本行并提交 `notes/THREAD.md`；未改 `src/`、未碰 A/C 进程与产物、未做远端写（`ssh` 仅只读探测）。**push 仍待用户**（上游领先 30+ 提交）。
 - 状态：OPEN（球权：A＝镜像检定 `cand2` 3 种子收口 + 竞技场 51 点 botlike 聚合；候参数 `cand5`/`presel5` 待护栏；用户＝今晚是否换档拍板 + push）
 - 关联文件：`mj-nma1:/tmp/sweep.log`、`mj-nma1:/root/autodl-tmp/majiang_ai/src/majiang/cli.py`、`src/majiang/cli.py`（`v7-cand2`）、`agent/out/reports-arena-botlike.json`（A 在途）、`notes/THREAD.md`
+
+### 2026-10-10 16:42 FROM coordinator (B') — 机械心跳（cron 巡检）：窗口 `[2731546,2734846)` **零新第三方条目、零新提交**（该区仅我 16:37 心跳 `ee4957a`，属 B' 车道、已封口）⇒ 无新 A 裁决、不重复判读；本巡新事项 = 新机镜像检定**推进至第 2 种子**（`seed=771013`@16:41:22 正常起跑、零报错）
+- **THREAD 对账**：触发字节 `2731546→2734846`；窗口内唯一新条目 = 我 16:37 帖（`ee4957a`）；`HEAD=ee4957a`（未变）⇒ 零新第三方/零新提交。
+- **【在途·只读复核·归属=A】** `ssh mj-nma1` 只读：`/tmp/sweep.log` 镜像检定向前推进——`seed=20261008` 段已出读数（胡次数 −0.138/t−3.15、番数总和 −0.142/t−2.47，均显著），`seed=771013` 段 16:41:22 正常起跑（`ab_test --treatment v7-cand2 --field meld-equal --matches 120 --rounds 8 --jobs 13`，pid 36469+ 共 13 worker），`grep 未知策略/Traceback` = 0；新机 load `13.64`（112 核，轻）。**B' 未改新机任何文件、未起/未杀其进程、未碰 `tools/*`。**
+- **本机（局部）**：A `reported_arena.py`（pid 162993，`--samples 50 --jobs 10 --opponents botlike --baseline v7`）仍在跑、`agent/out/reports-arena-botlike.json` **未落盘**（重活正常）；load `17.19/45.36/75.75`（1/5/15m，较上巡回落）。**冻结点**：`policy 027663be` ✓、`cli c0a45317` ✓；`git status --porcelain -- src/` **空**。**台账**：`notes/experiments.json` mtime 未变（10-09 04:22）⇒ 350=321+22+7 不变。**防线**：`collector_supervisor` pid **5923**（etime 6:12）→ `auto_session --decider v7` pid **163824/163827**（etime 2:41，监督器正常重启）✓、`ss -ltn` 仅 **8848**、无 53838 ✓。无活动 exec / 无子代理 ✓。
+- **A 心跳**：最新真·FROM A = 16:30 帖（`0d9cfb7`@16:25:49，距本巡 ≈17min ≪ 60 门槛）⇒ **活跃、不代行**。**口径不变**：采集器/冠军档今晚仍 `v7`；`cand5`/`presel5` 仅候候选、待镜像检定 + `--field v7` 复现 + 真机延迟实测；用户 19:00 前拍板。
+- **备注（卫生）**：本轮**仅**追加本行并提交 `notes/THREAD.md`；未改 `src/`、未碰 A/C 进程与产物、未做远端写（`ssh` 仅只读）。**push 待用户**。
+- 状态：OPEN（球权：A＝镜像检定 `cand2` 3 种子收口 + 竞技场 51 点 botlike 聚合；候参数 `cand5`/`presel5` 待护栏；用户＝今晚换档拍板 + push）
+- 关联文件：`mj-nma1:/tmp/sweep.log`、`src/majiang/cli.py`（`v7-cand2`）、`agent/out/reports-arena-botlike.json`（A 在途）、`notes/THREAD.md`
