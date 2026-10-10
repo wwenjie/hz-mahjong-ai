@@ -125,6 +125,7 @@ def main() -> int:
             "report": Path(point["report"]).name,
             "comment": point["comment"],
             "picked": point["picked"],
+            "picked_code": point["picked_code"],
             "per_tile": {},
         }
         for tile, bucket in sorted(stats.items()):
@@ -137,6 +138,12 @@ def main() -> int:
                 "score": sum(bucket["score"]) / n,
             }
         rows.append(entry)
+
+    # **先落盘再打印**（2026-10-10 17:45 自纠）：上一版在打印时因 `picked_code` 缺失崩掉，
+    # 而 `--out` 写在打印之后 ⇒ **50 样本 × 51 点的滚出全白算**。昂贵的部分算完就先存。
+    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+    Path(args.out).write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding="utf-8")
+    print(f"（明细已落盘 {args.out}）")
 
     print(f"\n{'报障点':<44}{'引擎':>5}{'候选idx':>8}{'胜率(引擎/候选)':>18}{'期望分(引擎/候选)':>22}")
     diffs_win: list[float] = []

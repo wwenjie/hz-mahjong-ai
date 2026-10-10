@@ -295,6 +295,16 @@ class PolicyConfig:
     # 设计成窄改动：形质修正幅度 < 1，**只打破并列、不覆盖「块数差 1」**。
     # 默认关闭（v1/v2/v3 行为逐位不变）。
     shape_value: bool = False
+    # **形质修正的聚合方式**（透传给 `shanten.shape_value(..., grade=)`）。默认 `"mean"` = 旧行为。
+    #
+    # **为什么加**（A 2026-10-10 17:25，回应「报障含不同原因」与 B' 的 `valuation-blindspot`）：
+    # 逐点定因里 **32.7% 的报障点（C4 类）**上引擎的 `total` 是**严格最优**，分歧只能用
+    # `total` 的构造解释；`total` 里唯一的形质信号是 `0.9×(均重−1)`。
+    # **⚠️ 诚实标注（17:40 自纠）**：我原本给的理由是「均值会反向排序」，并写了反例
+    # `(1.2,1.2,0.7)` vs `(1.2,1.0,1.0)`——**实测那不是反例**（两手 `sets` 不同、`taken` 数不同，
+    # 均值那侧反而分得开：3.18 vs 3.06，而 `lex` 给 3.18/3.18）。⇒ **本开关的动机目前
+    # 是未证实的猜想**，只作为实验档位留着，**未过定义性检验前不得入档**。
+    shape_grade: str = "mean"
     # 喂牌项乘上「该牌种还剩几张未现」因子 `(4 − 已见)/4`。
     #
     # **依据（agent-c 独立复核确证的一条缺陷）**：`risk.visible_need(tile)` 是**牌种静态表**
@@ -1343,6 +1353,7 @@ class HeuristicDecider:
                     self.config.edge_partial_weight or None
                 ),
                 keep_extra_pairs=self.config.keep_extra_pairs,
+                grade=self.config.shape_grade,
             )
         else:
             blocks = shanten_module.quick_blocks(counts)

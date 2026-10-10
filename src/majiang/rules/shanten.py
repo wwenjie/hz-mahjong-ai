@@ -379,6 +379,7 @@ def shape_value(
     *,
     edge_partial_weight: float | None = None,
     keep_extra_pairs: float = 0.0,
+    grade: str = "mean",
 ) -> float:
     """骨架的**加权形质值**（微秒级），用于替代 ``2×面子 + 搭子`` 的次排序。
 
@@ -487,8 +488,23 @@ def shape_value(
         extra_pair_bonus = 0.0
     if not taken:
         return 2.0 * sets + extra_pair_bonus
-    mean_w = sum(weight for weight, _ in taken) / len(taken)
-    return 2.0 * sets + len(taken) + 0.9 * (mean_w - 1.0) + extra_pair_bonus
+    # **形质修正的两种算法**（`grade`）：
+    # - `"mean"`（默认，逐位等于旧行为）：`0.9 × (均重 − 1)`。
+    # - `"lex"`（实验档，2026-10-10 A）：`0.9 × Σ_i (w_i − 1) × 0.5^i`（`taken` 已按权重降序）。
+    #
+    # **为什么要 `lex`**：均值会**抹掉多重集的形状信息，甚至给出反向排序**。反例（同一 `need`）：
+    # `(1.2, 1.2, 0.7)` 与 `(1.2, 1.0, 1.0)` —— 前者有**两个两面**、后者只有一个，
+    # 但**均值**前者 1.033 ⇒ 修正 **+0.03**、后者 1.067 ⇒ **+0.06** ⇒ **均值偏好后者（错）**；
+    # `lex` 给出 0.2025 vs 0.180 ⇒ 偏好前者（对）。这不是标定问题，是**聚合方式**问题。
+    # **幅度仍在设计上界内**：`Σ 0.5^i ≤ 1 − 2^{−need} < 1`、`|w−1| ≤ 0.4`
+    # ⇒ `|0.9 × Σ| < 0.36`，与旧式同级 ⇒ 仍然**只打破并列、不覆盖「块数差 1」**。
+    if grade == "lex":
+        correction = 0.9 * sum(
+            (weight - 1.0) * (0.5 ** index) for index, (weight, _) in enumerate(taken)
+        )
+    else:
+        correction = 0.9 * (sum(weight for weight, _ in taken) / len(taken) - 1.0)
+    return 2.0 * sets + len(taken) + correction + extra_pair_bonus
 
 
 def quick_shanten(counts: Sequence[int], meld_count: int = 0) -> int:

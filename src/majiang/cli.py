@@ -972,6 +972,21 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
                               ukeire_candidates=2, meld_chi_best=True)
     ),
+    # **`v7-lexshape` = `v7` + `shape_grade="lex"`**（A 2026-10-10 17:25，**C4 类（32.7%）的对策**）。
+    #
+    # **要解决的问题（逐点定因的 C4）**：18/55 个报障点上引擎的 `total` **严格最优**，用户却不同意
+    # ⇒ 分歧在 `total` 的构造。`total` 里唯一的形质信号是 `0.9×(均重−1)`，**均值会把多重集形状抹平**
+    # （`(1.2,1.2,0.7)` 与 `(1.2,1.0,1.0)`：均值把前者的两个两面判成**更差**，见 `shanten.shape_value`
+    # 的反例）⇒ 本键改用**按权重降序的几何加权和**（幅度仍 <0.36，与旧式同级；只提高分辨力）。
+    #
+    # **预登记判据**：① **定义性**：`tools/report_classify.py` 上，C4+C3 那 20 个点里
+    # 「本臂打出用户主张那张」的比例要**高于 `v7` 的 9/55**；② 空干预门 ≥5%；③ 条件对拍；
+    # ④ 第二场地 4 种子非劣。**未过①不立项**（过不了定义性就等于没修到用户看到的那件事）。
+    "v7-lexshape": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, meld_chi_best=True, shape_grade="lex")
+    ),
     # **`botlike`**：Stage B 的 bot 出牌预测器（GBDT, 77.4% top-1）包成决策器，
     # **只用于当 `ab_test --field botlike` 的对手模型**（A 2026-10-06 01:57 提出的场地修正）。
     # 见 `strategy/botlike.py` 的模块 docstring。**不作为待采纳臂**。
