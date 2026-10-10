@@ -18210,3 +18210,24 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **【远端】** 全量普查与流水线**已全部结束**、14 核已空闲（`tb-cover` 97,335 点可留作赛后 4 万点级复核）；本次跨机复核的三个读数（场地 A/B 2 种子）与本机 2 种子**逐位方向一致**。
 - 状态：OPEN（**无 A 侧待办**；冠军档/采集器 `v7` 不动；等用户对「是否接受今晚不换档」拍板）
 - 关联文件：`tools/{trigger_census_shapefeed.py,trigger_census_tiedkey.py,run_tb_pipeline_local.sh,meld_rate_census.py,selfplay_meld_rate.py}`、`src/majiang/cli.py`（`v5-tieslack0`/`v7-tiedfull`/`v7-pairs` 三键的裁决注释）、`agent/out/trigger-points/{tiedkey-big,cf-tiedkey-local,cf-tbtie-slack0-local,cf-tbcover-slack0-local}.jsonl`
+
+### 2026-10-10 13:12 FROM coordinator (B') — 机械心跳（cron 巡检）：窗口内新增 **A 13:20 帖**（今日全轴收官·12 条读数，随 `c7f81fe`@13:09:40 落盘）——**出牌层/副露层无可测缺陷、今晚 19:00 冠军档 `v7` 不动**；**机械判读：全部按预登记 kill_criteria 对表，与 A 一致、无冲突**；独立复核 A `cf-tiedkey` 3,223 点读数**逐位一致**；冻结点 `cli.py` 随该提交增注释（**逐位语义不变**）、其余未漂移；台账 350=321+22+7；防线通过
+
+- **THREAD 对账**：上轮末 (mtime,size) `1791608414 / 2598920`（≈13:00:14，= 我 12:59 帖 `bab72ce`）→ 本巡读时 `1791608980 / 2603702`（13:09:40）。真·FROM 头扫描（`^### .* FROM`，去 coordinator）窗口内新增 **1 条**：**A 13:20 帖**（`c7f81fe`，物理落盘 13:09:40；字节区 `[2598920, 2603702)` 逐字节 = 该帖）。`git log --since="2026-10-10 13:00"` 窗口内**唯一提交** = `c7f81fe`（改 `notes/THREAD.md` + `src/majiang/cli.py` + 新增 `tools/trigger_census_shapefeed.py`）。**窗口内零新用户条目**（最新用户报障 `report_…_seq53`@13:04 / `seq57`@13:08 见下，系 webapp 上报、非 THREAD 条目）。我 12:59 帖（自帖）**不重复判读**。
+- **【机械判读·落盘批次按预登记 kill_criteria 对表】**（不代 A 裁，只按 A 自订门机械对表）：
+  - **`v7-tiedfull`**：A 本日补上**有效性**条件对拍（我上轮只读登记过它刚起跑）⇒ **3,223 点 −0.053 / t −0.28 / MDE 0.53 / NS**；叠加同日**可测性**论证（行为剂量 3.7% < 5% 空干预门）⇒ **维持关闭** ✓，与 A 一致（无 kill 冲突）。
+  - **破平层轴**：12:20 已裁「关闭」（9,915 点 −0.413 / t −3.57 显著为负）；本轮**不重启** ✓。
+  - **副露/闸门轴**：可比场地 4 种子合并 −0.013(t≈−0.33) + 碰窗 −0.090(t −0.42) ⇒ **关闭** ✓。
+  - **形质×喂牌轴**：剂量 0.52%（0.29/场）⇒ **不可测、关闭** ✓。
+  - ⇒ **A 结论「出牌层与副露层在可测机制上无剩余空间；今晚不换档（`v7`）」与全部预登记门一致，无冲突**。
+- **【独立复核·A `cf-tiedkey` 读数逐位一致】**（本地只读重算 A 落盘产物 `agent/out/trigger-points/cf-tiedkey-local.jsonl`）：**n=3,226 / triggered=3,223 / 守恒 3,226-3,226（不符 0）**；**T−B = −0.0531 / se 0.1901 / t −0.279** ✓（逐位同 A 报的 −0.053/t−0.28/n 3,223）；分向计数 `>0 454 / =0 2,310 / <0 459`；`klass` 计数 `退化键|向听1 1002 / 向听2 1662 / 向听3 562`（合计 3,226 ✓，同 A `tiedkey-big` 普查口径）。⇒ **A 本轮新读数成立**（读数在 `tiebreak_timeout` 高负载窗口内跑出，我上轮 P0 建议仍适用：关键读数宜在低负载窗口交叉复核）。
+- **【冻结点·逐位复验，新基线 `HEAD`=`c7f81fe`】**：`src/majiang/strategy/policy.py` HEAD=WT=**`027663be82cb8e1b6bb296f4dd592aa3`** ✓（**未漂移**）；`src/majiang/cli.py` HEAD=WT=**`0f476d0f84301338ccb53a139d09e486`**（**随 `c7f81fe` 由 `f7fa0da6`→`0f476d0f`**；经 `git diff bab72ce c7f81fe -- src/majiang/cli.py | grep '^+'` 核验**新增行全为注释/空行、零可执行行** ⇒ **默认档/冠军档逐位语义不变** ✓）；`rules/shanten.py fbd019c5…` ✓、`strategy/versions.py 9a1f3bba…` ✓、`tools/ab_test.py 8b401b18…` ✓。⇒ `src/` **工作树 = HEAD（无未提交改动）**。
+- **台账**：`notes/experiments.json` jobs 350 = **done 321 / skipped 22 / failed 7 / pending 0** ✓。**防线**：`collector_supervisor` pid **5923** 在线（etime 2:39）✓；子进程 `uv run auto_session … --decider v7` pid **75946/75949** 在跑 ✓；`ss -ltn` **仅 8848 用户前端、无 53838** ✓。**运行时**：无活动 exec / 无子代理 ✓（本轮自查）。
+- **【新观察·用户新报障 2 例（只读登记）】** `report_20261010_130453_seq53`（13:04:53，评「3 张北可当吃胡的面子/可杠，为啥拆掉？果断打孤张 4b」）+ `report_20261010_130813_seq57`（13:08:13，评「不打孤张，而打有 2 张 8w 照应的 9w」）。二者均落在**本日刚收官的同族轴**（破平层/形质排序）语义内 ⇒ **不新开轴**；**B' 已接 seq53**（`tools/cf_point_mc.py --report …_seq53.json --candidates 北,4b,9w --samples 160 --jobs 12 --baseline v7 --opponents botlike`，pid 82218–82229 系在跑）⇒ **我登记、不重复、不代裁**；seq57 尚无对应对拍进程登记。
+- **【贴 P0 观察·续】**：`uptime` = **load 29.20 / 19.96 / 48.90**（1/5/15m）——**1m 已回落**但 5/15m 仍偏高 ⇒ 高负载并行窗口正在退去；A 12:20 的 9,915 点、13:05 的 `audit_full` 与本轮 3,223 点均在该类窗口内跑出。⇒ 维持建议：**离线工具把 `tiebreak_timeout=True` 判无效**、关键读数宜在**低负载窗口**交叉复核；**平台安全无虞**。
+- **【A 心跳判定】**：最新 A 动作 = `c7f81fe`@**13:09:40**（距本巡 ≈2min **≪ 60 门槛**）+ A 名下有在途实活（`shapefeed` 数据 `/tmp/sf-150.jsonl` 12:59 / `/tmp/sf-200.jsonl` 12:54 已在盘）⇒ **A 心跳正常、不代行**（不代 A 立据、不碰冠军档/平台进程/令牌）。
+- **球权快照**：A＝{**无待办**（12 条读数收官，冠军档 `v7` 不动）}；**我(B')＝ 本轮仅追加本心跳帖**；B'＝{seq53 `cf_point_mc` 在跑}；用户＝{12:04–13:08 报障（seq21/23/24/53/57）处置答复；C/D 是否立项；赛事看护是否启动；是否落地 push（上游 `origin/main` 已领先 **22** 提交，需用户执行）}。
+- **下巡检查点**：用户是否就「估值分歧已收口 + 今晚不换档」回话；`cf_point_mc` seq53 读数；`HEAD:src` 是否漂移；A 心跳；上游 502；负载是否回落到基线。
+- **备注（卫生）**：本轮**仅**追加本帖并提交 `notes/THREAD.md`；未改任何 `src/`、未碰采集进程/A/B' 在途实验、**未做远端调用**；所有复核均**本地只读**。
+- 状态：OPEN（**无 A 侧待办**；冠军档/采集器 `v7` 全场不动；等用户对「今晚不换档」拍板 + C/D 范围 + 赛事看护 + push）
+- 关联文件：`agent/out/trigger-points/cf-tiedkey-local.jsonl`、`tools/{trigger_census_tiedkey,trigger_census_shapefeed,cf_point_mc}.py`、`src/majiang/cli.py`（`c7f81fe`，注释级）、`webapp/reports/report_20261010_1304{53,13}_seq5{3,7}.json`、`notes/experiments.json`、`notes/THREAD.md`
