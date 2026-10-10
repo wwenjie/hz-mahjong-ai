@@ -18618,3 +18618,14 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **关键对比**：MC 的 `se≈1.5~2.0`、`t` 可达 **±2.7（显著）**；而全还原对拍 `se≈2+`、全 NS。**口径就是分辨率。**
 - ⇒ **A 的「无正收益」结论，至少在 seq21 这一点上被同方法的 MC 直接推翻**（用户的方案确实更优）。**建议把 MC（隐藏态重采样）升为对拍主口径**，全还原对拍降为「现实保真度」副校验。
 - **边界**：B' 仅只读复现 + 本地补 seq57；未改 `src/`、未碰 A/C 进程与产物。判读权仍归 A（`src/**`）。
+
+### 2026-10-10 15:57 FROM coordinator (B') — 机械心跳（cron 巡检）：窗口 `[2698116,…)` 内**零新第三方 THREAD 条目、零新裁决**（唯一新 THREAD 条目 = 我 15:30 方法学帖 `7988853`@15:55:33，属 B' 车道、内容自洽无待办）⇒ 不重复封口；本巡新事项 = **已解阻的外部文献核对**（`web_fetch` 通道可用）+ seq57 MC 仍在跑
+
+- **THREAD 对账**：触发字节 `2698116→2703685`；本巡读 `size=2706797`（`HEAD=7988853`）。真·FROM 头扫描去 coordinator：窗口内**零新第三方条目**（最新真·FROM 非 coordinator 仍 = C 报告附录 13:49 / A 14:45 帖，均已处置）、**零新 A 裁决** ⇒ 无机械应变、不重复已封口判读。
+- **【解阻·外部文献核对，只读/非权威，仅答「常识是否支持」】** `web_search` 仍无 provider、DuckDuckGo 直连触发反爬；但 **`web_fetch` 通道可用** ⇒ 我已完成用户/agent-a 争议点的公开文献核对（供 A/用户参考，**不构成策略裁决**）：`ongpalace.com/news/2026-09-16_c4d20f.html`（牌效率量化）、`word.baidu.com`＋`wenku.baidu.com`（杭州麻将技巧）均主「**两面 > 嵌张 > 边张**、**拆价值最低的搭子**、留牌兼顾**桌面余量/上下家投喂/财神位置**」。⇒ 与引擎「破平层用**精确进张**接管」**同向**（常识支持「形质/进张」是有效的排序轴）；但**与用户「引擎把好搭拆错」的逐局个案不构成支持**——文献给的是「**怎么排序**」的规则，量**某一个具体决策期望分**仍需 A/B、对拍或 MC。**逐局对错唯一可判据 = 隐藏态重采样 MC（C `cf_point_mc`），非文章**。
+- **【B' 车道·在途】** `cf_point_mc` seq57（「不打孤张、打有 2 张 8w 照应的 9w」）仍在跑（pid **143664** 组 10 worker，etime≈7m，600 样本×3 候选，`agent/out/mc-logs/seq57.log` 仅表头、**读数未落盘**）⇒ 待落盘回填我 15:30 帖表格「seq57 待回填」格；**本轮不重复起跑**。（顺带清理我上轮遗留的 2 个空转 watcher shell —— 非项目进程。）
+- **冻结点（`HEAD`=`7988853`）**：`policy 027663be` ✓、`cli 387a6b60` ✓、`shanten fbd019c5` ✓、`versions 9a1f3bba` ✓、`ab_test 8b401b18` ✓；`git status --porcelain -- src/` 空 ✓。**台账**：350 = done 321 / skipped 22 / failed 7 ✓（不变）。**防线**：`collector_supervisor` pid **5923** ✓、`auto_session … --decider v7` pid **141440/141443** ✓、`ss -ltn` 仅 **8848**、无 53838 ✓。
+- **A 心跳**：最新真·FROM A 仍 = A 14:45 帖，>60min 门槛；但 A 名下实活持续推进（本机 `reported_arena.py` 12 worker 在跑）⇒「手头卡住」不成立 ⇒ **按活跃记、不代行**。
+- **备注（卫生）**：本轮**仅**追加本行并提交 `notes/THREAD.md`；未改任何 `src/`、未碰 A/C 进程与产物、未起新 A/B。**push 仍待用户**。
+- 状态：OPEN（球权：A＝方法学纠偏回应 + 是否升 MC 为主口径；B'＝seq57 MC 落盘回填；用户＝今晚是否换档 + push）
+- 关联文件：`agent/out/mc-logs/seq57.log`、`notes/THREAD.md`、外部只读源 `ongpalace.com/news/2026-09-16_c4d20f.html`；`tools/cf_point_mc.py`、`tools/trigger_counterfactual.py`
