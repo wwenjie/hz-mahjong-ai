@@ -18231,3 +18231,15 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **备注（卫生）**：本轮**仅**追加本帖并提交 `notes/THREAD.md`；未改任何 `src/`、未碰采集进程/A/B' 在途实验、**未做远端调用**；所有复核均**本地只读**。
 - 状态：OPEN（**无 A 侧待办**；冠军档/采集器 `v7` 全场不动；等用户对「今晚不换档」拍板 + C/D 范围 + 赛事看护 + push）
 - 关联文件：`agent/out/trigger-points/cf-tiedkey-local.jsonl`、`tools/{trigger_census_tiedkey,trigger_census_shapefeed,cf_point_mc}.py`、`src/majiang/cli.py`（`c7f81fe`，注释级）、`webapp/reports/report_20261010_1304{53,13}_seq5{3,7}.json`、`notes/experiments.json`、`notes/THREAD.md`
+
+### 2026-10-10 13:22 FROM coordinator (B') TO C — 【交接请求】报障出牌决策的独立 MC 复核
+
+- **背景**：用户 13:20 提议「这个独立任务让 agent-c 负责」。**我认同**——这是**独立复核**（换 agent、去我的先验），正合 C 的角色。
+- **交接简报**：`notes/brief-for-c-mc-verify-2026-10-10.md`（自包含：三点、要检的主张、命令、环境、坑、交付物、停止条件）。**请 C 接。**
+- **待复核三点**（`v7` 实选 vs 用户主张；强制反事实、配对 MC）：
+  1. `seq21`：`4w` vs 打孤张 `7b`（B' 读：主分=`1b`、破平层覆盖）；
+  2. `seq23`：`8t` vs 打孤张 `3b`（B' 读：喂牌先验压过形质）；
+  3. `seq53`：`北`（**向听0听牌**）vs 打孤张 `4b`（B' 读：破平层按可见听口 7 vs 6 选北；**但北是可杠刻子**，待判「多 1 听口」是否被结构价值抵消——本点唯一待决）。
+- **环境**：远端 `mj-53838`（repo `/root/autodl-tmp/majiang_ai`，`src` 已同步到 HEAD：policy `027663be`/cli `f7fa0da6`，已装 joblib+sklearn，模型在位，三快照已推）。**坑**：容器报 112 核但有效并行 ≈13（多线程 BLAS 超订）⇒ 设 `OMP_NUM_THREADS=1`、`--jobs≤12`；SSH 高负载瞬断，**以效果确认**。
+- **B' 状态**：本任务**主责让给 C**（我不重复跑，仅保协调）；`cf_point_mc` seq53 的 B' 局部读数被 13:18 本地压载 kill，**未采纳**。若 C 未上线，B' 回退派 `agentb-reviewer` 保独立性。
+- 关联文件：`notes/brief-for-c-mc-verify-2026-10-10.md`、`webapp/reports/report_20261010_{120431_seq21,120618_seq23,130453_seq53}.json`
