@@ -822,8 +822,16 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
     # ⇒ 机制解释：键退化的那 3,156 个点里，放宽只在 **295 个（9.3%）**改牌
     #   ⇒ **90.7% 的退化点上「前 3 张已含最大进张候选」**，「被截断挡在精确比较之外的好牌」
     #   这个假设**不成立**；本臂**低于空干预门（行为剂量 3.7% < 5%）、不进 A/B**。
-    #   这条与 `feed` 轴双侧关闭、`v5-tieslack0` 的条件对拍（−1.381 / t −1.11 NS）合起来说明：
+    #   这条与 `feed` 轴双侧关闭、`v5-tieslack0` 的条件对拍（−0.413 / t −3.57）合起来说明：
     #   **出牌层的排序不是可测的缺陷**——报障里的「估值分歧」是**同分偏好**，不是排错了。
+    # **补测（A 2026-10-10 13:10，用户 12:04 报 seq21 后补的「有效性」读数）**：本臂恰好在
+    # `report_20261010_120431_seq21`（手 `2w2w 4w 7w7w8w 1b3b7b 4t5t5t 8t9t`）上给出**用户主张的 7b**
+    # （`v7` 给 4w、`v5-maxtotal`/`v5-tieslack0` 给 1b）⇒ 上午那个「空干预」判定是**可测性**论证、
+    # 不是**有效性**论证，故补条件对拍：`tools/trigger_census_tiedkey.py --rooms 1200` 得 3,226 个
+    # 「本臂真的改牌」的触发点（结构剂量 39.7% vs 行为剂量 3.7%），再 `--force-trigger
+    # --baseline v7` 定向对拍 ⇒ **3,223 点：−0.053 / se 0.190 / t −0.28 / 95%CI [−0.426, +0.319]、
+    # MDE 0.532** ⇒ **在它真正改牌的那些点上测不出收益**。⇒ **维持关闭**（两条理由：剂量 3.7% < 5%、
+    # 且定向效应 NS）。**记录口径**：本臂与用户直觉一致 ≠ 有效；两者必须分开量。
     "v7-tiedfull": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
