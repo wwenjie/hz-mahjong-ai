@@ -18105,3 +18105,24 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **备注（卫生）**：本轮**仅**追加本帖并提交 `notes/THREAD.md`；未改任何 `src/`、未碰采集进程/A 在途 `ab_test` 与对拍管线、**未做远端调用**；所有复核均**本地只读**。
 - 状态：OPEN（等 A：场地 A/B 与 `v7-pairs` 读数；等用户：C/D 范围 + 赛事看护 + push）
 - 关联文件：`agent/out/trigger-points/{tb-cover,tb-tie,cf-tbcover-slack0-local}.jsonl`、`src/majiang/cli.py`（`v7-pairs`，A，`7614159`）、`tools/{run_tb_pipeline_local.sh,merge_tb_shards.py,run_tb_cf.sh,run_field_ab.sh,run_field_ab_local.sh,meld_rate_census.py,selfplay_meld_rate.py}`、`agent/out/research/{tiebreak-counterfactual,discard-rerank-verification,valuation-blindspot}-2026-10-10.md`、`notes/experiments.json`、`notes/THREAD.md`
+
+### 2026-10-10 12:26 FROM coordinator (B') TO A/用户 — 机械心跳（cron 巡检）+ **新发现：引擎非确定性（破平层 0.6s 墙钟上限在负载下改变出牌）**
+
+- **【心跳判定·A 正常，不代行】** 最新 A 提交 = `7614159`@12:09:28（≈17min ≪ 60）；A 本机 `ab_test --v7-pairs`（pid 54317 系）、`cf tb-cover×v5-maxtotal` 与 `tb-tie×v5-tieslack0`（pid 51146 系）、`cf_point_mc`×2（pid 56826 系）在跑 ⇒ **A 活跃、不代行**。
+- **【THREAD 对账】** 上轮末 (mtime,size) `1791605653 / 2574755`（12:14:13，= 我 12:12 帖 `4b0fa9c`）→ 本巡读时**逐位不变** ⇒ 窗口内**零新第三方条目**（A 12:20 帖已于上一巡 `4b0fa9c` 登记并裁决完毕）。
+- **【新发现·P0 可复现性】引擎对给定局面并非确定性 —— 破平层 `exact-ukeire` 的 0.6s 墙钟上限把外部负载变成决策输入。**
+  - **触发**：用户 12:0x 新报 3 例（seq21 `打4w` vs 应打孤张`7b`；seq23 `打8t` vs 应打孤张`3b`；seq24 `pass` vs 应`碰9t`）。本轮**本地只读**复现三例。
+  - **复现**（`report_20261010_120618_seq23`，向听 2、并列 4 张 `8t/9w/8w/4w`、cap=3）：**无负载**单次决策 **0.048–0.083 s** ⇒ 恒选 **8t**（`精确进张 17`）；**机器 `load≈137`（16 核，A 在途实验占满）**下同输入采样 12 次 ⇒ **8t（`timeout=None`）×~10 / 4w（`tiebreak_timeout=True`，进张 15）×2**。⇒ **同一局面、同一 arm，输出摆动；变量是负载，不是输入**。
+  - **机制**：`policy.py` `_choose_discard` 截断并列层到 cap=3（`[8t,9w,8w]`）后逐张算精确进张，循环内 `if time.monotonic()>deadline(=start+0.6s)` ⇒ `tiebreak_timeout=True; break`（L1267/L1272）；`deadline` 用**墙钟**、会被抢占 ⇒ 返回「已算出的最优」随负载漂移。
+  - **同为失效模式的 seq21**（向听 3、并列 **11** 张、cap=3）：cap 前 3 = `[4w,7w,1b]`（`blocks` 并列 4.135，稳定序=最小牌索引）；用户首选 `7b` `blocks` 亦 4.135 但**落 cap 外**，其精确进张 **57=全场最高** > cap 内最高 `4w` 的 52 ⇒ 破平层在**被截断子集**上选优、漏掉更优者（= `v7-tiedfull` 针对的截断失效，在用户真报障上可复现）。
+  - **与既有结论的关系（不推翻，但加限定）**：A 12:20 的 9,915 点定向对拍（`v5-tieslack0` 显著负）是在**低负载窗口**跑出的；本发现指出 `replay_report.py`「引擎确定性 ⇒ 可逐位复现」这一前提在**高负载**下不成立。⇒ **离线对拍的可复现性需加 `tiebreak_timeout` 无效位**。
+  - **影响面（推断，未直接测量）**：本机在途并行 arm（`v7-pairs` 场地 A/B、`cf_point_mc`、`trigger_counterfactual`）在 `load≈137` 下**每个 worker 都可能触发超时**；若基线/处理触发率不同，读数会混入负载噪声 ⇒ **建议 A 复核在途实验是否受此污染**，并在低负载窗口做一次交叉复核。
+  - **平台安全无虞**：`EXACT_UKEIRE_BUDGET_SEC=0.6` 与平台 3 s 硬预算间有 ~50× 余量（10:30 帖 p99 52.9 ms）；问题在**离线复现/实验**，不在真机。
+  - **建议（供 A 裁决，我不改 `src/`）**：① 离线工具把 `tiebreak_timeout=True` 判为**结果无效**（重跑/丢弃），不静默回退；② 修法二选一（均默认关）：(a) 提高/去掉墙钟上限；(b) `deadline` 改用该决策内部 CPU 时间或确定性预算、与负载解耦。
+  - 正文：`agent/out/research/tiebreak-timeout-nondeterminism-2026-10-10.md`（含复现脚本要点）。
+- **【三例其它口径·只读登记】** ① seq24 `碰9t`：`v7m-keepchi`（`meld_tolerance=equal`）判 `peng:9t`，但 A 12:20 用 `--field meld-equal` 已证放宽副露闸门**中性/不换档** ⇒ 用户该例属**副露/速度轴**、非出牌轴。② seq21/seq23 的「应打孤张」倾向与 A 12:20 裁决一致：**破平层覆盖主分总体净赚、不立项**（我 11:22 单案例建议已收口）。
+- **冻结点（逐位复验，`HEAD`=`4b0fa9c` 之上工作树）**：`src/majiang/strategy/policy.py` HEAD=WT=**`027663be82cb8e1b6bb296f4dd592aa3`** ✓；`src/majiang/cli.py` HEAD=WT=**`f7fa0da66e1dde03506547bba144924a`** ✓；`rules/shanten.py fbd019c5…` ✓、`strategy/versions.py 9a1f3bba…` ✓、`tools/ab_test.py 8b401b18…` ✓。⇒ `src/` 工作树 = HEAD（无未提交改动）。
+- **台账**：`notes/experiments.json` 350 = **done 321 / skipped 22 / failed 7 / pending 0** ✓。**防线**：`collector_supervisor` pid **5923** 在线（etime 1:48:54）✓；`auto_session --decider v7` 在跑 ✓；`ss -ltn` **仅 8848 用户前端、无 53838** ✓。**运行时**：无活动 exec / 无子代理 ✓。
+- **卫生**：本轮**仅**追加本帖 + 新增 `agent/out/research/tiebreak-timeout-nondeterminism-2026-10-10.md` 并提交；**未改任何 `src/`**、未碰采集进程/A 在途实验/对拍管线、**未做远端调用**；所有复现均**本地只读**（因 `load≈137` 已**刻意不叠加重算**，只做廉价确定性复现 + 小样本采样）。
+- 状态：OPEN（等 A：场地 A/B 与 `v7-pairs` 读数、**对「非确定性/实验污染」的复核与裁决**；等用户：C/D 范围 + 赛事看护 + push）
+- 关联文件：`src/majiang/strategy/policy.py`（`EXACT_UKEIRE_BUDGET_SEC`/`_break_ties_by_ukeire`）、`tools/replay_report.py`、`webapp/reports/{report_20261010_120431_seq21,report_20261010_120618_seq23,report_20261010_120735_seq24}.json`、`agent/out/research/tiebreak-timeout-nondeterminism-2026-10-10.md`、`notes/THREAD.md`
