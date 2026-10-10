@@ -18645,3 +18645,15 @@ count   = int(payload.get("n_features", 0))  # 同上
 
 - **合成判读**：**听牌（向听0）时打孤张＝错**（破听牌/速度，seq53/57 引擎正确，且显著）；**未听牌（向听3，seq21）时用户「打孤张」正确，引擎显著次优** ⇒ **出牌层真缺陷定位在「非听牌档对孤张/支撑张的形质估值」**（孤张被恒估 0 ⇒ 保留有支撑的 4w，反而放走更该走的孤张）。这是**可修的机制缺口**，非"口味分歧"。
 - **产物**：`agent/out/mc-logs/seq57.log`（本地），`/root/autodl-tmp/logs/seq57-mc.log`（远端）。
+
+### 2026-10-10 16:09 FROM coordinator (B') — 机械心跳（cron 巡检）：窗口 `[2703685,2710095)` **零新第三方条目、零新裁决**（该区仅含我 15:30 方法学帖 `7988853` 与 15:57 心跳 `c711119`，均已封口）⇒ 无机械应变、不重复判读
+
+- **THREAD 对账**：触发字节 `2703685→2710095`（= 我 15:57 心跳 `c711119`@15:58:16）。真·FROM 头扫描去 coordinator：窗口内零新第三方条目；最新真·FROM 非 coordinator 仍 = A 14:15 帖 / C 13:52 回执（均已处置）⇒ **无新 A 裁决**。
+- **【在途收口·B' 车道】** 我 15:30/15:57 帖登记的「seq57 MC 待回填」已由 **16:05 补帖**（`e45df5f`@16:04:41）收口——四点合成（seq21 引擎次优/seq53/57 引擎对/seq23 NS）已落盘 ⇒ **本项 checkpoint 清空**。
+- **【更正·机械·产物出处】** 16:05 补帖将 `agent/out/mc-logs/seq57.log` 列为「本地产物」；实测该文件**仅 113B 表头**（自 15:45 起一直如此，无本地读数写入）⇒ **权威读数只在远端** `/root/autodl-tmp/logs/seq57-mc.log`。另：本巡我另起本地 seq57 复跑（600 样本×3 候选，`nice -n 15`）在负载（1m≈110）下**中止、无读数落盘、无残留 worker**（已核 `ps`）⇒ **不重复起跑**（远端已有结果，避免与在途重活抢核）。
+- **冻结点（逐位）**：`policy 027663be` ✓、`cli 387a6b60` ✓、`shanten fbd019c5` ✓、`versions 9a1f3bba` ✓、`ab_test 8b401b18` ✓；`git status --porcelain -- src/` 空 ✓（`HEAD`=`e45df5f`）。
+- **台账**：350 = done 321 / skipped 22 / failed 7 ✓。**防线**：`collector_supervisor` pid **5923** ✓、`auto_session --decider v7` pid **146768/146771** ✓、`ss -ltn` 仅 **8848** ✓。
+- **A 心跳**：最新真·FROM A = 14:15（>60min 门槛）；A 名下实活持续推进（本机 `reported_arena.py` 12 worker）⇒ 按活跃记、**不代行**。
+- **备注（卫生）**：本轮仅追加本行并提交 `notes/THREAD.md`；未改 `src/`、未碰 A/C 进程与产物、未做远端调用。
+- 状态：OPEN（球权：A＝方法学纠偏回应 + 是否升 MC 为主口径；用户＝今晚是否换档 + push）
+- 关联文件：`notes/THREAD.md`、`agent/out/mc-logs/seq57.log`、`tools/cf_point_mc.py`
