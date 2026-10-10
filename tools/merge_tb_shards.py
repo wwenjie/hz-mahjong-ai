@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import collections
 import json
+import random
 from pathlib import Path
 
 
@@ -18,6 +19,14 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="合并破平层普查分片（补 arm_tile + 分层）")
     ap.add_argument("--glob", default="agent/out/trigger-points/tb-shard*.jsonl")
     ap.add_argument("--out-dir", default="agent/out/trigger-points")
+    ap.add_argument(
+        "--limit-cover",
+        type=int,
+        default=0,
+        help="覆盖点抽样上限（0 = 全量）。**抽样前先按固定种子洗牌**——分片是按文件名切的，"
+             "直接取前 N 行会带上房间号/时间的结构性偏置。",
+    )
+    ap.add_argument("--shuffle-seed", type=int, default=20261010)
     args = ap.parse_args()
 
     root = Path(args.glob).parent.parent.parent
@@ -44,6 +53,11 @@ def main() -> int:
         (cover if gap > 0 else tie).append(row)
 
     for name, subset in (("tb-all", rows), ("tb-cover", cover), ("tb-tie", tie)):
+        if name == "tb-cover" and args.limit_cover and len(subset) > args.limit_cover:
+            shuffled = list(subset)
+            random.Random(args.shuffle_seed).shuffle(shuffled)
+            subset = shuffled[: args.limit_cover]
+            print(f"  （tb-cover 抽样至 {len(subset)}，种子 {args.shuffle_seed}）")
         target = out_dir / f"{name}.jsonl"
         with target.open("w", encoding="utf-8") as fh:
             for row in subset:

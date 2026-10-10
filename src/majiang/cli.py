@@ -778,6 +778,41 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
                               ukeire_candidates=3, tiebreak_total_slack=0.0)
     ),
+    # **`v7-tiedfull` = 退化键定向放宽**（A 2026-10-10 11:20，回应 B' `valuation-blindspot` 与
+    # 用户「报障多为估值分歧、是明显不合理的出牌」）。**只改 `v7` 一处**：`ukeire_tied_full=True`。
+    #
+    # **要修的形态**：`_break_ties_by_ukeire` 把同向听并列项按 `-blocks`（`shape_value`）排序后
+    # **截断到前 `ukeire_candidates`(=3) 张**才做精确进张比较。而 `shape_value` 在 **40.2%** 的
+    # 我方出牌点给全部最优候选**同一个值**（B' 22,874 点实测）⇒ 截断退化成**按喂牌采样 3 张**，
+    # 「进张更多但喂牌稍多」的牌从未进过比较。
+    # **方向依据**：`ukeire-wide`（2→6）在退化键时代测平（＝随机采样），而 `shape_value` 装上后
+    # `v5-cand5` **+0.639** > `v4-cand3` **+0.451** ⇒ 候选面每 +1 张有边际收益；本档把「放宽」
+    # **只在键真的退化时**做（有 `same_grade > cap` 这个可判定的门），没退化时逐位等于 `v7`。
+    #
+    # **预登记判据（先空干预门、先定义性、后条件对拍、最后整场）**：
+    #   ① 定义性：报障总表 B 类（主分/形质全并列的 18 点）里，本档应把多数候选移向用户主张；
+    #   ② 空干预门：`tools/divergence_gate.py --arms v7,v7-tiedfull` 分歧率 **≥5%**（否则空干预）；
+    #   ③ 条件对拍（`--mode discard --force-trigger`）在**触发点＝键退化点**上量净分：正且 t≥2 ⇒ 采纳方向；
+    #   ④ 整场非劣门：`v7-tiedfull vs v7` 4 种子合并 `每场名次分` 不显著为负。
+    #   **未过 ①②③ 前不动默认档、不动采集器。**
+    #
+    # **裁决（A 2026-10-10 11:30）：关闭本臂。** `tools/trigger_census_tiedkey.py`（120 房 / 960 局、
+    # 我方弃牌点 8,481、可比点 7,942）实测**两个剂量分开了**：
+    #   - **结构剂量 = 39.7%**（818 局上「并列层最高形质相等者 > 3」的占比，复现 B' 的 40.2%）
+    #     ⇒ 退化键确实无处不在；
+    #   - **行为剂量 = 3.7%**（`v7` 与 `v7-tiedfull` 实选不同；独立复核
+    #     `tools/divergence_gate.py --arms v7,v7-tiedfull --rooms 60 --limit 400` = 3.5%）
+    #     ⇒ **放宽 3→5 张几乎不改牌**。
+    # ⇒ 机制解释：键退化的那 3,156 个点里，放宽只在 **295 个（9.3%）**改牌
+    #   ⇒ **90.7% 的退化点上「前 3 张已含最大进张候选」**，「被截断挡在精确比较之外的好牌」
+    #   这个假设**不成立**；本臂**低于空干预门（行为剂量 3.7% < 5%）、不进 A/B**。
+    #   这条与 `feed` 轴双侧关闭、`v5-tieslack0` 的条件对拍（−1.381 / t −1.11 NS）合起来说明：
+    #   **出牌层的排序不是可测的缺陷**——报障里的「估值分歧」是**同分偏好**，不是排错了。
+    "v7-tiedfull": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, meld_chi_best=True, ukeire_tied_full=True)
+    ),
     # **`botlike`**：Stage B 的 bot 出牌预测器（GBDT, 77.4% top-1）包成决策器，
     # **只用于当 `ab_test --field botlike` 的对手模型**（A 2026-10-06 01:57 提出的场地修正）。
     # 见 `strategy/botlike.py` 的模块 docstring。**不作为待采纳臂**。

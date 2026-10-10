@@ -319,6 +319,25 @@ class PolicyConfig:
     #   白板数不受损（+0.014，不显著）；胡率 25.6% vs 24.5%
     # 故切为默认。旧行为保留在 `--decider blocks` 供后续对照。
     tiebreak: str = "exact-ukeire"
+    # **退化键定向放宽**（`v7-tiedfull`，2026-10-10；回应 B' `valuation-blindspot-2026-10-10.md`
+    # 「形质项对 40.2% 的出牌点无分辨力」与用户 11:05「很多是估值分歧，是明显不合理的出牌」）。
+    #
+    # **缺陷形态（比「破平层覆盖主分」更根本）**：`_break_ties_by_ukeire` 的候选面是
+    # 「同向听并列项按 `-blocks`（= `shape_value`）稳定排序后**截断到前 `ukeire_candidates` 张**」。
+    # 而 `shape_value` 在 **40.2%** 的我方出牌点上给全部最优候选**同一个值**（B' 在 22,874 点上实测；
+    # 本仓 `shanten.shape_value` 的 docstring 自己记着 77–93% 全并列）⇒ 此时排序退化成
+    # **按「喂牌」排序**，截断等于**按喂牌采样前 3 张**：进张更多但喂牌稍多的候选**从来没进过比较**。
+    # 这正是历史证据指向的方向：`ukeire-wide`（2→6）在**退化键**时代测平（等于随机采样），
+    # 而 `shape_value` 装上后 `v5-cand5` **+0.639** > `v4-cand3` **+0.451**（候选面每 +1 张有边际收益）。
+    #
+    # **做法（只改一处、只在键退化时生效）**：若「与并列层最高形质相等」的候选数 > `ukeire_candidates`，
+    # 则把截断面放宽到 `ukeire_tied_cap`（默认 5）。键**没**退化时逐位等于旧行为 ⇒ 成本只在
+    # 40% 的决策上多 1–2 次精确进张（`ukeire` 42–157 ms/张，出牌预算 1800 ms，实测 p99 52.9 ms）。
+    #
+    # `False` = 关闭（默认档、冠军档**逐位等于 v7**）。
+    ukeire_tied_full: bool = False
+    # 键退化时放宽到的候选面上限（`ukeire_tied_full=True` 时才读）。
+    ukeire_tied_cap: int = 5
     # **破平层的作用面收口**：`_break_ties_by_ukeire` 的候选面原本是「**同向听**的全部候选」，
     # 胜者整张替换 `scores[0]` ⇒ 主分 `total` 里除向听以外的全部信息（形质/喂牌/财神罚）
     # 在该层被覆盖。本旋钮把候选面收口到「主分不低于 `最高分 − slack`」的那些候选。
@@ -1191,7 +1210,17 @@ class HeuristicDecider:
             if self.config.ukeire_order == "blocks":
                 tied = sorted(tied, key=lambda item: -item.blocks)
             if not wait_aware and not two_ply and self.config.ukeire_preselect <= 0:
-                tied = tied[: max(1, self.config.ukeire_candidates)]
+                cap = max(1, self.config.ukeire_candidates)
+                if self.config.ukeire_tied_full:
+                    # 键退化检测：与并列层**最高形质**相等的候选有几个。若多到超过截断面，
+                    # 说明这个键对它们无分辨力（B' 实测 40.2% 的出牌点如此），截断等于按喂牌采样
+                    # ⇒ 定向放宽（依据见 `PolicyConfig.ukeire_tied_full`）。
+                    top_grade = max(item.blocks for item in tied)
+                    same_grade = sum(1 for item in tied if item.blocks == top_grade)
+                    if same_grade > cap:
+                        cap = min(len(tied), max(cap, self.config.ukeire_tied_cap))
+                        self.last_detail["tied_full"] = (same_grade, len(tied), cap)
+                tied = tied[:cap]
         visible = shanten_module.visible_counts(
             situation.hand.counts,
             [meld.tiles for meld in situation.all_melds],
