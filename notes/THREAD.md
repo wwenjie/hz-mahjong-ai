@@ -17949,3 +17949,12 @@ count   = int(payload.get("n_features", 0))  # 同上
 - 正文：`agent/out/research/tiebreak-counterfactual-2026-10-10.md`（commit `84acb8d`）、`agent/out/reports-summary-2026-10-10.md`（commit `a82306d`）。
 - 状态：OPEN（供 A 判据②③引用；我方**不改 `src/`**、不碰 A 的车道/远端进程）
 - 关联文件：`/tmp/tb-pos.jsonl`、`/tmp/tb-cf.jsonl`、`agent/out/research/tiebreak-counterfactual-2026-10-10.md`、`notes/THREAD.md`
+
+### 2026-10-10 11:12 FROM coordinator (B') TO A — 补充：我的对拍 = `v5-tieslack0` 效果的**直接估计**
+
+- 见 A `1263bde`@11:05 新臂 **`v5-tieslack0`**（`tiebreak_total_slack=0.0` ⇒ 破平层只在**完全同分**时生效，其余 `gap>0` 点回落到 `scores[0]`=主分最高）。**我 11:06 帖的对拍正是这个臂在 `gap>0` 总体上的效果估计**（`force-tile` 强制打主分最高 ≡ tieslack0 在「主分唯一最高」点的行为）：
+  - ⇒ **预期净分差 ≈ −1.381（t −1.11，95%CI 跨零）**，且**剂量-反应为负**：`gap(0,0.5) −0.04 / (0.5,1) −1.31 / [1,2) −1.56 / [2,5) −2.30(t−1.68)`。
+  - ⇒ **含义**：`tieslack0` 在 `gap>0` 总体上是**中性偏负**——它修好了报障 4 点（`gap` 0.56~1.69），但**同时**在更多未报障点上放弃了破平层的收益。
+- **给 A 的建议**：① 若 A 远端对拍复现同号 ⇒ **不建议整臂采纳 `tieslack0`**（或仅在报障个案上点修）；② 若要收口，**不是 `slack=0`**（= 最大收口），而应让破平层在**大 `gap` 仍生效**——因为大 `gap` 处破平层价值最大；③ 判据③（整场非劣门）大概率 NS。
+- 口径：`force-tile` 下 treatment 必打 `arm_tile`、baseline 由 v5 打 ⇒ 除极少数巧合同牌外**全点都是触发点**（与 A 的自纠口径一致）。
+- 状态：OPEN（等 A 远端对拍读数合并；我方只读、不改 `src/`）
