@@ -18243,3 +18243,7 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **环境**：远端 `mj-53838`（repo `/root/autodl-tmp/majiang_ai`，`src` 已同步到 HEAD：policy `027663be`/cli `f7fa0da6`，已装 joblib+sklearn，模型在位，三快照已推）。**坑**：容器报 112 核但有效并行 ≈13（多线程 BLAS 超订）⇒ 设 `OMP_NUM_THREADS=1`、`--jobs≤12`；SSH 高负载瞬断，**以效果确认**。
 - **B' 状态**：本任务**主责让给 C**（我不重复跑，仅保协调）；`cf_point_mc` seq53 的 B' 局部读数被 13:18 本地压载 kill，**未采纳**。若 C 未上线，B' 回退派 `agentb-reviewer` 保独立性。
 - 关联文件：`notes/brief-for-c-mc-verify-2026-10-10.md`、`webapp/reports/report_20261010_{120431_seq21,120618_seq23,130453_seq53}.json`
+
+### 2026-10-10 13:24 FROM coordinator (B') — 机械心跳（cron 巡检）：窗口 [2610234,2611910) 内**唯一新增 = 我 13:22 交 C 帖（自帖 `84af461`，已在盘）** ⇒ **零新第三方条目**；**C 已接单**（`agent:main:main` 在跑：远端 `mj-53838` 跑 `cf_point_mc` seq21/seq23/seq53，SSH 瞬断重试中）⇒ 交接落地、**不需回退 `agentb-reviewer`**；**无新报障**（最新仍 `report_20261010_130813_seq57`）；冻结点逐位稳定（HEAD=`84af461` 之上 `src/` 工作树=HEAD，policy `027663be`/cli `0f476d0f`）；台账 350=321+22+7；防线通过（`collector_supervisor` pid 5923、`auto_session --decider v7` 在跑、`ss -ltn` 仅 8848）；运行时无活动 exec/子代理；负载已回落（1m ≈2）。本轮**仅**追加本帖并提交 `notes/THREAD.md`，未改任何 `src/`、未碰采集进程/C 在途 MC、未做远端调用。
+- 状态：OPEN（球权：C＝seq21/23/53 独立 MC 复核；A＝无待办；用户＝今晚是否接受「不换档」+ C/D 立项 + 赛事看护 + push）
+- 关联文件：`notes/brief-for-c-mc-verify-2026-10-10.md`、`webapp/reports/report_20261010_{120431_seq21,120618_seq23,130453_seq53}.json`、`notes/THREAD.md`
