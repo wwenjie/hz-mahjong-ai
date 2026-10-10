@@ -18346,3 +18346,18 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **备注（卫生）**：本轮**仅**追加本行并提交 `notes/THREAD.md`；未改任何 `src/`、未碰采集进程/A 在途普查/C 产物、未做远端调用。
 - 状态：OPEN（球权：A＝`ukeire_gate_census` 普查 + `presel5` 血统裁定；C＝已交付、待 A/用户是否就 seq21 立项；用户＝今晚是否接受「不换档」+ push）
 - 关联文件：`tools/ukeire_gate_census.py`、`agent/out/mc-verify-seq21-23-53-report.md`、`notes/experiments.json`、`notes/THREAD.md`
+
+### 2026-10-10 13:56 FROM coordinator (B') — 机械心跳（cron 巡检）：窗口 `[2632120,2634512)` **零新第三方条目**；本巡触发系 **A 在途未提交 `src/` 编辑（首见「财神/爆头路线」新轴）** ⇒ 只读登记（归属=A，不重复其跑）；**更正我 13:53 帖「`src/` 工作树=HEAD」现已陈旧**（`cli.py` 工作树已被 A 改、未提交）
+
+- **THREAD 对账**：本巡 (`size=2634512 / mtime=13:53:42`，HEAD=`b13a60c`=我 13:53 帖) → 触发源 = **`src/majiang/cli.py` 工作树 mtime 13:54:25**（非 THREAD 变更）。窗口 `[2632120,2634512)` 真·FROM 头扫描 **零新第三方条目**（最新真·FROM A 仍 = A 13:20 帖 `c7f81fe`@13:09:40）⇒ 无新机械事项、不重复已封口判读。
+- **【新观察·A 车道·只读登记，不触碰】** A 于 **13:54** 在工作树写入 **首见「财神/爆头路线」两键臂**（`git diff --stat` = `+27`，**未提交**）：
+  - `v7-preserve` = 冠军 `v7` + `preserve_god=True`；`v7-natural` = `v7` + `preserve_god=True` + `natural_route=True`（各只差一项/两项）。
+  - **动机（A 注释内引 `tools/baotou_census.py`，真机 1,500 房/11,967 局）**：胡率 **我方 20.9%/局 vs 三家各 25.7%（0.81×）**；**爆头占自己胡牌 我方 14.4% vs 三家 23.8%（1.66×）**、杠 1.73×、财飘 1.11×、七对我方反而更多（4.0% vs 2.6%）；且 **`natural-*`/`preserve-god-*` 四 job 在 `experiments.json` 均 `skipped`**（该轴从未被测）。
+  - **预登记判据（先机制后 A/B）**：① 机制筛（`tools/winmix_census.py`，解耦指标）自对弈 **爆头率** 由 `v7` 基线朝 **23.8%** 靠拢且**胡率不降**；② A/B `每场名次分` 正且 `t≥2` 才采纳。**未过两道不动默认档。**
+  - **在途跑**：A 起 `winmix_census.py --arms v7,v7-preserve,v7-natural --matches 24`（pid 101035/101038，**13:54:38** 起，`nice 15`）⇒ 即上述机制筛。**归属=A（非 B'/C），我不重复其跑、不碰该工作树编辑。**
+- **冻结点（逐位复验，含更正）**：`policy.py 027663be` ✓、`shanten.py fbd019c5` ✓、`versions.py 9a1f3bba` ✓、`tools/ab_test.py 8b401b18` ✓ **未漂移**；**`cli.py`：`HEAD:src` blob = `0f476d0f`（未变），但工作树已被 A 改（75,463B、未提交）⇒ 更正我 13:53 帖「`src/` 工作树=HEAD」**（该未提交改动即上方新轴，语义有实质新增；按治理「A 冻结声明为准」，我不改之）。
+- **台账**：`experiments.json` 350 job = **done 321 / skipped 22 / failed 7 / pending 0** ✓。**防线**：`collector_supervisor` pid 5923 ✓、`auto_session … --decider v7` pid 97012/97015 ✓、`ss -ltn` **仅 8848**（无 53838 本地监听）✓；本机 `load 2.35/3.74/10.43` 系 A 的普查（13:51 起 `ukeire_gate_census`）+ 机制筛。
+- **A 心跳**：最新真·FROM A = 13:20 帖 `c7f81fe`@13:09:40，≈46min **≪ 60**，且 A 此刻活跃（在写 `cli.py` + 在跑 `winmix`）⇒ **不代行**。
+- **备注（卫生）**：本轮**仅**追加本行并提交 `notes/THREAD.md`；未改任何 `src/`、未碰采集进程/A 在途普查与机制筛/未提交编辑。
+- 状态：OPEN（球权：A＝财神/爆头新轴机制筛 + `ukeire_gate_census` 普查 + `presel5` 血统裁定；C＝已交付、待 A/用户是否就 seq21 立项；用户＝今晚是否接受「不换档」+ push）
+- 关联文件：`src/majiang/cli.py`（`v7-preserve`/`v7-natural`，未提交）、`tools/winmix_census.py`、`tools/baotou_census.py`、`notes/experiments.json`、`notes/THREAD.md`
