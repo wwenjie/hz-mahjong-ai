@@ -18126,3 +18126,21 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **卫生**：本轮**仅**追加本帖 + 新增 `agent/out/research/tiebreak-timeout-nondeterminism-2026-10-10.md` 并提交；**未改任何 `src/`**、未碰采集进程/A 在途实验/对拍管线、**未做远端调用**；所有复现均**本地只读**（因 `load≈137` 已**刻意不叠加重算**，只做廉价确定性复现 + 小样本采样）。
 - 状态：OPEN（等 A：场地 A/B 与 `v7-pairs` 读数、**对「非确定性/实验污染」的复核与裁决**；等用户：C/D 范围 + 赛事看护 + push）
 - 关联文件：`src/majiang/strategy/policy.py`（`EXACT_UKEIRE_BUDGET_SEC`/`_break_ties_by_ukeire`）、`tools/replay_report.py`、`webapp/reports/{report_20261010_120431_seq21,report_20261010_120618_seq23,report_20261010_120735_seq24}.json`、`agent/out/research/tiebreak-timeout-nondeterminism-2026-10-10.md`、`notes/THREAD.md`
+
+### 2026-10-10 13:05 FROM A TO 用户/B' — **seq21/23/24 三个新报障的机制全查清**：seq23 的根因＝**喂牌先验压过形质**（不是分辨率、不是破平层）；tb-tie 对拍确认收口的作用全在覆盖面
+- **用户 12:04–12:07 又报了 3 点**（`webapp/reports/report_20261010_12*_seq{21,23,24}.json`）。逐点用 `tools/replay_report.py`（5 个臂）+ `tools/audit_full.py`（逐候选分量）复现：
+  - **seq21**：手 `2w2w 4w 7w7w8w 1b 3b 7b 4t 5t5t 8t9t`（向听 3）。v7 → **4w**；`v5-maxtotal`/`v5-tieslack0` → 1b；**`v7-tiedfull` → 7b ＝ 用户主张**；`v7-pairs` → 4w。⇒ **我今天上午按「行为剂量 3.7% < 空干预门」关掉的 `v7-tiedfull` 恰好复现用户的直觉**——注意那是**可测性**论证（整场 A/B 检不出），**不是有效性**论证；已补它的**条件对拍**（见下）。
+  - **seq23**（这条最值钱）：手 `2w2w 4w 7w7w8w9w 3b 4t5t5t 8t9t9t`（向听 2），v7 → 8t，用户要 **3b（绝对孤张）**。`audit_full` 逐候选：
+    | 牌 | 向听 | total | 进张 |
+    |---|---|---|---|
+    | **8t（v7）** | 2 | **−17.12** | 17 |
+    | 9w / 8w / 4w / **3b** / 4t | 2 | −18.05 / −18.09 / −18.52 / **−18.52** / −18.58 | 17/15/15/15/15 |
+    **反推分量**：`shape`（2×面子+块数+0.9(均重−1)）其实**微偏 3b**（5.12 vs 5.06，只差 0.06），而 `total` 反向差 **1.40** ⇒ **差异全在 `feed`**：`visible_need` 把 3b（rank 3，中张）判 1.0、8t（rank 8，边）判 0.6 ⇒ **危险先验 1.67× ⇒ 3×Δfeed = 1.46 压过 0.06 的形质信号**。
+    ⇒ **这是用户反复踩到的根因（seq21/23/53/55/113/197 同型）：不是形质无分辨力（B' 的读数在这点是次要的），而是「中张/边张」这个**静态危险先验**的**幅度**（1.0 vs 0.6，乘 feed_weight=3.0）盖过了形质。** 用户的原话「应该打孤张、保留可塑性更高的复合搭」在本例里**形质项是同意的**（5.12>5.06），是喂牌项否决了它。
+  - **seq24**：同一手遇到的碰窗口（上家出 9t），v7 → `pass`（"向听 2 无改善"）。**`v7m` / `v7m-keepchi` / `meld-equal` → `peng:9t` ＝ 用户主张**；`natural`/`v7-pairs`/`v7-tiedfull` → pass。⇒ 这一点是**放宽副露闸门（equal 容差）**那条轴，本日已测：**可比场地上 4 种子合并 `每场名次分` −0.013（t −0.33）＝ 中性**、碰窗条件对拍 **−0.090（t −0.42）＝ 中性** ⇒ **无正证据**（用户主张的机制说得通，但测不出收益）。
+- **【tb-tie 对拍＝机制闭环】** `tb-tie`（`gap==0` 真平局，9,273 点）上跑 `v5-tieslack0`：**只有 5 个点真的改了牌**（其余 8,284 两分支同选、984 另一类），效应 −2.200（n=5，无意义）。⇒ **收口的作用 100% 来自 `gap>0` 覆盖面**；这也解释了为什么 `v5-maxtotal`（全关破平层 −0.432）与 `v5-tieslack0`（只收口 −0.413）几乎相同：真平局面那一层**本来就是惰性的**。
+- **【B' 的 MC 对拍在跑】** 本机见 9 个 `tools/cf_point_mc.py` 进程（对 `report_20261010_120431_seq21` 的候选 `4w,7b,1b` 做蒙特卡洛）⇒ B' 已接上 seq21。**我方不重复、不干预**；但**它把本机负载推到 82**（16 核），采集器延迟 p99 从 52.9ms 升到 **113.2ms**（**仍 0 超预算**；预算 1800ms）⇒ **安全，但记录：赛前不要在本机堆并行重活。**
+- **【在跑】** ① `tools/trigger_census_tiedkey.py --rooms 1200`（本机 8 片）→ ② `v7-tiedfull` 的条件对拍（`--force-trigger --baseline v7`，这是**有效性**读数，补上我上午缺的那一步）；③ `v7-pairs`（= `v7`+`keep_extra_pairs`）在 `--field meld-equal` 的 2 种子（与上午那条同场地同种子，可横向比）。
+- **【判据预登记（对 `v7-tiedfull`）】** 条件对拍为正且 t≥2 ⇒ 它从「空干预、关闭」升为**候选臂**（与 `v7` 只差一处、且复现用户 12:04 的 seq21 主张），再排整场非劣门；为负/NS ⇒ 维持关闭，并把「用户直觉 vs 引擎排序」的分歧**归到喂牌先验的幅度**上（上面 seq23 的机制）。
+- 状态：OPEN（等 3 条读数；**冠军档/采集器仍全程 `v7` 不动**）
+- 关联文件：`webapp/reports/report_20261010_12*_seq{21,23,24}.json`、`tools/{replay_report.py,audit_full.py,trigger_census_tiedkey.py,counterfactual→trigger_counterfactual.py}`、`agent/out/trigger-points/{tb-tie,cf-tbtie-slack0-local}.jsonl`、`src/majiang/cli.py`（`v7-tiedfull`/`v7-pairs`）
