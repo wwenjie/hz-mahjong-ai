@@ -18741,3 +18741,11 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **备注（卫生）**：本轮**仅**追加本行并提交 `notes/THREAD.md`；未改 `src/`、未碰 A/C 进程与产物、未做远端写（`ssh` 仅只读）。**push 待用户**。
 - 状态：OPEN（球权：A＝镜像检定 `cand2` 3 种子收口 + 竞技场 51 点 botlike 聚合；候参数 `cand5`/`presel5` 待护栏；用户＝今晚换档拍板 + push）
 - 关联文件：`mj-nma1:/tmp/sweep.log`、`src/majiang/cli.py`（`v7-cand2`）、`agent/out/reports-arena-botlike.json`（A 在途）、`notes/THREAD.md`
+
+### 2026-10-10 16:53 FROM coordinator (B') — 机械心跳（cron 巡检）：窗口 `[2734846, …)` 零新第三方 THREAD 条目（最新真·第三方仍 = A 16:30 帖 `0d9cfb7`，已在我 16:28 帖封口）⇒ 不重复判读；本巡新事项＝**镜像检定 `v7-cand2` 三种子全部收口（16:51:47 ALL DONE）**、C 交付 seq57 复核产物（`d4029d8`，非 THREAD）、A 在途未提交新轴 `v7-lexshape`
+- **镜像检定机械判读（护栏复核·预登记）**：`v7-cand2 @field=meld-equal`（120 场×8 局、13 worker/种子）——seed20261008 总得分 **−2.735/t−2.11**、胡次数 **−0.138/t−3.15**、番数总和 **−0.142/t−2.47**（显著为负）；seed771013 全轴 NS（总得分 −1.688/t−1.50）；seed20260923 全轴 NS（总得分 −0.910/t−0.88）；`grep 未知策略/Traceback`=**0**（我 16:32 纠偏的缺键失配未复现）⇒ **镜像臂三种子无正向复现 ⇒ 不撤销 A 的「场地偏置」护栏降级，`cand5`/`presel5` 仍为候候选**；口径不变：采集器/冠军档今晚仍 `v7`。
+- **C 侧产物**：C 16:50 提交 seq57 复核 `d4029d8`（`agent/out/seq57-douban-review.md` + `mc-logs/seq57.log`：n600 配对 **+6.40/t+4.28** 显著支持 v7 的 9w；豆包主张打 4w 被否）⇒ 支持现冠军档、与我在途四点合成一致 ⇒ 无需换档；seq57 已在我 16:05 帖收口，**不重复封口**。
+- **冻结点（本地＝committed blobs 的 md5，`HEAD=d4029d8`）**：`policy 027663be` ✓、`cli c0a45317` ✓、`shanten fbd019c5` ✓、`versions 9a1f3bba` ✓、`ab_test 8b401b18` ✓ ⇒ **HEAD 逐位未漂移**。**A 在途（未提交）**：`src/majiang/{strategy/policy.py,rules/shanten.py,cli.py}` 含新轴 `v7-lexshape`（`shape_grade`，mtime 16:45–16:47），默认 `grade="mean"` ⇒ 对在跑冠军档无行为影响；归属=A、不碰。
+- **台账**：`notes/experiments.json` mtime 未变（10-09 04:22）⇒ **350=321+22+7** ✓。**防线**：`collector_supervisor` pid **5923**（etime 6:20）→ `auto_session --decider v7` pid **163824/163827**（etime 8:00）✓、`ss -ltn` 仅 **8848**、无 53838 ✓。**负载** 10.77/16.36/45.95（回落）；A `reported_arena.py` 12 worker 续跑、`reports-arena-botlike.json` 仍未落盘。**A 心跳**：最新真·FROM A 16:30 帖（≈23min ≪ 60）⇒ 活跃、不代行。
+- 状态：OPEN（球权：A＝镜像检定收口后候选裁决 + 竞技场 botlike 聚合 + 在途 `v7-lexshape` 定义性检验；用户＝今晚换档拍板 + push）
+- 关联文件：`mj-nma1:/tmp/sweep.log`、`agent/out/seq57-douban-review.md`、`src/majiang/strategy/policy.py`（A 在途）、`notes/THREAD.md`
