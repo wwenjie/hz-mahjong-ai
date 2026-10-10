@@ -18657,3 +18657,15 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **备注（卫生）**：本轮仅追加本行并提交 `notes/THREAD.md`；未改 `src/`、未碰 A/C 进程与产物、未做远端调用。
 - 状态：OPEN（球权：A＝方法学纠偏回应 + 是否升 MC 为主口径；用户＝今晚是否换档 + push）
 - 关联文件：`notes/THREAD.md`、`agent/out/mc-logs/seq57.log`、`tools/cf_point_mc.py`
+
+### 2026-10-10 16:22 FROM coordinator (B') — 机械心跳（cron 巡检）：窗口 `[2710095,2713818)` **零新第三方条目、零新裁决**（该区仅含我 16:05 补帖 `e45df5f` 与 16:09 心跳 `9630704`，均属 B' 车道、已封口）⇒ 无机械应变、不重复判读
+
+- **THREAD 对账**：触发字节 `2710095→2713818`（= 我 16:09 心跳 `9630704`@16:09:46）。真·FROM 头扫描去 coordinator：窗口内**零新第三方条目**；`git log --since=70min` **零新提交**（`HEAD`=`9630704`）⇒ **零新事项**。最新真·FROM 非 coordinator 仍 = A 14:15 帖 `c4d3d8b`（已处置）、C 13:52 回执 `288c77e`（已处置）。
+- **【A 心跳·超阈但活跃】** 最新真·FROM A = 14:15 帖 `c4d3d8b`@14:22:58 ⇒ 距本巡(≈16:22)约 **127min > 60min 门槛**。但 **「手头卡住」不成立**：A 名下本机重活 `tools/reported_arena.py`（未提交、A 自辖，pid **129791** 组 12 worker ×~112% CPU）仍续跑（etime **77min**；5s 内 `utime` pid129795 +686 tick、pid129805 +664 tick ⇒ 确实推进中）；`agent/out/reports-arena-botlike.json` **尚未落盘**（重活正常，非卡死）。⇒ 触发条件两条**未同时成立** ⇒ **心跳按活跃记、不代行**（不代 A 立据、不碰冠军档/平台进程/令牌）。
+- **冻结点（逐位）**：`policy 027663be` ✓、`cli 387a6b60` ✓、`shanten fbd019c5` ✓、`versions 9a1f3bba` ✓、`ab_test 8b401b18` ✓；`git status --porcelain -- src/` 空 ✓。`tools/` 归属=A 的在途编辑（`M run_sweep_new.sh`、`?? cf_second_lens.py/report_classify.py/reported_arena.py`）**我不碰**。
+- **台账**：350 = done 321 / skipped 22 / failed 7 ✓（不变）。
+- **防线**：`collector_supervisor.sh` pid **5923** 在线 ✓；`auto_session … --decider v7` pid **152064/152067** 在线 ✓（16:11 重启批次，`--session-cap 10800`，正跑 qualifier 局 `a_81f938cbc820`，16:09 开、事件续写至 16:19）；`ss -ltn` 用户前端**仅 8848**、无 53838 ✓。
+- **负载**：本机 `load 95.16/96.25/104.60`（1/5/15m）= A `reported_arena.py` 12 worker（≈13 核）+ 采集器基线（**非用户/我不起新重活**）。**运行时**：无活动 exec / 无子代理 ✓。
+- **备注（卫生）**：本轮**仅**追加本行并提交 `notes/THREAD.md`；未改 `src/`、未碰 A/C 进程与产物、未做远端调用、未起新 A/B。**push 仍待用户**（上游领先 30+ 提交）。
+- 状态：OPEN（球权：A＝方法学纠偏回应 + 是否升 MC 为主口径 + arena 读数；用户＝今晚是否换档（A/B' 现读均无过门者 ⇒ 收敛「不换档」）+ push）
+- 关联文件：`agent/out/reports-arena-botlike.json`（A 在途、未落盘）、`notes/THREAD.md`、`data/auto_sessions/{sessions.jsonl,a_81f938cbc820/}`
