@@ -17974,3 +17974,17 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **备注（卫生）**：本轮**仅**追加本帖并提交 `notes/THREAD.md`；未改任何 `src/`、未碰采集进程/A 在途管线、**未做远端调用**；所有复核均**本地只读**。
 - 状态：OPEN（等 A：远端普查 → 条件对拍读数 → 整场非劣门；等用户：C/D 范围 + 赛事看护 + push）
 - 关联文件：`src/majiang/cli.py`（`v5-maxtotal`/`v5-tieslack0`）、`src/majiang/strategy/policy.py`（`tiebreak_total_slack`）、`tools/{trigger_census_tiebreak,merge_tb_shards,run_tb_census.sh,run_tb_cf.sh,run_tb_pipeline.sh}`、`agent/out/research/tiebreak-counterfactual-2026-10-10.md`、`notes/experiments.json`、`notes/THREAD.md`
+
+### 2026-10-10 11:14 FROM coordinator (B') — 机械心跳（cron 巡检）：窗口内 **THREAD 零新第三方条目**（10:56:48→11:06:34，字节 2532113→2532110＝**仅**一条对 A 11:00 自己帖的笔误订正，**工作树未提交**）；窗口后 **B' 线新交付 1 件**（`9258c26`@11:09:31 `agent/out/research/valuation-blindspot-2026-10-10.md`）；**A 心跳正常**（最新 A 动作 `1263bde`@10:54:00，≈20min ≪ 60）⇒ 不代行；冻结点按双口径逐位复验**未漂移**；台账 350=321+22+7；防线通过
+- **THREAD 对账**：上轮末 (mtime,size) `1791601008 / 2532113`（10:56:48，= 我 10:56 帖）→ 本巡 `1791601594 / 2532110`（11:06:34）。真实 FROM A 头扫描（`^### .*FROM A`）**最新仍 = 11:00 帖**（`1263bde`@10:54:00，已于 10:56 帖登记）；`git log --since="2026-10-10 10:57"` 窗口内**零提交** ⇒ **零 TO B'/coordinator/全员 新指派**。窗口内唯一字节变化（−3B）= 对 11:00 帖「（11,733 房））」多余右括号的一处订正（`git diff` 单 hunk，作者 "Not Committed Yet" 11:09:53，**A/B' 线在途编辑**）⇒ 非新内容、**我本轮不覆盖、不提交该行**。
+- **A 心跳判定**：最新 A 动作 = `1263bde`@**10:54:00**（立据 `cc5338d3` + 开远端普查）⇒ 距当前(≈11:14)约 **20 分钟 < 60 门槛** ⇒ **心跳正常、不代行**；「口味分歧」案球在 A（判据②读数），属等待类，**不代立据**。
+- **【窗口后·B' 线新交付·只读登记】** `9258c26`@11:09:31（B'/研究线，**窗口外**）：`agent/out/research/valuation-blindspot-2026-10-10.md`，直接回应**用户 11:05**「报障多为估值分歧」——在 400 房 / 我方出牌点 **22,874** 上量得 **形质(`shape_value`) 全并列 40.2%**；34 个报障点分类：A 覆盖 4（seq53/55/113/197）、**B 主分并列 18（58%）**、C 主分严格最高仍被疑 9、skip 3 ⇒ **27/34（79%）是「引擎自认为已选最好」**，判缺陷在**估值函数无分辨力**（非「口味」）；建议①增补「孤张/块保留」评分项、②副露估值换判据、③**不要**关破平层（−1.381 t−1.11 NS）。**属 B' 线产出，我本轮不重复、不另判**；用户 11:05 原话「其他方向你建议改的话就跟我说」⇒ 下一步球回用户待其选向。
+- **冻结点（双口径逐位复验）**：`HEAD:src/majiang/strategy/policy.py`（`1263bde`）= 工作树 **`d14b8a8a…`** ✓；`HEAD:src/majiang/cli.py` = 工作树 **`6ad9314f…`** ✓；`rules/shanten.py fbd019c5…` ✓、`strategy/versions.py 9a1f3bba…` ✓、`tools/ab_test.py 8b401b18…`（`b7027f3`@10-09 17:35 起，非本轮）✓ ⇒ **关键链逐位未漂移**。
+- **台账**：`notes/experiments.json` 350 = **done 321 / skipped 22 / failed 7 / pending 0** ✓。
+- **防线**：`collector_supervisor` pid **5923** 在线（etime ~38:44）✓；子进程 `auto_session … --decider v7` pid **26822/26825** 在跑（etime ~2min）✓；`ss -ltn` **仅 8848 用户前端、无 53838 本地监听** ✓；本地无 `ab_test`/`trigger_*`/`meld_*`/`gap_*`/`analyze_*`/`ppo`/`iterate`/`ready_watch`/`replay` 残留 ✓。**运行时**：无活动 exec / 无子代理 ✓。
+- **在途·非我触碰（续登记）**：工作树 `notes/THREAD.md`（笔误订正，11:09:53）、` M tools/merge_tb_shards.py`、` M tools/run_tb_cf.sh`、`?? tools/run_tb_pipeline.sh`/`tools/run_tb_ab.sh`/`tools/meld_rate_census.py`（+ `agent/out/trigger-points/*.jsonl` 未跟踪）系 **A/B' 本轮普查/对拍管线在途**，我**不触碰、不提交**。
+- **球权快照**：A＝{远端 14 核普查+条件对拍（`tb-cover × v5-tieslack0`/`× v5-maxtotal`/`tb-tie × v5-tieslack0`）→ 判据②}；**我(B')＝ `cc5338d3` 双门待 A 远端读数落定后起跑**；用户＝11:05「估值分歧方向选择」＋C/D 是否立项＋赛事看护是否启动＋push。
+- **下巡检查点**：A 远端 `tb-shard*/tb-cover/tb-tie/tb-cf` 是否出数；判据②符号/显著性；用户是否就估值分歧方向回话；`src/` 关键链是否漂移；A 心跳；上游 502 复发。
+- **备注（卫生）**：本轮**仅**追加本帖并提交 `notes/THREAD.md`（**不含**在途笔误订正——仅暂存我本行）；未改任何 `src/`、未碰采集进程/A 在途管线、**未做远端调用**；所有复核均**本地只读**。
+- 状态：OPEN（等 A：远端普查 → 条件对拍读数 → 整场非劣门；等用户：估值分歧方向 + C/D 范围 + 赛事看护 + push）
+- 关联文件：`agent/out/research/valuation-blindspot-2026-10-10.md`（B'，`9258c26`）、`src/majiang/{cli.py,strategy/policy.py}`（A，`1263bde`）、`notes/experiments.json`、`notes/THREAD.md`
