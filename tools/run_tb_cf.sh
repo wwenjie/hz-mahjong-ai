@@ -19,9 +19,13 @@ LOG=/tmp/cf_tbrun.log
 
 run() {
   echo "=== $1 开始 $(date -Is) ===" >> "$LOG"
+  # **`--klass ""` 必须显式给**：`trigger_counterfactual.py` 的默认 `--klass 漏吃` 是吃牌轴的
+  # 类别名，本轴的点集 `klass` 是 `覆盖主分|向听N` ⇒ 不过滤就等于**0 个触发点、1 秒「完成」**
+  # （2026-10-10 12:02 远端就踩过这一次，日志里只有 `数据集 0 个触发点`）。
   $PY tools/trigger_counterfactual.py --points "agent/out/trigger-points/$2.jsonl" \
-    --mode discard --force-trigger --baseline v5 --opponents v5 --jobs 14 --limit "$LIMIT" \
-    --treatment "$3" --out "agent/out/trigger-points/cf-$1.jsonl" > "/tmp/cf_$1.log" 2>&1
+    --klass "" --mode discard --force-trigger --baseline v5 --opponents v5 --jobs 14 \
+    --limit "$LIMIT" --treatment "$3" --out "agent/out/trigger-points/cf-$1.jsonl" \
+    > "/tmp/cf_$1.log" 2>&1
   echo "=== $1 结束 $(date -Is) ===" >> "$LOG"
   tail -10 "/tmp/cf_$1.log" >> "$LOG"
 }

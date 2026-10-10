@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import glob as glob_module
 import json
 import random
 from pathlib import Path
@@ -29,8 +30,11 @@ def main() -> int:
     ap.add_argument("--shuffle-seed", type=int, default=20261010)
     args = ap.parse_args()
 
-    root = Path(args.glob).parent.parent.parent
-    shards = sorted(root.glob(Path(args.glob).name))
+    # **直接按相对 CWD 的模式展开**（2026-10-10 自纠）：旧实现用
+    # `Path(glob).parent.parent.parent` 反推仓库根，对 `agent/out/trigger-points/*.jsonl`
+    # 这种 4 段路径会推成 `agent/`（少了一层）⇒ 恒「没有分片产物」。
+    # 两个 launcher 都已经 `cd` 到仓库根，所以按 CWD 展开才是对的。
+    shards = sorted(Path(path) for path in glob_module.glob(args.glob))
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 

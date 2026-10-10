@@ -773,6 +773,22 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
     #
     # **预登记判据**：见 `v5-maxtotal` 注释 ①②③；本档需额外过 `ab_test` 非劣门
     # （`v5-tieslack0 vs v5`，4 种子合并 `每场名次分` 不显著为负）才可进 `versions` 快照。
+    #
+    # **裁决（A 2026-10-10 12:05）：关闭本臂。破平层「覆盖主分」是特性、不是缺陷。**
+    # `tools/run_tb_pipeline_local.sh`（本机 10 核，1,200 房抽样 → `tb-cover` 9,915 个 `gap>0`
+    # 触发点）上跑 `--mode discard --force-trigger` **定向臂**（只在这一次出牌上用处理臂、
+    # 之后两分支都回落 `v5`）：
+    #   - **全部 9,915 点：净分差 −0.413 / se 0.115 / t −3.57 / 95%CI [−0.639, −0.187]、
+    #     MDE 0.324 ⇒ 显著为负**（守恒 9,915/9,915 通过；独立于 B' 的 197 点
+    #     `force-tile` 读数 −1.381 / t −1.11 ——**同号、B' 那次只是功效不足**）。
+    #   - 分层：`gap`(0,0.5) −0.420(t −1.14) / [0.5,1) −0.735(t −2.37) / [1,2) −0.348(t −2.32) /
+    #     ≥2 −0.172(t −0.81)——**不是单调剂量**，故「越大 gap 越该收口」不成立；
+    #     向听 2 −0.642(t −3.21)、向听 1 −0.318(t −2.03)、向听 0 −0.302(t −0.95)；
+    #     **无财神 −0.558(t −4.35) vs 有财神 −0.208(t −0.98)** ⇒ 伤害集中在**无财神**手牌。
+    #   - 方向计数 `>0: 1218 / =0: 7291 / <0: 1406`。
+    # ⇒ **保持 `v5`/`v7` 行为**：报障总表 A 类 4 点（seq53/55/113/197）是**真实的覆盖个案**，
+    #   但**覆盖本身在总体上值 +0.41 净分/触发**（无财神 +0.56）⇒ 不许把主分提到破平层之前。
+    #   与 `v7-tiedfull`（行为剂量 3.7% < 空干预门）合起来，**出牌层的排序不存在可测缺陷**。
     "v5-tieslack0": lambda mode: HeuristicDecider(
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
@@ -812,6 +828,23 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
         PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
                               ukeire_candidates=3, meld_chi_best=True, ukeire_tied_full=True)
+    ),
+    # **`v7-pairs` = `v7` + `keep_extra_pairs=1.0`**（A 2026-10-10 12:15 登记）。
+    #
+    # **为什么要新键**：已注册的 `v7-keeppairs` 其实是 **`v5` + `keep_extra_pairs`**（我核过：
+    # `meld_chi_best=False`）⇒ 拿它对 `v7` 作差会**同时**含「保留多余对子」与「吃法度量修复」
+    # 两项，归因不了。本键 = **`v7` 的全部旋钮** + 只多 `keep_extra_pairs=1.0`。
+    #
+    # **背景（用户 2026-10-09 的原话）**：「无脑保留对子是错的，但是当时那个场景保留对子是对的」
+    # ——即 `keep_extra_pairs` 是**条件性**的收益，而 `shape_value` 的 `weights[:need]` 裁剪把
+    # 排在刀口外的对子当 0（拆掉它不掉分）。历史读数：`keep_extra_pairs` 在**自对弈场地**
+    # 4 种子合并 **+0.021（t≈0.76，NS）**。
+    # **本键要问的新问题**：在**副露可比真机**的场地（`--field meld-equal`，1.56/局/座）上，
+    # 这条是否仍然 NS？——沿用本日新开的「场地代表性」口径，不自造新假设。
+    "v7-pairs": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, meld_chi_best=True, keep_extra_pairs=1.0)
     ),
     # **`botlike`**：Stage B 的 bot 出牌预测器（GBDT, 77.4% top-1）包成决策器，
     # **只用于当 `ab_test --field botlike` 的对手模型**（A 2026-10-06 01:57 提出的场地修正）。
