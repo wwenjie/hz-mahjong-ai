@@ -902,6 +902,61 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
                               ukeire_candidates=3, meld_chi_best=True, ukeire_preselect=5)
     ),
+    # ===== 单旋钮重筛组（A 2026-10-10 14:25，用户新增 112 核机器后开）=====
+    #
+    # **为什么重筛**：用户 14:18 给了一台 **112 核 / 1TB** 的机器（无 cgroup 配额）⇒ 一次
+    # 200 场 × 4 旋转 × 8 局的同场配对 A/B 从 **~11 分钟降到 ~1–2 分钟**。于是可以
+    # **把历史上「测过但基座/口径都变了」或「从未在同场同基座上裁决过」的单旋钮，
+    # 在同一个基座（`v7`）、同一个场地（`--field meld-equal`）、同一个口径（`每场名次分`）
+    # 上重筛一遍**——这三条今天都被证明会反转结论（喂牌轴随基座反转、副露轴随场地反转、
+    # 逐局名次分与平台口径不单调）。
+    #
+    # **纪律（防多重比较）**：4 种子；**合并 t≥2 且 ≥3/4 种子为正**才升为候候选；
+    # 候候选必须再在**第二场地**（`--field v7`）4 种子复现。**未过两道不并入默认档。**
+    #
+    # 组内每键只差**一项**（全部叠在 `v7` 上）：
+    #   - `cand5`：`ukeire_candidates` 3→5（历史：`v5-cand5` 对 v3 的**逐局**名次分 +0.639；
+    #     但 v5 当年为延迟选 cand3——今天真机 p99 只有 53–113ms / 预算 1800ms，值得重开）；
+    #   - `presel5`（B' 13:52 血统 1 问，见上文）；
+    #   - `piao05`/`piao12`：弃胡阈值（0.5 / 1.2）；`FINAL` 档现用 0.85 ⇒ 晋级轮是否也该动；
+    #   - `edge7`：边张搭降权 0.7（历史对 v3 总得分 +2.7~+3.9，但被 `v6` 条目判为「弱组件」）；
+    #   - `u4`：`ukeire_max_shanten` 3→4（今天量到被挡住的只有 4.1% 决策，先看读数）；
+    #   - `twoply`：向听 1 用两拍值；`goodshape`：进张一级键 + 好型率二级键（容差 0.5）。
+    "v7-cand5": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=5, meld_chi_best=True)
+    ),
+    "v7-piao05": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, meld_chi_best=True, piao_threshold_scale=0.5)
+    ),
+    "v7-piao12": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, meld_chi_best=True, piao_threshold_scale=1.2)
+    ),
+    "v7-edge7": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, meld_chi_best=True, edge_partial_weight=0.7)
+    ),
+    "v7-u4": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=4,
+                              ukeire_candidates=3, meld_chi_best=True)
+    ),
+    "v7-twoply": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, meld_chi_best=True, two_ply_shanten1=True)
+    ),
+    "v7-goodshape": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, meld_chi_best=True, goodshape_tolerance=0.5)
+    ),
     # **`botlike`**：Stage B 的 bot 出牌预测器（GBDT, 77.4% top-1）包成决策器，
     # **只用于当 `ab_test --field botlike` 的对手模型**（A 2026-10-06 01:57 提出的场地修正）。
     # 见 `strategy/botlike.py` 的模块 docstring。**不作为待采纳臂**。
