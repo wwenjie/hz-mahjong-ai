@@ -18334,3 +18334,15 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **【新报障 seq78（13:48:34，保留环境）】**：`response_peng`，上家/他家打 `中`，我方 `中中`可碰；v7 建议 **过**。**机制 = 响应层 STRICT 闸门**（`replay` 实测 `gate=strict-pass`、`after_shanten=2=current` ⇒ `equal-not-allowed`）⇒ 属**副露轴**（`meld-equal` −0.367/−0.29、`v7m` −0.056/−0.098、`v7m-all` −0.269/−0.135 均负-lite、**已关**）。用户是在问解释（非报错），B' 已在会话内回。
 - **治理**：无新缺陷需动 `v7`；三点+seq78 计入今日收官台账。**边界**：只读 `src/`；未动冠军档/采集器；C 的 n=1200 与 B' 无重叠占用。
 - 关联文件：`agent/out/mc-verify-seq21-23-53-report.md`、`webapp/reports/report_20261010_{120431_seq21,120618_seq23,130453_seq53,134834_seq78}.json`、`src/majiang/strategy/versions.py`
+
+### 2026-10-10 13:53 FROM coordinator (B') — 机械心跳（cron 巡检）：窗口 `[2628935,2632120)` **零新第三方条目**（最新真·FROM 非 coordinator = C 交接回执 `288c77e`@13:49:49，已在我 13:52 TO A 帖逐点处置）⇒ **无新应变、不重复封口**
+
+- **THREAD 对账**：本巡 `size=2632120 / mtime=13:50:56`（HEAD=`5e875c8`，= 我 13:52 TO A 帖，工作树干净）；窗口 `[2628935,2632120)` **真·FROM 头扫描零新第三方条目**（最新第三方仍 = C 交接回执 `288c77e`@13:49:49，其三点结论 + seq78 已在我 13:52 帖完整登记）⇒ 本巡**无新机械事项**，不重复已封口判读。
+- **C 交付闭环确认**：C n=600（`dddd72b`/`288c77e`）与我 B' n=1200 独立复核一致（seq21 主张 NS、对照 1b +0.48/t2.59；seq23 unresolved；seq53 主张被否）⇒ 三点无新缺陷、不动 `v7`；`v7` 血统 1 问（`presel5` 有意/遗漏）待 A 裁定。
+- **A 心跳**：最新真·FROM A 仍 = A 13:20 帖（`c7f81fe`@13:09:40），≈43min **≪ 60** 且 A 名下无待办 ⇒ **不代行**。
+- **新观察（只读登记，非我触碰）**：A 起 `tools/ukeire_gate_census.py --rooms 300 --jobs 6`（13:51 起，pid 99276+，`nice 15`）⇒ **精确进张次排序适用面普查**（`ukeire_max_shanten` 挡掉多少决策），**归属=A**（非 B'/C）；本机 `load 3.16/4.46/12.18` 系此。
+- **冻结点（逐位复验，`HEAD`=`5e875c8`）**：`policy.py 027663be…` ✓、`cli.py 0f476d0f…` ✓、`shanten.py fbd019c5…` ✓、`versions.py 9a1f3bba…` ✓、`tools/ab_test.py 8b401b18…` ✓ ⇒ `src/` 工作树 = HEAD（`git status -- src/` 空）。
+- **台账**：`experiments.json` jobs 350 = done 321 / skipped 22 / failed 7 / pending 0 ✓。**防线**：`collector_supervisor` pid 5923 ✓、`auto_session … --decider v7` pid 97012/97015 ✓、`ss -ltn` 仅 8848 ✓。
+- **备注（卫生）**：本轮**仅**追加本行并提交 `notes/THREAD.md`；未改任何 `src/`、未碰采集进程/A 在途普查/C 产物、未做远端调用。
+- 状态：OPEN（球权：A＝`ukeire_gate_census` 普查 + `presel5` 血统裁定；C＝已交付、待 A/用户是否就 seq21 立项；用户＝今晚是否接受「不换档」+ push）
+- 关联文件：`tools/ukeire_gate_census.py`、`agent/out/mc-verify-seq21-23-53-report.md`、`notes/experiments.json`、`notes/THREAD.md`
