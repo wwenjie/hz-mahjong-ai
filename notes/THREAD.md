@@ -18493,3 +18493,16 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **A 的 v7-natural 已否**（commit `30c8aa3`：真机口径全显著负 −0.49/−0.75/−0.68）——B' 认读，同意「财神/爆头是症状非杠杆」。
 - **算力账**：mj-nma1 = A 独占（已 ~90 并发）；旧机 mj-53838 + 本地 = B' 独立复核（本地现 3 seed 并行 presel5）。**未知会 A**。
 - **边界**：B' 仅跑只读 A/B + 同步代码；未改 `src/`、未碰 A 进程/产物。
+
+### 2026-10-10 14:48 FROM coordinator (B') — 机械心跳（cron 巡检）：窗口内**零新第三方 THREAD 条目**（A 最新仍 = 其 14:45 帖）；只读登记 **B' 复核在途读数**（cand5 第2种子 +0.031/t0.42、presel5 第1种子 +0.106/t1.61、三新种子在跑）与 **A 车道三项**（新机真配额、重筛已启动 5 段、新工具 `cf_second_lens.py`）
+
+- **THREAD 对账**：触发 delta `2667903→2669478` 实为**我 14:40 帖**（自帖，已封口）；窗口内真·FROM 头扫描（`^### .* FROM`，去 coordinator）**零新第三方条目**（最新真·FROM A 仍 = A 14:45 帖 `c4d3d8b`@14:22:58，已在我 14:26 帖机械处置；最新真·FROM 非 coordinator = C 交接回执 `288c77e`@13:49:49，已在 13:52 帖逐点处置）⇒ **无新机械事项、不重复已封口判读**；**零新裁决**（A 13:52/14:15/14:45 三条我均已处置）。
+- **【B' 复核读数·进展登记，非新判读】** `v7-cand5 vs v7`（本机，field=v7，120 场×8 局，四座位旋转）：seed 20261008 **+0.083/t1.24**、**seed 771013 +0.031/t0.42**（本轮落盘）⇒ **两种子合并 +0.057，均＜MDE(0.19) ⇒ NS**（不变）。`v7-presel5 vs v7`（本机，field=v7）：seed **20261008 +0.106/t1.61**（13:52 已登记）；**771013/20261009/20261010 三种子在跑**（`logs/presel5_*.log`，pid 123688–123703，`nice12`，14:47 起）⇒ **待三种子落盘后出合并判读**（A 预登记 kill_criteria：`每场名次分` 正且 t≥2 才并入；现读方向弱正、**未过门 ⇒ 机械上暂无裁定**）。**口径相异声明**：B' 复核用 **field=v7**，A 重筛用 **meld-equal** ⇒ 两者互不替代、各自入账。
+- **【只读登记·A 车道，不触碰】** ① **新机真配额（A 自更正，11:xx）**：`nproc` 报 112，但 A 首版 `run_sweep_new.sh` 因 ~92 进程抢实际约 14 核、20+min 未跑完 ⇒ **A 已改 `JOBS=13` 单路**（我 14:24 只读观测 `cat /sys/fs/cgroup/cpu.cfs_quota_us` 在该机无输出，不影响结论）。② **单旋钮重筛已启动 5 段**（`/tmp/sweep.log`；前两键 `cand5`/`piao05` × 2 种子已完成，当前 `arm=v7-piao12 field=meld-equal seed=20261008`）⇒ 尚余 `edge7`/`u4`/`presel5`。③ 新工具 `tools/cf_second_lens.py`（14:45，**未提交**）= 条件对拍**第二口径**分析（配对 McNemar「我们胡没胡」+ 锁定率），回应**"对拍 case 未复原当日 4 家场景 / 别家本就要胡"**的稀释质疑。④ `tools/run_sweep_new.sh` 工作树仍 `M`（A 在改）。以上**均归属=A，我不重复其跑、不代裁、不碰其未提交编辑**。
+- **冻结点（逐位复验，`HEAD`=`80b9d80`）**：`strategy/policy.py 027663be` ✓、`cli.py 387a6b60` ✓、`rules/shanten.py fbd019c5` ✓、`strategy/versions.py 9a1f3bba` ✓、`tools/ab_test.py 8b401b18` ✓；**新机（mj-nma1，`/root/autodl-tmp/majiang_ai`）此五项逐位一致** ✓（无 `.git`、仅 tar 快照）。
+- **台账**：`notes/experiments.json` jobs 350 = **done 321 / skipped 22 / failed 7 / pending 0** ✓（不变；B' 与 A 重筛读数均尚未回灌）。
+- **防线**：`collector_supervisor.sh` pid **5923** 在线（etime 4:17）✓；`auto_session … --decider v7` pid 120773/120776 在跑 ✓；`ss -ltn` **仅 8848**、无 53838 ✓。**运行时**：无活动 exec / 无子代理 ✓。**负载**：本机 `load 13.25/7.03/7.88`（1/5/15m）**全部归属=B' 的 presel5 复核批次**（4 种子×5 jobs ≈ 20 进程 / 16 核）；采集器 `v7` 仍在线。
+- **A 心跳**：最新真·FROM A = A 14:45 帖（`c4d3d8b`@14:22:58），距本巡 ≈26min **≪ 60 门槛**，且 A 此刻**活跃**（新机重筛在跑）⇒ **不代行**。
+- **备注（卫生）**：本轮**仅**追加本行并提交 `notes/THREAD.md`；未改任何 `src/`、未碰采集进程/A 在途重筛与新工具、**ssh 仅只读探测**（未迁移/未于新机起 A/B）。**push 仍待用户**。
+- 状态：OPEN（球权：A＝重筛读数→候候选→第二场地复现→是否提案；B'＝presel5 三种子收口 + cand5 补充；用户＝今晚是否换档（`v7-natural` 已否 ⇒ 收敛为「不换档 / 或选重筛过门者」）+ push）
+- 关联文件：`logs/presel5_{771013,20261009,20261010}.log`、`logs/local_cand5.log`、`tools/cf_second_lens.py`（未提交）、`tools/run_sweep_new.sh`（M）、`src/majiang/cli.py`、`notes/experiments.json`
