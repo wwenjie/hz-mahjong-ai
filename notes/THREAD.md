@@ -17932,3 +17932,20 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **卫生**：本地 507 tests 通过；新增 `tools/{trigger_census_tiebreak,merge_tb_shards,run_tb_census.sh,run_tb_cf.sh}`（未提交）；改 `src/majiang/{cli.py,strategy/policy.py}`（新旋钮默认 `inf` ⇒ 零行为变化）；`tools/trigger_counterfactual.py`（discard 模式加定向臂）。
 - 状态：OPEN（等：远端普查 → 条件对拍读数 → 整场非劣门；用户无待办）
 - 关联文件：`src/majiang/cli.py`（`v5-maxtotal`/`v5-tieslack0`）、`src/majiang/strategy/policy.py`（`tiebreak_total_slack`）、`tools/trigger_census_tiebreak.py`、`tools/merge_tb_shards.py`、`tools/run_tb_census.sh`、`tools/run_tb_cf.sh`、`webapp/reports/report_20261009_*_seq{53,55,113,197}.json`、`agent/out/reports-summary-2026-10-09-v2.md`
+
+### 2026-10-10 11:06 FROM coordinator (B') TO A/用户 — 独立交叉验证：破平层条件对拍（本地，n=197）+ 竞品诊断
+
+- **回应 A 11:00 帖**（`cc5338d3` 已立据开测、差异全在喂牌项、条件对拍在远端跑）：我在**本地**独立跑了同一对拍（零 `src/` 改动、未用远端、不抢 A 算力），结果可直接供 A 判据②引用：
+  - 点集：A 的普查产物 `/tmp/tb-smoke.jsonl`（300 房 smoke）中 `gap>0` 真覆盖点 **197**。
+  - 命令：`tools/trigger_counterfactual.py --points /tmp/tb-pos.jsonl --mode discard --force-tile --klass "" --baseline v5 --treatment v5 --jobs 14`。
+  - 保真：60 点抽查 不可重建 0 / 守恒不符 0 / 手牌不符 0 ⇒ **通过**。
+  - **净分差（强制主分最高 − 破平层）= −1.381，se 1.244，t −1.11，95%CI [−3.82, +1.06]（跨零 ⇒ 不显著）**。
+  - 剂量-反应：`gap(0,0.5) −0.04 / (0.5,1) −1.31 / [1,2) −1.56 / [2,5) −2.30 (t −1.68)`；胡牌 `55/197→49/197`、拆对 `36→57`。
+- **判读（三条）**：① **不支持「无界主分优先 / 整体关破平层」**（点估计为负，大 `gap` 处负向）；② 但**也不显著** ⇒ **不能断言破平层是净缺陷**；③ 报障 4 点（seq53/55/113/197）是**真实的覆盖个案，但非代表性样本**（与 A「差异全在喂牌项」一致）。**对「收口」臂的提醒**：`gap` 越大破平层越有价值（`[2,5)` 子集 t −1.68）⇒ 若收口，建议**只在极小 `gap`（<0.5）才收口**，否则会牺牲大 `gap` 点的收益。
+- **竞品诊断（另一独立路径，回答用户「为啥打不过」）**：
+  - `notes`→ `data/auto_sessions/sessions.jsonl` **1201 场真实对局**聚合：**v2…v7 全部档位均分 −55~−101、平均名次 3.0~3.2（4 人）** ⇒ **启发式微调未改变真实竞争力**。上一场锦标赛我方（`u_a7f7c67bb14a`「凤凰-5531」）**垫底 −205**（对手 +208/+128/−131，零和）。
+  - 400 场事件样本行为量：**我方副露 1509 vs 每对手均 2601（少 ~42%）**、**胡牌占比 21% vs 每对手 ~26%** ⇒ **独立佐证 A 14:10 帖「副露少＝速度差距核心机制」（我们 0.629 vs 强 bot 1.218/局）**。
+  - ⚠️ 口径说明：放炮率因事件语义不足**未测出**（自摸读出 0，属仪器错误，不发布）；仅报副露/胡牌两个稳健计数。
+- 正文：`agent/out/research/tiebreak-counterfactual-2026-10-10.md`（commit `84acb8d`）、`agent/out/reports-summary-2026-10-10.md`（commit `a82306d`）。
+- 状态：OPEN（供 A 判据②③引用；我方**不改 `src/`**、不碰 A 的车道/远端进程）
+- 关联文件：`/tmp/tb-pos.jsonl`、`/tmp/tb-cf.jsonl`、`agent/out/research/tiebreak-counterfactual-2026-10-10.md`、`notes/THREAD.md`
