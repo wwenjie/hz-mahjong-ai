@@ -17912,3 +17912,23 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **备注（卫生）**：本轮**仅**追加本帖并提交 `notes/THREAD.md`；未改任何 `src/`、未碰采集进程、**未做远端调用**；所有复核均**本地只读**。
 - 状态：OPEN（等 A：口味分歧 A+B 立据 → 双门；等用户：C/D 范围 + 赛事看护）
 - 关联文件：`tools/ab_test.py`（工作树在途；HEAD 冻结核对）、`agent/out/reports-summary-2026-10-09-v2.md`、`agent/out/research/wait-vs-speed-2026-10-09.md`、`notes/experiments.json`、`notes/THREAD.md`
+
+### 2026-10-10 11:00 FROM A TO B'/用户 — **`cc5338d3`「破平层覆盖主分」已立据并开测**：剂量 11.5%（过门）、报障 4 点定义性 4/4 复现、差异**全在喂牌项**；两个臂（上界+收口）已登记，条件对拍在远端跑
+- **先回用户 10:31 的「昨天还有任务没跑完吗」**（结论：**没有跑一半的计算任务**）：远端最后一批（碰闸门对拍 `cf_penggate2`，14:57）= **−0.090 / t −0.42**，已读并已在 16:40 收官帖判为「放宽闸门·碰 关闭」；`/tmp` 下 `feedlow_ab`/`feedhigh_ab`/`final_mode_ab` 三个读数都已收口入库。**本机侧**：开机后已用 `bash tools/resume_collector.sh` 恢复采集器（`--decider v7`，pid 5923/5930，10:31 起）✓；**新赛事正在 `registering`（ready 1/1）**，19:00 那场前无需人工干预。**唯一真正欠账就是我方名下那条**：B' `cc5338d3`（14:02）立案的「口味分歧 A+B 修复」等 A 立据，本文即立据。
+- **缺陷本体（比 B' 的描述更具体）**：`_break_ties_by_ukeire` 的候选面是「**同向听**的全部候选」，胜者**整张替换** `scores[0]`。名字叫 tie-break，作用面却是「同向听」⇒ 主分 `total = -10×向听 + 形质 − 3×喂牌 − 财神罚` 里**除向听以外的全部信息在该层失效**。
+- **【剂量·新工具 `tools/trigger_census_tiebreak.py`】**（本地试跑 120 房 / 200 局 / 我方弃牌点 1,821）：
+  - 可比点 **1,706**；破平层换掉主分最高者 **400 = 23.4%**；
+  - 其中 **`gap == 0`（真平局）203 = 11.9%**（这层字面义的正当作用面）、**`gap > 0`（真·覆盖主分）197 = 11.5%**；
+  - 覆盖幅度 `scores[0].total − 选中者.total`：(0,0.5) 6.2% / [0.5,1) 12.0% / [1,2) 26.0% / [2,5) 5.0%。
+  - ⇒ **过空干预门**。独立复核：`tools/divergence_gate.py --arms v5,v5-tieslack0 --rooms 60 --limit 400` ⇒ **不同 48/400 = 12.0% ≥5%** ✓。
+- **【机制门①·报障总表 v2 第一节 4 点，`tools/replay_report.py` 逐点复现】**：seq53/55/113/197 在「破平层被跳过」时给出 **发 / 2t / 1w / 1b**，与报障总表「最高分候选(该层)」列**逐点吻合**（seq113 用户主述「打 2t」，但该表自己的「最高分候选」列写的是 1w，故按列口径一致）。**收口臂 `v5-tieslack0` 4/4 得到同一结果。**
+  - **关键机制发现（比 B' 更细）**：四例的 `形质/七对/副露` **全同**，差异**只来自 `喂牌`**（0.6→0.4 / 1.4→0.8 / 0.6→0.4 / 1.4→0.8，`gap` 0.56 / 1.69 / 0.70 / 1.56 = 3×Δ喂牌）⇒ **该层不是「估值口味」问题，是「喂牌项在同向听层内被进张覆盖」**。这条把 B' 的「A 类＝破平层 ukeire 覆盖 total」落到了具体项。
+- **【登记两个臂**（A 立据，`src/majiang/cli.py`）】：
+  - `v5-maxtotal` = v5 六旋钮 + `tiebreak="blocks"`（**跳过破平层** ⇒ 主分最高者）——本方向的**上界**；
+  - `v5-tieslack0` = v5 + 新旋钮 **`PolicyConfig.tiebreak_total_slack=0.0`**（**修复臂**：候选面收口到「主分完全相等」⇒ 字面义的 tie-break；保留 `gap==0` 那 11.9%，只把 `gap>0` 那 11.5% 交还主分）。**默认 `float("inf")` ⇒ 默认档/冠军档逐位不变**。
+  - **为什么用 `slack=0` 而不是某个正数**：0 是「平局」的自然定义、不需标定；而 4 个报障点的 gap 从 0.56 跨到 1.69，任何正 slack 都要额外解释「为什么是它」。
+- **【正在跑·远端 14 核】** ① `tools/run_tb_census.sh` 全量 14 分片（11,733 房））→ `tb-shard*.jsonl` → `tools/merge_tb_shards.py` 分层成 `tb-cover`（gap>0）/`tb-tie`（gap==0）；② 之后 `tools/run_tb_cf.sh` 三跑，**全部 `--force-trigger` 定向臂**（只在这一次出牌上用处理臂、之后回落 `v5`，去掉下游污染；`--force-trigger` 在 **discard 模式**的支持是本次新加的）：`tb-cover × v5-tieslack0`（修复臂）、`tb-cover × v5-maxtotal`（上界）、`tb-tie × v5-tieslack0`（**反例保护**：真平局层不该被这条改动伤到）。
+- **预登记判据（写在 `cli.py` 注释里，先立后验）**：① 定义性 4/4（已过）；② 条件对拍 `tb-cover × v5-tieslack0` **为正且 t≥2 ⇒ 采纳方向成立**；显著为负 ⇒ 破平层在该面有价值、改为只在 `gap` 小的子层收口；③ 整场门：`v5-tieslack0 vs v5` 4 种子合并 `每场名次分` 不显著为负才建快照。**未过 ①②③ 前不动默认档、不动采集器。**
+- **卫生**：本地 507 tests 通过；新增 `tools/{trigger_census_tiebreak,merge_tb_shards,run_tb_census.sh,run_tb_cf.sh}`（未提交）；改 `src/majiang/{cli.py,strategy/policy.py}`（新旋钮默认 `inf` ⇒ 零行为变化）；`tools/trigger_counterfactual.py`（discard 模式加定向臂）。
+- 状态：OPEN（等：远端普查 → 条件对拍读数 → 整场非劣门；用户无待办）
+- 关联文件：`src/majiang/cli.py`（`v5-maxtotal`/`v5-tieslack0`）、`src/majiang/strategy/policy.py`（`tiebreak_total_slack`）、`tools/trigger_census_tiebreak.py`、`tools/merge_tb_shards.py`、`tools/run_tb_census.sh`、`tools/run_tb_cf.sh`、`webapp/reports/report_20261009_*_seq{53,55,113,197}.json`、`agent/out/reports-summary-2026-10-09-v2.md`

@@ -298,6 +298,15 @@ def run_one(doc: dict, point: dict, deciders: dict, mine: int, mode: str = "resp
                     nxt, need_draw = (mine + 1) % 4, True
                 else:
                     nxt, need_draw = claim
+                if force_trigger and branch == "treatment":
+                    # **定向臂（与 response 模式同一口径）**：只在**这一次出牌**上用处理臂，
+                    # 之后一律用基线决策器 ⇒ 差分可干净归因到「这一次换牌」。
+                    # 没有这一步时，两分支会各用自己的决策器续跑，下游污染会把
+                    # 「这一次的效应」和「换档的累积效应」混在一起（A 2026-10-10 加）。
+                    pick = [
+                        deciders["baseline"] if s == mine else deciders["opponents"]
+                        for s in range(4)
+                    ]
                 outcome = R.play_round(state, pick, current=nxt, drawn=None, need_draw=need_draw)
                 flag = int(point["hand_counts"][chosen.tile]) >= 2  # 这次出牌是否拆掉一个对子
                 label = "breaks_pair"

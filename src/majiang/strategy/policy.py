@@ -319,6 +319,20 @@ class PolicyConfig:
     #   白板数不受损（+0.014，不显著）；胡率 25.6% vs 24.5%
     # 故切为默认。旧行为保留在 `--decider blocks` 供后续对照。
     tiebreak: str = "exact-ukeire"
+    # **破平层的作用面收口**：`_break_ties_by_ukeire` 的候选面原本是「**同向听**的全部候选」，
+    # 胜者整张替换 `scores[0]` ⇒ 主分 `total` 里除向听以外的全部信息（形质/喂牌/财神罚）
+    # 在该层被覆盖。本旋钮把候选面收口到「主分不低于 `最高分 − slack`」的那些候选。
+    #
+    # **缺陷证据（B' 2026-10-09 `cc5338d3` 立案 + 用户报障总表 v2 第一节「硬缺陷」4 点）**：
+    # `tools/trigger_census_tiebreak.py` 试跑 120 房 → 可比点 1,706，破平层换掉主分最高者
+    # 400（23.4%），其中**真·覆盖（gap>0）197 = 11.5%**。4 个报障点
+    # （seq53/55/113/197）在 `tiebreak` 跳过破平层后**逐点给出报障总表的「最高分候选」列**
+    # （发/2t/1w/1b）——即用户主张的那张；且四例的差异**全部来自 `喂牌` 项**（形质/七对/副露全同）。
+    #
+    # **`float("inf")` = 关闭收口 = 逐位等于 v5**（默认档、冠军档保持不动）。
+    # `0.0` = 只在**主分完全相等**的候选间破平（字面意义的 tie-break；`gap==0` 那一层仍在，
+    # 实测占决策 11.9%，是这层的正当作用面）。
+    tiebreak_total_slack: float = float("inf")
     # 实验档位：**只在完全打平**的候选中，优先打「已见张最多」的那张。
     #
     # **为什么需要它**：`_choose_discard` 的最终兜底是 `sorted(..., reverse=True)` 的稳定性，
@@ -1152,6 +1166,17 @@ class HeuristicDecider:
         tied = [score for score in scores if score.shanten == top_shanten]
         if len(tied) < 2:
             return None
+        # 作用面收口（默认 `inf` ⇒ 不生效，逐位等于 v5）：把「主分明显更低」的候选剔出破平。
+        # 依据见 `PolicyConfig.tiebreak_total_slack`——不这么做，一个叫 tie-break 的层会覆盖
+        # 主分里除向听以外的全部信息（喂牌项是主要受害者）。
+        if self.config.tiebreak_total_slack < float("inf"):
+            ceiling = scores[0].total - self.config.tiebreak_total_slack
+            narrowed = [score for score in tied if score.total >= ceiling]
+            if len(narrowed) < 2:
+                # 收口后不足两张 ⇒ 没有可破的平局，交还给主分（`_choose_discard` 的 `or best`）。
+                return None
+            self.last_detail["tiebreak_narrowed"] = (len(tied), len(narrowed))
+            tied = narrowed
         exact = self.config.tiebreak in ("exact-ukeire", "tenpai-only")
         if exact and top_shanten > self.config.ukeire_max_shanten:
             return None

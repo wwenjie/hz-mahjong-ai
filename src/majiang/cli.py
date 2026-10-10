@@ -731,6 +731,53 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
                               ukeire_candidates=3, safe_tiebreak=True)
     ),
+    # **`v5-maxtotal` = 「破平层关掉」的诊断臂**（A 2026-10-10 10:50 登记，回应 B' `cc5338d3`
+    # 「口味分歧」立案与用户报障总表 v2 第一节「破平层覆盖主分」4 点 硬缺陷）。
+    #
+    # **要量的问题**：`_break_ties_by_ukeire` 的候选面是**同向听的全部候选**（不是同分），
+    # 胜者**整张替换** `scores[0]` ⇒ 主分 `total` 里除向听以外的全部信息（形质/喂牌/财神罚）
+    # 在该层被覆盖。该层叫 tie-break，但实际作用面是「同向听」。
+    #
+    # **本档做法**：`tiebreak="blocks"`（该值不在 `("ukeire","exact-ukeire","tenpai-only")`
+    # 里 ⇒ `_choose_discard` 跳过破平层）⇒ 选中者 = `scores[0]` = 主分最高者。
+    # 其余六个旋钮与 `v5` **逐位一致** ⇒ 与 `v5` 只差这一处，差分可归因。
+    #
+    # **剂量（`tools/trigger_census_tiebreak.py`，2026-10-10 试跑 120 房）**：
+    # 可比点 1,706 → 破平层换掉主分最高者 **400（23.4%）**，其中**同分（gap=0）203 个**、
+    # **真·覆盖主分（gap>0）197 个 = 11.5%** ⇒ 过空干预门（≥5%）。覆盖幅度分布
+    # `(0,0.5) 6.2% / [0.5,1) 12.0% / [1,2) 26.0% / [2,5) 5.0%`。
+    #
+    # **预登记判据（先条件对拍、后整场）**：
+    #   ① 定义性/机制门：报障总表 E 的 4 点（seq53/55/113/197）在本档下必须给出**用户主张的那张**
+    #      （B' 已用 `tiebreak="none"` 复核 seq53→发、seq55→2t 与用户一致 ⇒ 本条是可判定性检验）；
+    #   ② 条件对拍（`tools/trigger_counterfactual.py --mode discard --force-tile`）在 gap>0 的触发点上
+    #      量「主分优先 vs 破平层覆盖」的我方本局净分差：**为正且 t≥2 ⇒ 破平层有害、立修复案**；
+    #      为负或有显著负子群 ⇒ 破平层在该面有价值、只做**有界收口**（按 `total` 容差限制候选面）。
+    #   ③ 整场门：任何要改默认档的实现，先过 `ab_test` 非劣门（4 种子合并 `每场名次分` 不显著为负）。
+    # **默认档/冠军档不受影响**（本档是新键，未改任何默认值）。
+    "v5-maxtotal": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="blocks", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3)
+    ),
+    # **`v5-tieslack0` = 破平层收口（`tiebreak_total_slack=0.0`）**（A 2026-10-10，本轴的**修复臂**）。
+    #
+    # 与 `v5` **只差这一个旋钮**：破平层的候选面从「同向听的全部候选」收口到
+    # 「主分不低于 `最高分 − 0.0`」＝**主分完全相等**的那些候选 ⇒ 字面意义的 tie-break。
+    # `gap==0` 那一层（实测占决策 11.9%）**保留**，所以不是「关掉破平层」；
+    # `gap>0` 那一层（11.5%，即报障的 4 点所在）交还给主分。
+    #
+    # **为什么选 `slack=0` 而不是某个正数**：0 是不需要标定的自然边界（「平局」的定义），
+    # 而报障 4 点的 gap 从 0.56 到 1.69 跨了半个数量级，任何正 slack 都要解释「为什么是它」。
+    # `v5-maxtotal`（完全关掉破平层）给出这个方向的**上界**读数，用于判断 `slack=0` 是否安全。
+    #
+    # **预登记判据**：见 `v5-maxtotal` 注释 ①②③；本档需额外过 `ab_test` 非劣门
+    # （`v5-tieslack0 vs v5`，4 种子合并 `每场名次分` 不显著为负）才可进 `versions` 快照。
+    "v5-tieslack0": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=3, tiebreak_total_slack=0.0)
+    ),
     # **`botlike`**：Stage B 的 bot 出牌预测器（GBDT, 77.4% top-1）包成决策器，
     # **只用于当 `ab_test --field botlike` 的对手模型**（A 2026-10-06 01:57 提出的场地修正）。
     # 见 `strategy/botlike.py` 的模块 docstring。**不作为待采纳臂**。
