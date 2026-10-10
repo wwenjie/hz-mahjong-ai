@@ -18692,3 +18692,19 @@ count   = int(payload.get("n_features", 0))  # 同上
 - **【纪律】** 今晚 19:00 比赛：**采集器/冠军档仍 `v7`**；`cand5`/`presel5` 即便过镜像检定，也只是**候候选**（还需`--field v7` 复现 + 真机延迟护栏：cand5 每决策多 2 次精确进张，今天真机 p99 53–113ms/预算 1800ms，余量够但必须实测）。
 - 状态：OPEN（等：镜像检定 `cand2` 3 种子；竞技场 51 点 botlike 聚合；用户对今晚是否换档拍板）
 - 关联文件：`tools/{report_classify.py,cf_second_lens.py,reported_arena.py,sweep_summary.py,run_sweep_new.sh}`、`src/majiang/cli.py`（`v7-cand2`/`v7-cand5`/`v7-presel5`/`v7-edge7`/`v7-u4`/`v7-piao05`/`v7-piao12`）、`agent/out/report-classify.csv`
+
+### 2026-10-10 16:28 FROM coordinator (B') — 机械判读 + 护栏复核：A 16:30 新条目（逐点定因 6 类 / cand5 第二场地 / 开镜像检定 `v7-cand2`）机械处置；冻结点随 A 提交推进（`cli 387a6b60→c0a45317`，新增 `v7-cand2` 键）；**口径更新：换档问非「无候选」，而是「cand5/presel5 待镜像检定」**
+
+- **THREAD 对账**：本窗口内唯一新第三方条目 = **A 16:30 帖**（`0d9cfb7`@16:25:49，TO 用户/B'）；系 A 14:15/14:45（`c4d3d8b`）后首条新 A 裁决/读数 ⇒ **A 心跳由此恢复为「明示活跃」**（距本巡 ≈3min ≪ 60 门槛），**不代行**（不代 A 立据、不碰冠军档/平台进程/令牌）。触发字节 `2713818→`（本巡 `size≈2722525`、mtime 16:25:49）。
+- **冻结点（逐位复验，`HEAD`=`0d9cfb7`）**：`cli.py` md5 **`387a6b60` → `c0a45317`**（= `HEAD:src/majiang/cli.py` blob `6a59d645…`，A 于 `0d9cfb7` **新增 `v7-cand2`** 键 + 注释；`git hash-object` 与 `git rev-parse HEAD:…` 逐位一致 ⇒ **src 工作树 = HEAD ✓**）；`strategy/policy.py 027663be` ✓、`rules/shanten fbd019c5` ✓、`strategy/versions 9a1f3bba` ✓、`tools/ab_test.py 8b401b18` ✓。`git status --porcelain -- src/` **空**；`tools/` 归属=A 在途（`?? report_classify.py` 11728B、`?? cf_second_lens.py`、`?? reported_arena.py`）**我不碰**。
+- **护栏复核（A 的「场地偏置」声明属实）**：`tools/ab_test.py` docstring **226–228** 自记原文——「异质场地能打散『三个自己的复制品可被同一套偏离方式利用』这个偏差——实测 **16 个单旋钮档位里多数总得分小幅为正（合并均值约 +0.40）**，怀疑来自该偏差，见 `feed-high` 的**符号镜像检定**」⇒ A 据此把 `cand5`/`presel5` 从「过统计门」降为**候候选**、开**镜像臂 `v7-cand2`（收紧 2 张，与 cand5 反方向）× 3 种子 × `--field meld-equal`** 做符号检定，**合规于仓库自记护栏、机械上成立**。
+- **机械判读（按预登记 kill_criteria，落盘批次）**：
+  - **弃胡轴 `piao05`/`piao12` = 关闭**：`piao05` 逐位 **0.000**（行为零变化）、`piao12` **−0.009/t−0.98** ⇒ 未过「正且显著」门 ⇒ **关闭**（与本方 15:39 登记同向）。
+  - **`cand5`/`presel5`：统计门过、护栏未过 ⇒ 不采纳、仅候候选**。`cand5` `--field meld-equal` 5 跑全正、合并 **+0.078/t+2.36**（过 t≥2）**但触发场地偏置护栏**；且 `--field v7` **+0.037/t0.99 NS**（异场地不复现）。`presel5` 新机 2 种子合并 **+0.117/t+2.26**（同属 cand5 姊妹键、同一护栏）。⇒ 机械上**无裁定**，待：**镜像检定 `cand2` 3 种子 + `--field v7` 复现 + 真机延迟护栏**（A 16:30 预登记：`cand2` 亦显著正 ⇒ 偏置主导、cand5 收益不可信；`cand2` 负/零而 cand5 正 ⇒ 支持「候选面太窄」机制方向）。**异场地互不替代**：A=meld-equal，B' 复核=`field=v7`（两轴 B' 侧全 NS：presel5 +0.018/t+0.51、cand5 +0.057）。
+  - 112 核 6 键（15:32:09 已登记）维持「均未过 ≥3/4 种子正 + 合并 t≥2」——本巡无新增落盘。
+- **口径更新（影响在途，取代此前「收敛为不换档」）**：我 15:39/15:57/16:05/16:09/16:22 多帖将换档问收敛为「不换档」；**据 A 16:30 读数更新**：换档问现为「**`cand5`/`presel5` 为候候选、未过护栏，待镜像检定 + `--field v7` 复现 + 延迟实测**」，最终仍由**用户 19:00 前拍板**。**纪律不变：采集器/冠军档今晚仍 `v7`**。另：A 把报障**重分类为 6 类互斥**（C4 主分严格最优 18「从未追过」、C2 形质并列 18、C1 破平层覆盖 10「已测 −0.413/t−3.57⇒关闭」、C6 副露 6「中性⇒关闭」、C3 真平局 2、C5 候选面截断 1「正在确认」），更正两处自身事实错误（max 并列误判 17 个 C1 / 牌码抽取）⇒ **B' 报障处理口径随之改为「逐决策链路分类」**。
+- **台账**：`notes/experiments.json` 350 = **done 321 / skipped 22 / failed 7 / pending 0** ✓（不变；A 16:30 读数尚未回灌）。
+- **防线**：`collector_supervisor.sh` pid **5923** 在线（etime 5:55）✓；`auto_session … --decider v7` pid **157185/157188** 在线 ✓；`ss -ltn` 用户前端**仅 8848**、无 53838 ✓。**负载**：本机 `load 93.9/94.9/100.9`（1/5/15m）= **A `reported_arena.py` pid 129791 组 12 worker**（仍跑、`agent/out/reports-arena-botlike.json` 未落盘）+ 采集器基线。**运行时**：无活动 exec / 无子代理 ✓。
+- **备注（卫生）**：本轮**仅**追加本行并提交 `notes/THREAD.md`；未改任何 `src/`、未碰 A 进程与未提交工具、**未起 B' 新 A/B、未做远端调用**。**push 仍待用户**（上游领先 30+ 提交）。
+- 状态：OPEN（球权：A＝镜像检定 `cand2` 3 种子 + 竞技场 51 点 botlike 聚合；候参数 `cand5`/`presel5` 待护栏；用户＝今晚是否换档拍板 + push）
+- 关联文件：`tools/ab_test.py`（护栏自记 226–228）、`tools/{report_classify.py,cf_second_lens.py,reported_arena.py}`（A 在途）、`src/majiang/cli.py`（`v7-cand2` 新增）、`agent/out/report-classify.csv`、`notes/experiments.json`
