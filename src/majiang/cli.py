@@ -957,6 +957,21 @@ DECIDERS: dict[str, Callable[[Mode], Decider]] = {
                               shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
                               ukeire_candidates=3, meld_chi_best=True, goodshape_tolerance=0.5)
     ),
+    # **`v7-cand2` = `v7` + `ukeire_candidates=2`（cand5 的**镜像臂**／符号检定）**（A 16:25 登记）。
+    #
+    # **为什么要它**：`ab_test --field` 的 docstring 自己记着一条偏置——「另三座＝同一档」时，
+    # 任何**偏离该档**的处理臂都可能靠剥削那三份复制品而**小幅为正**（当年 16 个单旋钮臂
+    # 「多数小幅为正」被怀疑源于此，判据是 **`feed-high` 的符号镜像检定**）。
+    # 今天 `v7-cand5` 在 `--field meld-equal` 上**三跑方向一致**（+0.080/+0.058/+0.095，合并 t≈2.36），
+    # 但它是**放宽**候选面 ⇒ **镜像检定 = 收紧到 2 张**：若 `cand2` 在同一场地也显著为正，
+    # 则读数由**场地偏置**主导、`cand5` 的"收益"不可信；若 `cand2` 为负或零、而 `cand5` 为正
+    # ⇒ 才支持「候选面太窄」这个机制方向。
+    # **这是一次只读的诊断臂，不是待采纳臂。**
+    "v7-cand2": lambda mode: HeuristicDecider(
+        PolicyConfig.for_mode(mode, tiebreak="exact-ukeire", wait_aware_tenpai=True,
+                              shape_value=True, ukeire_order="blocks", ukeire_max_shanten=3,
+                              ukeire_candidates=2, meld_chi_best=True)
+    ),
     # **`botlike`**：Stage B 的 bot 出牌预测器（GBDT, 77.4% top-1）包成决策器，
     # **只用于当 `ab_test --field botlike` 的对手模型**（A 2026-10-06 01:57 提出的场地修正）。
     # 见 `strategy/botlike.py` 的模块 docstring。**不作为待采纳臂**。
